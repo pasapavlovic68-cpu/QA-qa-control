@@ -1,19 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Activity,
-  AlertTriangle,
-  CheckCircle2,
-  ChevronRight,
   FileText,
   FolderUp,
-  MessageSquareText,
   Pencil,
   Play,
   Plus,
   Settings2,
-  Trash2,
-  UsersRound
+  Trash2
 } from 'lucide-react';
 import {
   AnimatePresence,
@@ -21,10 +15,11 @@ import {
   motion
 } from 'framer-motion';
 import './styles.css';
-import { employees, checks, mistakes, qualityPoints, demoReports, initialRules } from './data/demoData.js';
-import { PremiumCard, RevealCard, Stagger, AnimatedProgress, Avatar } from './components/shared.jsx';
+import { employees, demoReports, initialRules } from './data/demoData.js';
+import { PremiumCard, AnimatedProgress, Avatar } from './components/shared.jsx';
 import { tabs, Sidebar, Topbar } from './components/layout.jsx';
-import { KpiCard, TrendChart, ErrorBars, AnalysisState, RuleToggle, PremiumDropdown } from './components/display.jsx';
+import { AnalysisState, RuleToggle, PremiumDropdown } from './components/display.jsx';
+import { Dashboard } from './pages/Dashboard.jsx';
 import { employeeCardTransition, reportCardTransition, EmployeeDrawer, EmployeeFormModal, DeleteEmployeeModal, ReportDetailModal, RuleModal, DeleteRuleModal } from './components/modals.jsx';
 
 function App() {
@@ -72,66 +67,6 @@ function App() {
         </AnimatePresence>
       </div>
     </LayoutGroup>
-  );
-}
-
-function Dashboard({ setActive, setDetailOpen, setSelectedEmployee }) {
-  const kpis = [
-    { label: 'Проверено диалогов', value: '1 284', delta: '+18% за неделю', icon: MessageSquareText },
-    { label: 'Средняя оценка качества', value: '86.4', delta: '+3.2 пункта', icon: Activity },
-    { label: 'Критические ошибки', value: '27', delta: '-9 за период', icon: AlertTriangle },
-    { label: 'Сотрудников на контроле', value: '14', delta: '4 требуют внимания', icon: UsersRound }
-  ];
-
-  return (
-    <>
-      <Stagger className="kpi-grid">
-        {kpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
-      </Stagger>
-      <div className="dashboard-grid">
-        <PremiumCard className="chart-card wide" title="Динамика качества" action="Последние 8 недель">
-          <TrendChart />
-        </PremiumCard>
-        <PremiumCard title="Топ сотрудников" action="Рейтинг">
-          <div className="rank-list">
-            {employees.slice(0, 4).map((employee, index) => (
-              <motion.button
-                className="rank-row"
-                key={employee.id}
-                whileHover={{ x: 4 }}
-                onClick={() => {
-                  setSelectedEmployee(employee);
-                  setDetailOpen(true);
-                }}
-              >
-                <span className="rank">{index + 1}</span>
-                <span>
-                  <strong>{employee.name}</strong>
-                  <small>{employee.role}</small>
-                </span>
-                <b>{employee.score}</b>
-              </motion.button>
-            ))}
-          </div>
-        </PremiumCard>
-        <RevealCard title="Частые ошибки" action="Приоритеты">
-          <ErrorBars />
-        </RevealCard>
-        <RevealCard title="Последние проверки" action="Журнал">
-          <div className="check-list">
-            {checks.map((item) => (
-              <div className="check-row" key={item}>
-                <CheckCircle2 size={17} />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-          <motion.button className="ghost-button full" whileTap={{ scale: 0.98 }} onClick={() => setActive('review')}>
-            Перейти к проверке <ChevronRight size={16} />
-          </motion.button>
-        </RevealCard>
-      </div>
-    </>
   );
 }
 
