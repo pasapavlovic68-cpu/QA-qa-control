@@ -29,11 +29,11 @@ import {
 import {
   AnimatePresence,
   LayoutGroup,
-  motion,
-  useInView
+  motion
 } from 'framer-motion';
 import './styles.css';
 import { employees, checks, mistakes, qualityPoints, demoReports, initialRules } from './data/demoData.js';
+import { PremiumCard, RevealCard, Stagger, AnimatedProgress, Avatar, Metric, Evidence, ChatSnippet } from './components/shared.jsx';
 
 const tabs = [
   { id: 'dashboard', label: 'Главная', icon: LayoutDashboard },
@@ -1049,40 +1049,6 @@ function KpiCard({ label, value, delta, icon: Icon }) {
   );
 }
 
-function PremiumCard({ title, action, children, className = '', compact = false }) {
-  return (
-    <motion.article className={`premium-card ${compact ? 'compact' : ''} ${className}`} whileHover={{ y: compact ? 0 : -3 }}>
-      <div className="card-title">
-        <h2>{title}</h2>
-        {action && <span>{action}</span>}
-      </div>
-      {children}
-    </motion.article>
-  );
-}
-
-function RevealCard(props) {
-  const ref = React.useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-60px' });
-  return (
-    <motion.div ref={ref} initial={{ opacity: 0, y: 24 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.45 }}>
-      <PremiumCard {...props} />
-    </motion.div>
-  );
-}
-
-function Stagger({ children, className }) {
-  return (
-    <motion.div className={className} initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.075 } } }}>
-      {React.Children.map(children, (child) => (
-        <motion.div variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } }} transition={{ duration: 0.4 }}>
-          {child}
-        </motion.div>
-      ))}
-    </motion.div>
-  );
-}
-
 function TrendChart({ compact = false }) {
   const points = useMemo(() => qualityPoints.map((value, index) => `${(index / (qualityPoints.length - 1)) * 100},${100 - value}`).join(' '), []);
   return (
@@ -1117,14 +1083,6 @@ function ErrorBars() {
   );
 }
 
-function AnimatedProgress({ value }) {
-  return (
-    <div className="progress">
-      <motion.span initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
-    </div>
-  );
-}
-
 function AnalysisState({ status }) {
   const progress = status === 'complete' ? 100 : status === 'running' ? 72 : 8;
   const message = status === 'complete'
@@ -1148,32 +1106,6 @@ function AnalysisState({ status }) {
           />
         ))}
       </div>
-    </div>
-  );
-}
-
-function Avatar({ name, large = false }) {
-  return <div className={`avatar ${large ? 'large' : ''}`}>{name.split(' ').map((part) => part[0]).join('')}</div>;
-}
-
-function Metric({ label, value }) {
-  return <div className="metric"><span>{label}</span><strong>{value}</strong></div>;
-}
-
-function Evidence({ title, text, tone }) {
-  return (
-    <div className={`evidence ${tone}`}>
-      <strong>{title}</strong>
-      <p>{text}</p>
-    </div>
-  );
-}
-
-function ChatSnippet({ role, text, good }) {
-  return (
-    <div className={`chat-snippet ${good ? 'good' : ''}`}>
-      <span>{role}</span>
-      <p>{text}</p>
     </div>
   );
 }
