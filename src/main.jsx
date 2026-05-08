@@ -1,11 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Activity,
   AlertTriangle,
   CheckCircle2,
-  Check,
-  ChevronDown,
   ChevronRight,
   Clock3,
   Download,
@@ -16,7 +14,6 @@ import {
   Play,
   Plus,
   Settings2,
-  Sparkles,
   Trash2,
   UsersRound,
   X
@@ -31,6 +28,7 @@ import { employees, checks, mistakes, qualityPoints, demoReports, initialRules }
 import { PremiumCard, RevealCard, Stagger, AnimatedProgress, Avatar, Metric, Evidence, ChatSnippet } from './components/shared.jsx';
 import { modalMotion, useModalScrollLock, ModalPortal } from './components/modal.jsx';
 import { tabs, Sidebar, Topbar } from './components/layout.jsx';
+import { KpiCard, TrendChart, ErrorBars, AnalysisState, RuleToggle, PremiumDropdown } from './components/display.jsx';
 
 const employeeCardTransition = {
   layout: { type: 'spring', damping: 34, stiffness: 360 },
@@ -508,53 +506,6 @@ function Review({ analysis, setAnalysis }) {
   );
 }
 
-function PremiumDropdown({ value, options, onChange }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="premium-select">
-      <motion.button
-        type="button"
-        className={`premium-select-trigger ${open ? 'open' : ''}`}
-        whileTap={{ scale: 0.985 }}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <span>{value}</span>
-        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <ChevronDown size={17} />
-        </motion.span>
-      </motion.button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="premium-select-menu"
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 8, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {options.map((option) => (
-              <motion.button
-                type="button"
-                className={`premium-select-option ${option === value ? 'selected' : ''}`}
-                key={option}
-                whileHover={{ x: 3 }}
-                onClick={() => {
-                  onChange(option);
-                  setOpen(false);
-                }}
-              >
-                <span>{option}</span>
-                {option === value && <Check size={16} />}
-              </motion.button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 function Report() {
   const [selectedReport, setSelectedReport] = useState(null);
   const [query, setQuery] = useState('');
@@ -834,15 +785,6 @@ function Rules() {
   );
 }
 
-function RuleToggle({ active, onClick }) {
-  return (
-    <button className={`rule-toggle ${active ? 'active' : ''}`} type="button" onClick={onClick}>
-      <span>{active ? 'Активно' : 'Выключено'}</span>
-      <motion.i layout transition={{ type: 'spring', damping: 18, stiffness: 260 }} />
-    </button>
-  );
-}
-
 function RuleModal({ mode, rule, setRule, onClose, onSubmit }) {
   useModalScrollLock();
 
@@ -939,78 +881,6 @@ function DeleteRuleModal({ rule, onCancel, onConfirm }) {
       </motion.div>
       </motion.div>
     </ModalPortal>
-  );
-}
-
-function KpiCard({ label, value, delta, icon: Icon }) {
-  return (
-    <motion.div className="kpi-card" whileHover={{ y: -5, boxShadow: '0 22px 60px rgba(92, 82, 143, 0.13)' }}>
-      <div className="kpi-icon"><Icon size={20} /></div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{delta}</small>
-    </motion.div>
-  );
-}
-
-function TrendChart({ compact = false }) {
-  const points = useMemo(() => qualityPoints.map((value, index) => `${(index / (qualityPoints.length - 1)) * 100},${100 - value}`).join(' '), []);
-  return (
-    <div className={`trend ${compact ? 'compact-trend' : ''}`}>
-      <svg viewBox="0 0 100 36" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#8d7cf6" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#8d7cf6" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <motion.polyline points={points} fill="none" stroke="#7765e3" strokeWidth="2.4" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.1, ease: 'easeOut' }} />
-        <polygon points={`0,36 ${points} 100,36`} fill="url(#trendFill)" />
-      </svg>
-      {!compact && <div className="chart-labels"><span>Март</span><span>Апрель</span><span>Май</span></div>}
-    </div>
-  );
-}
-
-function ErrorBars() {
-  return (
-    <div className="error-bars">
-      {mistakes.map((item, index) => (
-        <div className="bar-row" key={item.label}>
-          <div><span>{item.label}</span><b>{item.value}</b></div>
-          <div className="bar-track">
-            <motion.span initial={{ width: 0 }} animate={{ width: `${item.value * 2}%` }} transition={{ delay: index * 0.12, duration: 0.7 }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AnalysisState({ status }) {
-  const progress = status === 'complete' ? 100 : status === 'running' ? 72 : 8;
-  const message = status === 'complete'
-    ? 'Демо-анализ завершён. Результаты готовы для будущего отчёта.'
-    : status === 'running'
-      ? 'Анализируем диалоги: SLA, тональность, обязательные действия и критичные ошибки.'
-      : 'Запустите проверку, чтобы увидеть будущий сценарий AI-анализа.';
-
-  return (
-    <div className="analysis-state">
-      <div className="analysis-orb"><Sparkles size={22} /></div>
-      <AnimatedProgress value={progress} />
-      <p>{message}</p>
-      <div className="skeleton-stack">
-        {[1, 2, 3].map((item) => (
-          <motion.span
-            key={item}
-            className={`skeleton ${status === 'complete' ? 'complete' : ''}`}
-            animate={status === 'running' ? { opacity: [0.35, 0.9, 0.35] } : {}}
-            transition={{ repeat: status === 'running' ? Infinity : 0, duration: 1.4, delay: item * 0.16 }}
-          />
-        ))}
-      </div>
-    </div>
   );
 }
 
