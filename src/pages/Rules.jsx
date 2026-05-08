@@ -1,9 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
 import { initialRules } from '../data/demoData.js';
+import { supabase } from '../lib/supabase.js';
 import { RuleToggle } from '../components/display.jsx';
 import { RuleModal, DeleteRuleModal } from '../components/modals.jsx';
+
+function toRule(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description || '',
+    category: row.category || 'Процесс',
+    weight: 'Средняя',
+    active: row.enabled ?? true
+  };
+}
 
 export function Rules() {
   const emptyRule = {
@@ -14,10 +26,26 @@ export function Rules() {
     active: true
   };
 
-  const [rules, setRules] = useState(initialRules);
+  const [rules, setRules] = useState([]);
   const [modalMode, setModalMode] = useState(null);
   const [ruleForm, setRuleForm] = useState(emptyRule);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from('qa_rules')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[Rules] fetch error:', error);
+          setRules(initialRules);
+          return;
+        }
+        setRules((data ?? []).map(toRule));
+      });
+  }, []);
 
   const openAddModal = () => {
     setRuleForm(emptyRule);
@@ -34,36 +62,81 @@ export function Rules() {
     setRuleForm(emptyRule);
   };
 
-  const saveRule = (event) => {
+  const saveRule = async (event) => {
     event.preventDefault();
+    if (saving) return;
+    setSaving(true);
 
     if (modalMode === 'edit') {
-      setRules((current) => current.map((rule) => (
-        rule.id === ruleForm.id ? { ...ruleForm, title: ruleForm.title.trim() || 'Новое правило' } : rule
-      )));
-    } else {
-      setRules((current) => [
-        {
-          ...ruleForm,
-          id: Date.now(),
+      const { data, error } = await supabase
+        .from('qa_rules')
+        .update({
           title: ruleForm.title.trim() || 'Новое правило',
-          description: ruleForm.description.trim() || 'Описание правила пока не заполнено.'
-        },
-        ...current
-      ]);
+          description: ruleForm.description.trim(),
+          category: ruleForm.category,
+          enabled: ruleForm.active
+        })
+        .eq('id', ruleForm.id)
+        .select()
+        .single();
+
+      setSaving(false);
+      if (error) { console.error('[Rules] update error:', error); return; }
+
+      setRules((current) => current.map((rule) => rule.id === data.id ? toRule(data) : rule));
+    } else {
+      const { data, error } = await supabase
+        .from('qa_rules')
+        .insert({
+          title: ruleForm.title.trim() || 'Новое правило',
+          description: ruleForm.description.trim() || 'Описание правила пока не заполнено.',
+          category: ruleForm.category,
+          enabled: ruleForm.active
+        })
+        .select()
+        .single();
+
+      setSaving(false);
+      if (error) { console.error('[Rules] insert error:', error); return; }
+
+      setRules((current) => [toRule(data), ...current]);
     }
 
     closeModal();
   };
 
-  const toggleRule = (ruleId) => {
-    setRules((current) => current.map((rule) => (
-      rule.id === ruleId ? { ...rule, active: !rule.active } : rule
-    )));
+  const toggleRule = async (ruleId) => {
+    const rule = rules.find((r) => r.id === ruleId);
+    if (!rule) return;
+    const newEnabled = !rule.active;
+
+    const { error } = await supabase
+      .from('qa_rules')
+      .update({ enabled: newEnabled })
+      .eq('id', ruleId);
+
+    if (error) {
+      console.error('[Rules] toggle error:', error);
+      return;
+    }
+
+    setRules((current) => current.map((r) => r.id === ruleId ? { ...r, active: newEnabled } : r));
   };
 
-  const confirmDeleteRule = () => {
+  const confirmDeleteRule = async () => {
     if (!deleteTarget) return;
+
+    const { error } = await supabase
+      .from('qa_rules')
+      .delete()
+      .eq('id', deleteTarget.id);
+
+    if (error) {
+      console.error('[Rules] delete error:', error);
+      setDeleteTarget(null);
+      return;
+    }
+
     setRules((current) => current.filter((rule) => rule.id !== deleteTarget.id));
     setDeleteTarget(null);
   };
