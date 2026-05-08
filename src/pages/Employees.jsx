@@ -1,48 +1,101 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2 } from 'lucide-react';
-import { employees } from '../data/demoData.js';
+import { employees as demoEmployees } from '../data/demoData.js';
+import { supabase } from '../lib/supabase.js';
 import { Avatar, AnimatedProgress } from '../components/shared.jsx';
 import { employeeCardTransition, EmployeeFormModal, DeleteEmployeeModal } from '../components/modals.jsx';
 
+function getStatusTone(status) {
+  if (status === 'Улучшается') return 'success';
+  if (status === 'На контроле') return 'warning';
+  if (status === 'Критично') return 'danger';
+  if (status === 'Без изменений') return 'neutral';
+  return 'neutral';
+}
+
+function toEmployee(row) {
+  const status = row.status || 'На контроле';
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role || 'Сотрудник QA',
+    status,
+    statusTone: getStatusTone(status),
+    score: row.score ?? 0,
+    dialogs: row.checks_count ?? 0,
+    trend: row.trend ?? 0
+  };
+}
+
 export function Employees({ setDetailOpen, setSelectedEmployee }) {
-  const [employeeList, setEmployeeList] = useState(employees);
+  const [employeeList, setEmployeeList] = useState([]);
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [form, setForm] = useState({
-    name: ''
-  });
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: '' });
 
-  const resetForm = () => {
-    setForm({
-      name: ''
-    });
-  };
+  useEffect(() => {
+    supabase
+      .from('employees')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[Employees] fetch error:', error);
+          setEmployeeList(demoEmployees);
+          return;
+        }
+        setEmployeeList((data ?? []).map(toEmployee));
+      });
+  }, []);
 
-  const handleAddEmployee = (event) => {
+  const resetForm = () => setForm({ name: '' });
+
+  const handleAddEmployee = async (event) => {
     event.preventDefault();
     const employeeName = form.name.trim();
-    if (!employeeName) return;
+    if (!employeeName || saving) return;
 
-    const newEmployee = {
-      id: Date.now(),
-      name: employeeName,
-      role: 'Сотрудник QA',
-      score: 0,
-      dialogs: 0,
-      issue: 'Зона контроля будет рассчитана после проверок',
-      status: 'На контроле',
-      statusTone: 'warning',
-      trend: '0%'
-    };
+    setSaving(true);
+    const { data, error } = await supabase
+      .from('employees')
+      .insert({
+        name: employeeName,
+        role: 'Сотрудник QA',
+        status: 'На контроле',
+        score: 0,
+        checks_count: 0,
+        trend: 0
+      })
+      .select()
+      .single();
+    setSaving(false);
 
-    setEmployeeList((current) => [newEmployee, ...current]);
+    if (error) {
+      console.error('[Employees] insert error:', error);
+      return;
+    }
+
+    setEmployeeList((current) => [toEmployee(data), ...current]);
     resetForm();
     setAddOpen(false);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
+
+    const { error } = await supabase
+      .from('employees')
+      .delete()
+      .eq('id', deleteTarget.id);
+
+    if (error) {
+      console.error('[Employees] delete error:', error);
+      setDeleteTarget(null);
+      return;
+    }
+
     setEmployeeList((current) => current.filter((employee) => employee.id !== deleteTarget.id));
     setDeleteTarget(null);
   };
