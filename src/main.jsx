@@ -542,15 +542,26 @@ function DeleteEmployeeModal({ employee, onCancel, onConfirm }) {
 }
 
 function EmployeeDrawer({ employee, onClose, onNewReview }) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   return (
     <motion.div className="drawer-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <motion.aside
         layoutId={`employee-${employee.id}`}
         className="drawer"
-        initial={{ x: 420, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: 420, opacity: 0 }}
-        transition={{ type: 'spring', damping: 30, stiffness: 260 }}
+        role="dialog"
+        aria-modal="true"
+        initial={{ y: 24, scale: 0.96, opacity: 0 }}
+        animate={{ y: 0, scale: 1, opacity: 1 }}
+        exit={{ y: 18, scale: 0.97, opacity: 0 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 260 }}
       >
         <button className="icon-button close" onClick={onClose}><X size={18} /></button>
         <div className="profile-header">
