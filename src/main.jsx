@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createPortal } from 'react-dom';
 import {
   Activity,
   AlertTriangle,
@@ -34,6 +33,7 @@ import {
 import './styles.css';
 import { employees, checks, mistakes, qualityPoints, demoReports, initialRules } from './data/demoData.js';
 import { PremiumCard, RevealCard, Stagger, AnimatedProgress, Avatar, Metric, Evidence, ChatSnippet } from './components/shared.jsx';
+import { modalMotion, useModalScrollLock, ModalPortal } from './components/modal.jsx';
 
 const tabs = [
   { id: 'dashboard', label: 'Главная', icon: LayoutDashboard },
@@ -42,13 +42,6 @@ const tabs = [
   { id: 'report', label: 'Отчёт', icon: FileText },
   { id: 'rules', label: 'Правила', icon: Settings2 }
 ];
-
-const modalMotion = {
-  initial: { opacity: 0, y: 18, scale: 0.96 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: 12, scale: 0.96 },
-  transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
-};
 
 const employeeCardTransition = {
   layout: { type: 'spring', damping: 34, stiffness: 360 },
@@ -61,24 +54,6 @@ const reportCardTransition = {
   opacity: { duration: 0.18 },
   scale: { duration: 0.18 }
 };
-
-function useModalScrollLock() {
-  useEffect(() => {
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousHtmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-
-    return () => {
-      document.body.style.overflow = previousBodyOverflow;
-      document.documentElement.style.overflow = previousHtmlOverflow;
-    };
-  }, []);
-}
-
-function ModalPortal({ children }) {
-  return createPortal(children, document.body);
-}
 
 function App() {
   const [active, setActive] = useState('dashboard');
