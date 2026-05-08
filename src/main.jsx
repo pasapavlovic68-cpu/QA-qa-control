@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { createPortal } from 'react-dom';
 import {
   Activity,
   AlertTriangle,
@@ -32,6 +33,7 @@ import {
   useInView
 } from 'framer-motion';
 import './styles.css';
+import { employees, checks, mistakes, qualityPoints, demoReports, initialRules } from './data/demoData.js';
 
 const tabs = [
   { id: 'dashboard', label: 'Главная', icon: LayoutDashboard },
@@ -41,105 +43,42 @@ const tabs = [
   { id: 'rules', label: 'Правила', icon: Settings2 }
 ];
 
-const employees = [
-  { id: 1, name: 'Анна Романова', role: 'Старший оператор поддержки', score: 94, dialogs: 184, issue: 'Иногда не фиксирует итог обращения', status: 'Улучшается', statusTone: 'success', trend: '+6%' },
-  { id: 2, name: 'Илья Сафонов', role: 'Специалист первой линии', score: 87, dialogs: 143, issue: 'Недостаточно уточняющих вопросов', status: 'Без изменений', statusTone: 'neutral', trend: '0%' },
-  { id: 3, name: 'Мария Левина', role: 'Оператор чата продаж', score: 78, dialogs: 119, issue: 'Пропуск обязательного шага в CRM', status: 'На контроле', statusTone: 'warning', trend: '-3%' },
-  { id: 4, name: 'Дмитрий Волков', role: 'Младший оператор', score: 61, dialogs: 96, issue: 'Резкие формулировки и шаблонные ответы', status: 'Критично', statusTone: 'danger', trend: '-11%' },
-  { id: 5, name: 'Екатерина Белова', role: 'Специалист удержания', score: 91, dialogs: 132, issue: 'Редко предлагает альтернативные решения', status: 'Улучшается', statusTone: 'success', trend: '+4%' },
-  { id: 6, name: 'Павел Миронов', role: 'Оператор B2B линии', score: 83, dialogs: 101, issue: 'Долго подтверждает детали заявки', status: 'Без изменений', statusTone: 'neutral', trend: '+1%' }
-];
+const modalMotion = {
+  initial: { opacity: 0, y: 18, scale: 0.96 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: 12, scale: 0.96 },
+  transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
+};
 
-const checks = [
-  'Диалог #QC-1842: корректность закрытия обращения',
-  'Диалог #QC-1839: тональность ответа по возврату',
-  'Диалог #QC-1834: соблюдение SLA в вечернюю смену',
-  'Диалог #QC-1828: полнота фиксации причины отказа'
-];
+const employeeCardTransition = {
+  layout: { type: 'spring', damping: 34, stiffness: 360 },
+  opacity: { duration: 0.18 },
+  scale: { duration: 0.18 }
+};
 
-const mistakes = [
-  { label: 'Нет финального резюме для клиента', value: 38 },
-  { label: 'Не задан уточняющий вопрос', value: 31 },
-  { label: 'Слишком поздний ответ', value: 24 },
-  { label: 'Некорректная фраза завершения', value: 18 }
-];
+const reportCardTransition = {
+  layout: { type: 'spring', damping: 34, stiffness: 360 },
+  opacity: { duration: 0.18 },
+  scale: { duration: 0.18 }
+};
 
-const qualityPoints = [72, 76, 74, 81, 84, 83, 88, 91];
+function useModalScrollLock() {
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
 
-const demoReports = [
-  {
-    id: 'QC-1842',
-    employee: 'Анна Романова',
-    date: '08 мая 2026',
-    dialogs: 42,
-    score: 86,
-    critical: 1,
-    status: 'Хорошо',
-    tone: 'good',
-    summary: 'Стабильная коммуникация, требуется точнее фиксировать итог обращения.',
-    management: 'Сотрудник корректно удержал тон общения и предложил клиенту рабочее решение. Для повышения оценки нужно фиксировать итог обращения в CRM и завершать диалог конкретным следующим шагом.'
-  },
-  {
-    id: 'QC-1839',
-    employee: 'Мария Левина',
-    date: '07 мая 2026',
-    dialogs: 36,
-    score: 74,
-    critical: 3,
-    status: 'Есть ошибки',
-    tone: 'warning',
-    summary: 'Есть повторяющиеся пропуски обязательных действий и слабая детализация ответов.',
-    management: 'Диалоги требуют внимания наставника: клиентам часто не хватает точного следующего шага, а часть обращений закрыта без полного заполнения карточки.'
-  },
-  {
-    id: 'QC-1834',
-    employee: 'Дмитрий Волков',
-    date: '06 мая 2026',
-    dialogs: 28,
-    score: 58,
-    critical: 7,
-    status: 'Критично',
-    tone: 'danger',
-    summary: 'Высокая доля резких формулировок и превышений SLA во второй линии ответа.',
-    management: 'Нужен индивидуальный план контроля: в проверке выявлены критичные нарушения тона, задержки ответа и отсутствие корректного финального резюме.'
-  },
-  {
-    id: 'QC-1828',
-    employee: 'Екатерина Белова',
-    date: '05 мая 2026',
-    dialogs: 31,
-    score: 91,
-    critical: 0,
-    status: 'Хорошо',
-    tone: 'good',
-    summary: 'Сильная эмпатия и аккуратные формулировки, не хватает альтернативных предложений.',
-    management: 'Проверка показывает высокий уровень качества. Рекомендовано усилить блок удержания: чаще предлагать клиенту второй вариант решения.'
-  },
-  {
-    id: 'QC-1819',
-    employee: 'Павел Миронов',
-    date: '03 мая 2026',
-    dialogs: 25,
-    score: 79,
-    critical: 2,
-    status: 'Есть ошибки',
-    tone: 'warning',
-    summary: 'Ответы корректные, но часть B2B-заявок долго подтверждалась внутри смены.',
-    management: 'Качество общения приемлемое, однако задержки подтверждения деталей снижают итоговую оценку. Требуется контроль SLA по сложным заявкам.'
-  },
-  {
-    id: 'QC-1812',
-    employee: 'Илья Сафонов',
-    date: '01 мая 2026',
-    dialogs: 33,
-    score: 83,
-    critical: 1,
-    status: 'Хорошо',
-    tone: 'good',
-    summary: 'Ровная работа с клиентами, повторяется нехватка уточняющих вопросов.',
-    management: 'Сотрудник уверенно закрывает типовые обращения. Для роста оценки нужно чаще проверять контекст клиента до передачи решения.'
-  }
-];
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
+}
+
+function ModalPortal({ children }) {
+  return createPortal(children, document.body);
+}
 
 function App() {
   const [active, setActive] = useState('dashboard');
@@ -314,41 +253,30 @@ function Employees({ setDetailOpen, setSelectedEmployee }) {
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [form, setForm] = useState({
-    name: '',
-    role: '',
-    status: 'На контроле',
-    issue: ''
+    name: ''
   });
-
-  const statusToneByLabel = {
-    'Улучшается': 'success',
-    'Без изменений': 'neutral',
-    'На контроле': 'warning',
-    'Критично': 'danger'
-  };
 
   const resetForm = () => {
     setForm({
-      name: '',
-      role: '',
-      status: 'На контроле',
-      issue: ''
+      name: ''
     });
   };
 
   const handleAddEmployee = (event) => {
     event.preventDefault();
+    const employeeName = form.name.trim();
+    if (!employeeName) return;
 
     const newEmployee = {
       id: Date.now(),
-      name: form.name.trim() || 'Новый сотрудник',
-      role: form.role.trim() || 'Оператор поддержки',
-      score: 72,
+      name: employeeName,
+      role: 'Сотрудник QA',
+      score: 0,
       dialogs: 0,
-      issue: form.issue.trim() || 'Зона контроля пока не заполнена',
-      status: form.status,
-      statusTone: statusToneByLabel[form.status] ?? 'neutral',
-      trend: 'Новый'
+      issue: 'Зона контроля будет рассчитана после проверок',
+      status: 'На контроле',
+      statusTone: 'warning',
+      trend: '0%'
     };
 
     setEmployeeList((current) => [newEmployee, ...current]);
@@ -387,7 +315,7 @@ function Employees({ setDetailOpen, setSelectedEmployee }) {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, scale: 0.96, y: 10 }}
-              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              transition={employeeCardTransition}
               whileHover={{ y: -5, scale: 1.008 }}
               whileTap={{ scale: 0.985 }}
               role="button"
@@ -398,7 +326,13 @@ function Employees({ setDetailOpen, setSelectedEmployee }) {
               }}
             >
               <div className="employee-head">
-                <Avatar name={employee.name} />
+                <div className="employee-identity">
+                  <Avatar name={employee.name} />
+                  <div className="employee-title">
+                    <h3>{employee.name}</h3>
+                    <p>{employee.role}</p>
+                  </div>
+                </div>
                 <div className="employee-head-actions">
                   <span className={`status ${employee.statusTone}`}>{employee.status}</span>
                   <motion.button
@@ -414,8 +348,6 @@ function Employees({ setDetailOpen, setSelectedEmployee }) {
                   </motion.button>
                 </div>
               </div>
-              <h3>{employee.name}</h3>
-              <p>{employee.role}</p>
               <div className="score-line">
                 <strong>{employee.score}</strong>
                 <AnimatedProgress value={employee.score} />
@@ -457,18 +389,24 @@ function Employees({ setDetailOpen, setSelectedEmployee }) {
 }
 
 function EmployeeFormModal({ form, setForm, onClose, onSubmit }) {
+  useModalScrollLock();
+
   const updateField = (field) => (event) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
   };
+  const canSubmit = form.name.trim().length > 0;
 
   return (
-    <motion.div className="employee-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <ModalPortal>
+      <motion.div className="modal-backdrop employee-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <motion.form
-        className="employee-modal"
-        initial={{ opacity: 0, y: 24, scale: 0.96, filter: 'blur(8px)' }}
-        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-        exit={{ opacity: 0, y: 18, scale: 0.97, filter: 'blur(6px)' }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="modal-shell modal-shell--small employee-modal"
+        role="dialog"
+        aria-modal="true"
+        initial={modalMotion.initial}
+        animate={modalMotion.animate}
+        exit={modalMotion.exit}
+        transition={modalMotion.transition}
         onSubmit={onSubmit}
       >
         <div className="modal-title">
@@ -481,49 +419,38 @@ function EmployeeFormModal({ form, setForm, onClose, onSubmit }) {
         <div className="employee-form-grid">
           <label>
             <span>Имя сотрудника</span>
-            <input value={form.name} onChange={updateField('name')} placeholder="Например, София Орлова" />
-          </label>
-          <label>
-            <span>Должность</span>
-            <input value={form.role} onChange={updateField('role')} placeholder="Оператор поддержки" />
-          </label>
-          <label>
-            <span>Статус</span>
-            <select value={form.status} onChange={updateField('status')}>
-              <option>Улучшается</option>
-              <option>Без изменений</option>
-              <option>На контроле</option>
-              <option>Критично</option>
-            </select>
-          </label>
-          <label>
-            <span>Основная зона контроля</span>
-            <input value={form.issue} onChange={updateField('issue')} placeholder="Например, фиксация итога обращения" />
+            <input value={form.name} onChange={updateField('name')} placeholder="Например, София Орлова" autoFocus />
           </label>
         </div>
         <div className="modal-actions">
           <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>
             Отмена
           </motion.button>
-          <motion.button className="primary-button" type="submit" whileTap={{ scale: 0.97 }}>
+          <motion.button className="primary-button" type="submit" whileTap={{ scale: canSubmit ? 0.97 : 1 }} disabled={!canSubmit}>
             <Plus size={17} />
             Добавить сотрудника
           </motion.button>
         </div>
       </motion.form>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 
 function DeleteEmployeeModal({ employee, onCancel, onConfirm }) {
+  useModalScrollLock();
+
   return (
-    <motion.div className="employee-modal-backdrop subtle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <ModalPortal>
+      <motion.div className="modal-backdrop employee-modal-backdrop subtle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <motion.div
-        className="delete-modal"
-        initial={{ opacity: 0, y: 18, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.97 }}
-        transition={{ duration: 0.24 }}
+        className="modal-shell modal-shell--small delete-modal"
+        role="dialog"
+        aria-modal="true"
+        initial={modalMotion.initial}
+        animate={modalMotion.animate}
+        exit={modalMotion.exit}
+        transition={modalMotion.transition}
       >
         <div className="delete-icon"><Trash2 size={18} /></div>
         <h2>Удалить карточку?</h2>
@@ -537,77 +464,78 @@ function DeleteEmployeeModal({ employee, onCancel, onConfirm }) {
           </motion.button>
         </div>
       </motion.div>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 
 function EmployeeDrawer({ employee, onClose, onNewReview }) {
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
+  useModalScrollLock();
 
   return (
-    <motion.div className="drawer-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <ModalPortal>
+      <motion.div className="modal-backdrop drawer-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <motion.aside
         layoutId={`employee-${employee.id}`}
-        className="drawer"
+        className="modal-shell modal-shell--large drawer"
         role="dialog"
         aria-modal="true"
-        initial={{ y: 24, scale: 0.96, opacity: 0 }}
-        animate={{ y: 0, scale: 1, opacity: 1 }}
-        exit={{ y: 18, scale: 0.97, opacity: 0 }}
-        transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+        transition={employeeCardTransition}
       >
-        <button className="icon-button close" onClick={onClose}><X size={18} /></button>
-        <div className="profile-header">
-          <Avatar name={employee.name} large />
-          <div>
-            <span className={`status ${employee.statusTone}`}>{employee.status}</span>
-            <h2>{employee.name}</h2>
-            <p>{employee.role}</p>
-          </div>
-        </div>
-        <div className="mini-metrics">
-          <Metric label="Оценка" value={employee.score} />
-          <Metric label="Проверок" value={employee.dialogs} />
-          <Metric label="Тренд" value={employee.trend} />
-        </div>
-        <PremiumCard title="Динамика качества" compact>
-          <TrendChart compact />
-        </PremiumCard>
-        <PremiumCard title="Частые ошибки" compact>
-          <ul className="mistake-list">
-            <li>Нет краткого итога после решения</li>
-            <li>Слабая эмпатия в сложных обращениях</li>
-            <li>Задержка ответа свыше целевого SLA</li>
-          </ul>
-        </PremiumCard>
-        <PremiumCard title="Рекомендации" compact>
-          <div className="recommendations">
-            <p>Использовать финальное резюме: причина, действие, следующий шаг.</p>
-            <p>Добавлять один уточняющий вопрос перед передачей заявки.</p>
-          </div>
-        </PremiumCard>
-        <div className="history">
-          <h3>История проверок</h3>
-          {['Сегодня, 12:40', 'Вчера, 17:15', '05 мая, 10:20'].map((date) => (
-            <div className="history-row" key={date}>
-              <Clock3 size={16} />
-              <span>{date}</span>
-              <b>Отчёт готов</b>
+        <motion.div
+          className="drawer-content"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 6 }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1], delay: 0.06 }}
+        >
+          <button className="icon-button close" onClick={onClose}><X size={18} /></button>
+          <div className="profile-header">
+            <Avatar name={employee.name} large />
+            <div>
+              <span className={`status ${employee.statusTone}`}>{employee.status}</span>
+              <h2>{employee.name}</h2>
+              <p>{employee.role}</p>
             </div>
-          ))}
-        </div>
-        <motion.button className="primary-button full glow" whileTap={{ scale: 0.98 }} whileHover={{ y: -2 }} onClick={onNewReview}>
-          Новая проверка
-        </motion.button>
+          </div>
+          <div className="mini-metrics">
+            <Metric label="Оценка" value={employee.score} />
+            <Metric label="Проверок" value={employee.dialogs} />
+            <Metric label="Тренд" value={employee.trend} />
+          </div>
+          <PremiumCard title="Динамика качества" compact>
+            <TrendChart compact />
+          </PremiumCard>
+          <PremiumCard title="Частые ошибки" compact>
+            <ul className="mistake-list">
+              <li>Нет краткого итога после решения</li>
+              <li>Слабая эмпатия в сложных обращениях</li>
+              <li>Задержка ответа свыше целевого SLA</li>
+            </ul>
+          </PremiumCard>
+          <PremiumCard title="Рекомендации" compact>
+            <div className="recommendations">
+              <p>Использовать финальное резюме: причина, действие, следующий шаг.</p>
+              <p>Добавлять один уточняющий вопрос перед передачей заявки.</p>
+            </div>
+          </PremiumCard>
+          <div className="history">
+            <h3>История проверок</h3>
+            {['Сегодня, 12:40', 'Вчера, 17:15', '05 мая, 10:20'].map((date) => (
+              <div className="history-row" key={date}>
+                <Clock3 size={16} />
+                <span>{date}</span>
+                <b>Отчёт готов</b>
+              </div>
+            ))}
+          </div>
+          <motion.button className="primary-button full glow" whileTap={{ scale: 0.98 }} whileHover={{ y: -2 }} onClick={onNewReview}>
+            Новая проверка
+          </motion.button>
+        </motion.div>
       </motion.aside>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 
@@ -750,8 +678,9 @@ function Report() {
           <motion.button
             className="report-card"
             key={report.id}
+            layoutId={`report-${report.id}`}
             variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } }}
-            transition={{ duration: 0.36 }}
+            transition={reportCardTransition}
             whileHover={{ y: -5, scale: 1.008 }}
             whileTap={{ scale: 0.985 }}
             onClick={() => setSelectedReport(report)}
@@ -790,73 +719,77 @@ function Report() {
 }
 
 function ReportDetailModal({ report, onClose }) {
+  useModalScrollLock();
+
   return (
-    <motion.div className="report-detail-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <ModalPortal>
+      <motion.div className="modal-backdrop report-detail-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <motion.aside
-        className="report-detail"
-        initial={{ opacity: 0, y: 26, scale: 0.96, filter: 'blur(8px)' }}
-        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-        exit={{ opacity: 0, y: 18, scale: 0.97, filter: 'blur(6px)' }}
-        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+        layoutId={`report-${report.id}`}
+        className="modal-shell modal-shell--large report-detail"
+        role="dialog"
+        aria-modal="true"
+        transition={reportCardTransition}
       >
-        <div className="report-detail-header">
-          <div>
-            <span className="eyebrow">Отчёт #{report.id}</span>
-            <h2>{report.employee}</h2>
-            <p>{report.date} · {report.dialogs} проверенных диалогов</p>
+        <motion.div
+          className="report-detail-content"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 6 }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1], delay: 0.06 }}
+        >
+          <div className="report-detail-header">
+            <div>
+              <span className="eyebrow">Отчёт #{report.id}</span>
+              <h2>{report.employee}</h2>
+              <p>{report.date} · {report.dialogs} проверенных диалогов</p>
+            </div>
+            <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
           </div>
-          <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
-        </div>
 
-        <div className="report-layout detail-layout">
-          <PremiumCard className="score-card" title="Итоговая оценка" action={report.status}>
-            <motion.div className="score-orb" initial={{ scale: 0.86 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 18, stiffness: 220 }}>
-              {report.score}
-            </motion.div>
-            <p>{report.summary}</p>
-            <motion.button className="primary-button full" whileTap={{ scale: 0.98 }} whileHover={{ y: -2 }}>
-              <Download size={17} />
-              Экспорт отчёта
-            </motion.button>
-          </PremiumCard>
-          <PremiumCard className="wide" title="Резюме для руководителя">
-            <p className="management-text">{report.management}</p>
-            <div className="report-columns">
-              <Evidence title="Ошибка" tone="danger" text="Оператор не подтвердил, что клиенту понятно дальнейшее действие." />
-              <Evidence title="Положительный момент" tone="success" text="В сложном моменте сотрудник сохранил спокойный тон и предложил альтернативу." />
-            </div>
-          </PremiumCard>
-          <PremiumCard title="Ошибки">
-            <div className="tag-cloud">
-              <span>Нет финального резюме</span>
-              <span>Превышение SLA</span>
-              <span>Не заполнено поле CRM</span>
-              <span>Слабое уточнение</span>
-            </div>
-          </PremiumCard>
-          <PremiumCard title="Визуальные доказательства">
-            <ChatSnippet role="Клиент" text="Я уже третий раз уточняю статус заявки. Когда будет ответ?" />
-            <ChatSnippet role="Оператор" text="Понимаю ситуацию. Проверю статус и вернусь с точным временем решения." good />
-          </PremiumCard>
-        </div>
+          <div className="report-layout detail-layout">
+            <PremiumCard className="score-card" title="Итоговая оценка" action={report.status}>
+              <motion.div className="score-orb" initial={{ scale: 0.86 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 18, stiffness: 220 }}>
+                {report.score}
+              </motion.div>
+              <p>{report.summary}</p>
+              <motion.button className="primary-button full" whileTap={{ scale: 0.98 }} whileHover={{ y: -2 }}>
+                <Download size={17} />
+                Экспорт отчёта
+              </motion.button>
+            </PremiumCard>
+            <PremiumCard className="wide" title="Резюме для руководителя">
+              <p className="management-text">{report.management}</p>
+              <div className="report-columns">
+                <Evidence title="Ошибка" tone="danger" text="Оператор не подтвердил, что клиенту понятно дальнейшее действие." />
+                <Evidence title="Положительный момент" tone="success" text="В сложном моменте сотрудник сохранил спокойный тон и предложил альтернативу." />
+              </div>
+            </PremiumCard>
+            <PremiumCard title="Ошибки">
+              <div className="tag-cloud">
+                <span>Нет финального резюме</span>
+                <span>Превышение SLA</span>
+                <span>Не заполнено поле CRM</span>
+                <span>Слабое уточнение</span>
+              </div>
+            </PremiumCard>
+            <PremiumCard title="Визуальные доказательства">
+              <ChatSnippet role="Клиент" text="Я уже третий раз уточняю статус заявки. Когда будет ответ?" />
+              <ChatSnippet role="Оператор" text="Понимаю ситуацию. Проверю статус и вернусь с точным временем решения." good />
+            </PremiumCard>
+          </div>
 
-        <motion.button className="ghost-button full report-back-button" whileTap={{ scale: 0.98 }} onClick={onClose}>
-          Назад к отчётам
-        </motion.button>
+          <motion.button className="ghost-button full report-back-button" whileTap={{ scale: 0.98 }} onClick={onClose}>
+            Назад к отчётам
+          </motion.button>
+        </motion.div>
       </motion.aside>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 
 function Rules() {
-  const initialRules = [
-    { id: 1, title: 'Порог времени ответа', category: 'SLA', description: 'Первый ответ до 45 секунд, повторный ответ до 3 минут.', weight: 'Высокая', active: true },
-    { id: 2, title: 'Запрещённые фразы', category: 'Тон общения', description: 'Контроль фраз: «это не наша проблема», «читайте инструкцию», «я не знаю».', weight: 'Критичная', active: true },
-    { id: 3, title: 'Обязательные действия оператора', category: 'Процесс', description: 'Уточнить контекст, зафиксировать итог обращения, указать следующий шаг.', weight: 'Высокая', active: true },
-    { id: 4, title: 'Вес ошибок', category: 'Скоринг', description: 'Критичная ошибка -20, существенная -10, лёгкая -4 к итоговой оценке.', weight: 'Средняя', active: true },
-    { id: 5, title: 'Шаблон отчёта для наставника', category: 'Отчёты', description: 'Фокус на повторяющихся ошибках, рекомендациях и плане улучшения.', weight: 'Низкая', active: false }
-  ];
-
   const emptyRule = {
     title: '',
     category: 'Процесс',
@@ -1007,6 +940,8 @@ function RuleToggle({ active, onClick }) {
 }
 
 function RuleModal({ mode, rule, setRule, onClose, onSubmit }) {
+  useModalScrollLock();
+
   const updateField = (field) => (value) => {
     setRule((current) => ({ ...current, [field]: value }));
   };
@@ -1016,13 +951,16 @@ function RuleModal({ mode, rule, setRule, onClose, onSubmit }) {
   };
 
   return (
-    <motion.div className="rule-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <ModalPortal>
+      <motion.div className="modal-backdrop rule-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <motion.form
-        className="rule-modal"
-        initial={{ opacity: 0, y: 24, scale: 0.96, filter: 'blur(8px)' }}
-        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-        exit={{ opacity: 0, y: 18, scale: 0.97, filter: 'blur(6px)' }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="modal-shell modal-shell--medium rule-modal"
+        role="dialog"
+        aria-modal="true"
+        initial={modalMotion.initial}
+        animate={modalMotion.animate}
+        exit={modalMotion.exit}
+        transition={modalMotion.transition}
         onSubmit={onSubmit}
       >
         <div className="modal-title">
@@ -1063,19 +1001,25 @@ function RuleModal({ mode, rule, setRule, onClose, onSubmit }) {
           </motion.button>
         </div>
       </motion.form>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 
 function DeleteRuleModal({ rule, onCancel, onConfirm }) {
+  useModalScrollLock();
+
   return (
-    <motion.div className="rule-modal-backdrop subtle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <ModalPortal>
+      <motion.div className="modal-backdrop rule-modal-backdrop subtle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <motion.div
-        className="delete-modal"
-        initial={{ opacity: 0, y: 18, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.97 }}
-        transition={{ duration: 0.24 }}
+        className="modal-shell modal-shell--small delete-modal"
+        role="dialog"
+        aria-modal="true"
+        initial={modalMotion.initial}
+        animate={modalMotion.animate}
+        exit={modalMotion.exit}
+        transition={modalMotion.transition}
       >
         <div className="delete-icon"><Trash2 size={18} /></div>
         <h2>Удалить правило?</h2>
@@ -1089,7 +1033,8 @@ function DeleteRuleModal({ rule, onCancel, onConfirm }) {
           </motion.button>
         </div>
       </motion.div>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 
