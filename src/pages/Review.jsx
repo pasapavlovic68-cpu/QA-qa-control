@@ -1,13 +1,30 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, FolderUp, Play } from 'lucide-react';
-import { employees } from '../data/demoData.js';
+import { supabase } from '../lib/supabase.js';
 import { PremiumCard } from '../components/shared.jsx';
 import { AnalysisState, PremiumDropdown } from '../components/display.jsx';
 
 export function Review({ analysis, setAnalysis }) {
-  const [selectedEmployeeName, setSelectedEmployeeName] = useState(employees[0].name);
+  const [liveEmployees, setLiveEmployees] = useState([]);
+  const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
   const [selectedPreset, setSelectedPreset] = useState('Стандарт поддержки');
+
+  useEffect(() => {
+    supabase
+      .from('employees')
+      .select('id, name, created_at')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[Review] fetch employees error:', error);
+          return;
+        }
+        const list = data ?? [];
+        setLiveEmployees(list);
+        if (list.length > 0) setSelectedEmployeeName(list[0].name);
+      });
+  }, []);
 
   useEffect(() => {
     if (analysis !== 'running') return undefined;
@@ -29,11 +46,17 @@ export function Review({ analysis, setAnalysis }) {
         <div className="form-row">
           <label>
             <span>Сотрудник</span>
-            <PremiumDropdown
-              value={selectedEmployeeName}
-              options={employees.map((employee) => employee.name)}
-              onChange={setSelectedEmployeeName}
-            />
+            {liveEmployees.length > 0 ? (
+              <PremiumDropdown
+                value={selectedEmployeeName}
+                options={liveEmployees.map((e) => e.name)}
+                onChange={setSelectedEmployeeName}
+              />
+            ) : (
+              <span className="premium-select-trigger" style={{ opacity: 0.5, cursor: 'default', pointerEvents: 'none' }}>
+                Сначала добавьте сотрудника
+              </span>
+            )}
           </label>
           <label>
             <span>Набор правил QA</span>
