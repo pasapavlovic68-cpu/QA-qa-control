@@ -8,6 +8,18 @@ export const modalMotion = {
   transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
 };
 
+export const modalContentVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
+  exit: {}
+};
+
+export const modalSectionVariants = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } },
+  exit: { opacity: 0, y: 4, transition: { duration: 0.12 } }
+};
+
 export function useModalScrollLock() {
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
