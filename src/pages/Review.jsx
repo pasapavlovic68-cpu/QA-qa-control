@@ -1,15 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FolderUp, Play } from 'lucide-react';
+import { FileText, FolderUp, Play } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { PremiumCard } from '../components/shared.jsx';
 import { AnalysisState, PremiumDropdown } from '../components/display.jsx';
 
+function formatSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
 export function Review({ analysis }) {
+  const fileInputRef = useRef(null);
+
   const [liveEmployees, setLiveEmployees] = useState([]);
   const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
   const [selectedPreset, setSelectedPreset] = useState('Стандарт поддержки');
   const [notReady, setNotReady] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
   useEffect(() => {
     supabase
@@ -27,9 +37,77 @@ export function Review({ analysis }) {
       });
   }, []);
 
+  const handleFiles = async (fileList) => {
+    const supported = Array.from(fileList).filter(
+      (f) => f.name.endsWith('.txt') || f.name.endsWith('.csv')
+    );
+
+    if (supported.length === 0) {
+      setUploadError('Поддерживаются только .txt и .csv файлы. XLSX будет добавлен позже.');
+      return;
+    }
+
+    const selectedEmployee = liveEmployees.find((e) => e.name === selectedEmployeeName);
+    if (!selectedEmployee) {
+      setUploadError('Сначала выберите сотрудника.');
+      return;
+    }
+
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      const fileData = await Promise.all(
+        supported.map(async (file) => ({ file, text: await file.text() }))
+      );
+
+      const { data: check, error: checkError } = await supabase
+        .from('qa_checks')
+        .insert({
+          employee_id: selectedEmployee.id,
+          status: 'uploaded',
+          dialogues_count: supported.length
+        })
+        .select()
+        .single();
+
+      if (checkError) throw checkError;
+
+      const { error: dialoguesError } = await supabase
+        .from('uploaded_dialogues')
+        .insert(
+          fileData.map(({ file, text }) => ({
+            check_id: check.id,
+            employee_id: selectedEmployee.id,
+            file_name: file.name,
+            file_type: file.name.split('.').pop(),
+            file_size: file.size,
+            raw_text: text,
+            status: 'uploaded'
+          }))
+        );
+
+      if (dialoguesError) throw dialoguesError;
+
+      setUploadedFiles(
+        fileData.map(({ file }) => ({ name: file.name, size: file.size, checkId: check.id }))
+      );
+    } catch (err) {
+      console.error('[Review] upload error:', err);
+      setUploadError('Ошибка загрузки. Проверьте соединение и попробуйте снова.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const onDrop = (event) => {
+    event.preventDefault();
+    if (event.dataTransfer.files.length > 0) handleFiles(event.dataTransfer.files);
+  };
+
   return (
     <div className="review-layout">
-      <PremiumCard className="review-main" title="Новая проверка диалогов" action="Скоро">
+      <PremiumCard className="review-main" title="Новая проверка диалогов" action="Загрузка файлов">
         <div className="form-row">
           <label>
             <span>Сотрудник</span>
@@ -37,7 +115,11 @@ export function Review({ analysis }) {
               <PremiumDropdown
                 value={selectedEmployeeName}
                 options={liveEmployees.map((e) => e.name)}
-                onChange={setSelectedEmployeeName}
+                onChange={(name) => {
+                  setSelectedEmployeeName(name);
+                  setUploadedFiles([]);
+                  setUploadError(null);
+                }}
               />
             ) : (
               <span className="premium-select-trigger" style={{ opacity: 0.5, cursor: 'default', pointerEvents: 'none' }}>
@@ -54,14 +136,64 @@ export function Review({ analysis }) {
             />
           </label>
         </div>
-        <motion.div className="upload-zone" tabIndex={0} whileHover={{ scale: 1.006, borderColor: '#8d7cf6' }} whileFocus={{ scale: 1.006, borderColor: '#8d7cf6' }}>
+
+        <motion.div
+          className="upload-zone"
+          tabIndex={0}
+          style={{ cursor: uploading ? 'wait' : 'pointer' }}
+          whileHover={{ scale: 1.006, borderColor: '#8d7cf6' }}
+          whileFocus={{ scale: 1.006, borderColor: '#8d7cf6' }}
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          onKeyDown={(e) => e.key === 'Enter' && !uploading && fileInputRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={onDrop}
+        >
           <FolderUp size={30} />
-          <strong>Перетащите файлы диалогов сюда</strong>
-          <span>CSV, XLSX, TXT — подключение загрузки на следующем этапе.</span>
+          <strong>{uploading ? 'Загружаем файлы…' : 'Перетащите или нажмите для выбора'}</strong>
+          <span>Поддерживаются .txt и .csv файлы диалогов</span>
         </motion.div>
-        <div className="file-list" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 0', opacity: 0.4 }}>
-          <span style={{ fontSize: '0.875rem' }}>Файлы пока не загружены — реальная загрузка файлов будет подключена на следующем этапе.</span>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,.csv"
+          multiple
+          style={{ display: 'none' }}
+          onChange={(e) => { if (e.target.files?.length) handleFiles(e.target.files); }}
+        />
+
+        {uploadError && (
+          <motion.p
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ fontSize: '0.82rem', color: '#e05c5c', textAlign: 'center', marginBottom: 8 }}
+          >
+            {uploadError}
+          </motion.p>
+        )}
+
+        <div className="file-list">
+          {uploadedFiles.length > 0 ? (
+            uploadedFiles.map((file) => (
+              <motion.div
+                className="file-row"
+                key={file.name}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <FileText size={16} />
+                <span>{file.name}</span>
+                <b>{formatSize(file.size)}</b>
+              </motion.div>
+            ))
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 0', opacity: 0.4 }}>
+              <span style={{ fontSize: '0.875rem' }}>Файлы пока не загружены</span>
+            </div>
+          )}
         </div>
+
         <motion.button
           className="primary-button large"
           whileTap={{ scale: 0.97 }}
@@ -81,6 +213,7 @@ export function Review({ analysis }) {
           </motion.p>
         )}
       </PremiumCard>
+
       <PremiumCard title="Состояние анализа" action="Ожидает запуска">
         <AnalysisState status={analysis} />
       </PremiumCard>
