@@ -15,8 +15,12 @@ export function KpiCard({ label, value, delta, icon: Icon }) {
   );
 }
 
-export function TrendChart({ compact = false }) {
-  const points = useMemo(() => qualityPoints.map((value, index) => `${(index / (qualityPoints.length - 1)) * 100},${100 - value}`).join(' '), []);
+export function TrendChart({ compact = false, data }) {
+  const rawPoints = data ?? qualityPoints;
+  const points = useMemo(
+    () => rawPoints.map((value, index) => `${(index / (rawPoints.length - 1)) * 100},${100 - value}`).join(' '),
+    [rawPoints]
+  );
   return (
     <div className={`trend ${compact ? 'compact-trend' : ''}`}>
       <svg viewBox="0 0 100 36" preserveAspectRatio="none">
