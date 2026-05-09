@@ -52,10 +52,10 @@ export function ErrorBars() {
 export function AnalysisState({ status }) {
   const progress = status === 'complete' ? 100 : status === 'running' ? 72 : 8;
   const message = status === 'complete'
-    ? 'Демо-анализ завершён. Результаты готовы для будущего отчёта.'
+    ? 'Анализ завершён. Отчёт сохранён в разделе Отчёты.'
     : status === 'running'
       ? 'Анализируем диалоги: SLA, тональность, обязательные действия и критичные ошибки.'
-      : 'Запустите проверку, чтобы увидеть будущий сценарий AI-анализа.';
+      : 'Загрузите файлы диалогов и нажмите «Начать анализ».';
 
   return (
     <div className="analysis-state">

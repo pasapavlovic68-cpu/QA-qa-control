@@ -5,20 +5,24 @@ import { supabase } from '../lib/supabase.js';
 import { PremiumCard } from '../components/shared.jsx';
 import { AnalysisState, PremiumDropdown } from '../components/display.jsx';
 
+const WORKER_URL = 'https://qa-control-ai-proxy.pasapavlovic68.workers.dev';
+
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
-export function Review({ analysis, employees }) {
+export function Review({ analysis, setAnalysis, employees }) {
   const fileInputRef = useRef(null);
 
   const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
   const [selectedPreset, setSelectedPreset] = useState('Стандарт поддержки');
-  const [notReady, setNotReady] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [currentCheckId, setCurrentCheckId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisMessage, setAnalysisMessage] = useState(null);
 
   useEffect(() => {
     if (employees.length > 0 && !selectedEmployeeName) {
@@ -44,6 +48,7 @@ export function Review({ analysis, employees }) {
 
     setUploading(true);
     setUploadError(null);
+    setAnalysisMessage(null);
 
     try {
       const fileData = await Promise.all(
@@ -78,9 +83,9 @@ export function Review({ analysis, employees }) {
 
       if (dialoguesError) throw dialoguesError;
 
-      setUploadedFiles(
-        fileData.map(({ file }) => ({ name: file.name, size: file.size, checkId: check.id }))
-      );
+      setCurrentCheckId(check.id);
+      setUploadedFiles(fileData.map(({ file }) => ({ name: file.name, size: file.size })));
+      setAnalysis('idle');
     } catch (err) {
       console.error('[Review] upload error:', err);
       setUploadError('Ошибка загрузки. Проверьте соединение и попробуйте снова.');
@@ -89,10 +94,123 @@ export function Review({ analysis, employees }) {
     }
   };
 
+  const handleStartAnalysis = async () => {
+    if (!selectedEmployeeName) {
+      setUploadError('Сначала выберите сотрудника.');
+      return;
+    }
+    if (!currentCheckId) {
+      setUploadError('Сначала загрузите файлы диалогов.');
+      return;
+    }
+
+    const selectedEmployee = employees.find((e) => e.name === selectedEmployeeName);
+    if (!selectedEmployee) {
+      setUploadError('Сотрудник не найден.');
+      return;
+    }
+
+    setAnalyzing(true);
+    setAnalysisMessage(null);
+    setUploadError(null);
+    setAnalysis('running');
+
+    try {
+      const { data: dialogues, error: dialoguesError } = await supabase
+        .from('uploaded_dialogues')
+        .select('file_name, raw_text')
+        .eq('check_id', currentCheckId);
+
+      if (dialoguesError) throw dialoguesError;
+      if (!dialogues || dialogues.length === 0) throw new Error('Нет загруженных диалогов для анализа.');
+
+      const { data: rules, error: rulesError } = await supabase
+        .from('qa_rules')
+        .select('title, description')
+        .eq('enabled', true);
+
+      if (rulesError) throw rulesError;
+
+      const response = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeName: selectedEmployeeName,
+          dialogues: dialogues.map((d) => ({ fileName: d.file_name, rawText: d.raw_text })),
+          rules: (rules ?? []).map((r) => ({ title: r.title, description: r.description }))
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Worker вернул ошибку ${response.status}: ${errText}`);
+      }
+
+      const { report } = await response.json();
+
+      const criticalCount = Array.isArray(report.mistakes)
+        ? report.mistakes.filter((m) => m.severity === 'critical').length
+        : 0;
+
+      const { error: reportError } = await supabase
+        .from('reports')
+        .insert({
+          check_id: currentCheckId,
+          employee_id: selectedEmployee.id,
+          score: report.score ?? 0,
+          title: report.title ?? 'Отчёт',
+          management_summary: report.management_summary ?? '',
+          mistakes: report.mistakes ?? [],
+          positives: report.positives ?? [],
+          recommendations: report.recommendations ?? [],
+          evidence: report.evidence ?? []
+        });
+
+      if (reportError) throw reportError;
+
+      const { error: checkUpdateError } = await supabase
+        .from('qa_checks')
+        .update({
+          status: 'complete',
+          score: report.score ?? 0,
+          completed_at: new Date().toISOString(),
+          summary: report.management_summary ?? '',
+          critical_errors_count: criticalCount
+        })
+        .eq('id', currentCheckId);
+
+      if (checkUpdateError) throw checkUpdateError;
+
+      setAnalysis('complete');
+      setAnalysisMessage({ type: 'success', text: 'Отчёт сформирован и сохранён.' });
+    } catch (err) {
+      console.error('[Review] analysis error:', err);
+      setAnalysis('idle');
+      setAnalysisMessage({ type: 'error', text: `Ошибка анализа: ${err.message}` });
+
+      if (currentCheckId) {
+        supabase
+          .from('qa_checks')
+          .update({ status: 'failed' })
+          .eq('id', currentCheckId)
+          .then(({ error }) => {
+            if (error) console.error('[Review] failed to mark check as failed:', error);
+          });
+      }
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const onDrop = (event) => {
     event.preventDefault();
     if (event.dataTransfer.files.length > 0) handleFiles(event.dataTransfer.files);
   };
+
+  const analysisCardAction =
+    analysis === 'running' ? 'В процессе' :
+    analysis === 'complete' ? 'Завершён' :
+    'Ожидает запуска';
 
   return (
     <div className="review-layout">
@@ -107,7 +225,10 @@ export function Review({ analysis, employees }) {
                 onChange={(name) => {
                   setSelectedEmployeeName(name);
                   setUploadedFiles([]);
+                  setCurrentCheckId(null);
                   setUploadError(null);
+                  setAnalysisMessage(null);
+                  setAnalysis('idle');
                 }}
               />
             ) : (
@@ -187,23 +308,30 @@ export function Review({ analysis, employees }) {
           className="primary-button large"
           whileTap={{ scale: 0.97 }}
           whileHover={{ y: -2 }}
-          onClick={() => setNotReady(true)}
+          disabled={analyzing || uploading}
+          onClick={handleStartAnalysis}
         >
           <Play size={18} />
-          Начать анализ
+          {analyzing ? 'Анализируем…' : 'Начать анализ'}
         </motion.button>
-        {notReady && (
+
+        {analysisMessage && (
           <motion.p
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            style={{ fontSize: '0.82rem', opacity: 0.55, textAlign: 'center', marginTop: 8 }}
+            style={{
+              fontSize: '0.82rem',
+              color: analysisMessage.type === 'success' ? '#5bb97b' : '#e05c5c',
+              textAlign: 'center',
+              marginTop: 8
+            }}
           >
-            AI-анализ ещё не подключён — сначала будет подключена загрузка файлов и OpenAI API.
+            {analysisMessage.text}
           </motion.p>
         )}
       </PremiumCard>
 
-      <PremiumCard title="Состояние анализа" action="Ожидает запуска">
+      <PremiumCard title="Состояние анализа" action={analysisCardAction}>
         <AnalysisState status={analysis} />
       </PremiumCard>
     </div>
