@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
-import { initialRules } from '../data/demoData.js';
 import { supabase } from '../lib/supabase.js';
 import { RuleToggle } from '../components/display.jsx';
 import { RuleModal, DeleteRuleModal } from '../components/modals.jsx';
@@ -27,6 +26,7 @@ export function Rules() {
   };
 
   const [rules, setRules] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modalMode, setModalMode] = useState(null);
   const [ruleForm, setRuleForm] = useState(emptyRule);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -40,10 +40,11 @@ export function Rules() {
       .then(({ data, error }) => {
         if (error) {
           console.error('[Rules] fetch error:', error);
-          setRules(initialRules);
+          setLoading(false);
           return;
         }
         setRules((data ?? []).map(toRule));
+        setLoading(false);
       });
   }, []);
 
@@ -154,6 +155,12 @@ export function Rules() {
         </motion.button>
       </div>
 
+      {!loading && rules.length === 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 200, gap: 8, textAlign: 'center' }}>
+          <p style={{ fontWeight: 600, opacity: 0.65, fontSize: '1rem' }}>Правил пока нет</p>
+          <p style={{ opacity: 0.4, fontSize: '0.875rem' }}>Добавьте первое правило проверки.</p>
+        </div>
+      )}
       <motion.div className="rules-grid" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.065 } } }}>
         <AnimatePresence mode="popLayout">
           {rules.map((rule) => (

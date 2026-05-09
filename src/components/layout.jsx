@@ -46,11 +46,11 @@ export function Sidebar({ active, setActive }) {
           <strong>Статус MVP</strong>
         </div>
         <div className="mvp-status-list">
-          <div className="mvp-status-row"><span><i className="dot demo" />AI-анализ</span><b>демо</b></div>
-          <div className="mvp-status-row"><span><i className="dot ready" />Загрузка файлов</span><b>интерфейс готов</b></div>
+          <div className="mvp-status-row"><span><i className="dot demo" />AI-анализ</span><b>в разработке</b></div>
+          <div className="mvp-status-row"><span><i className="dot demo" />Загрузка файлов</span><b>базовая версия</b></div>
           <div className="mvp-status-row"><span><i className="dot ready" />База данных</span><b>подключена</b></div>
-          <div className="mvp-status-row"><span><i className="dot ready" />API</span><b>Supabase подключён</b></div>
-          <div className="mvp-status-row"><span><i className="dot demo" />PDF-экспорт</span><b>демо</b></div>
+          <div className="mvp-status-row"><span><i className="dot ready" />API</span><b>Supabase</b></div>
+          <div className="mvp-status-row"><span><i className="dot demo" />PDF-экспорт</span><b>в разработке</b></div>
         </div>
       </motion.div>
     </aside>
