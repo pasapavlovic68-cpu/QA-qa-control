@@ -134,7 +134,7 @@ export function Review({ analysis, setAnalysis, employees }) {
       setAnalysisStage('loading_rules');
       const { data: rules, error: rulesError } = await supabase
         .from('qa_rules')
-        .select('title, description')
+        .select('title, description, category')
         .eq('enabled', true);
 
       if (rulesError) throw new Error('Не удалось загрузить правила QA.');
@@ -147,7 +147,17 @@ export function Review({ analysis, setAnalysis, employees }) {
         body: JSON.stringify({
           employeeName: selectedEmployeeName,
           dialogues: dialogues.map((d) => ({ fileName: d.file_name, rawText: d.raw_text })),
-          rules: (rules ?? []).map((r) => ({ title: r.title, description: r.description }))
+          rules: (rules ?? []).map((r) => ({
+            title: r.title,
+            description: r.description,
+            category: r.category || ''
+          })),
+          analysisContext: {
+            language: 'ru',
+            outputStyle: 'management_report',
+            strictness: 'high',
+            requireEvidence: true
+          }
         }),
         signal: workerController.signal
       });
@@ -158,11 +168,29 @@ export function Review({ analysis, setAnalysis, employees }) {
         throw new Error(`Worker недоступен (${response.status}): ${errText}`);
       }
 
-      const { report } = await response.json();
+      let parsed;
+      try {
+        parsed = await response.json();
+      } catch {
+        throw new Error('Worker вернул некорректный JSON.');
+      }
 
-      const criticalCount = Array.isArray(report.mistakes)
-        ? report.mistakes.filter((m) => m.severity === 'critical').length
-        : 0;
+      const rawReport = parsed?.report;
+      if (!rawReport || typeof rawReport !== 'object') {
+        throw new Error('Worker вернул неверный формат отчёта.');
+      }
+
+      const report = {
+        score: typeof rawReport.score === 'number' ? rawReport.score : 0,
+        title: typeof rawReport.title === 'string' && rawReport.title.trim() ? rawReport.title.trim() : 'Отчёт',
+        management_summary: typeof rawReport.management_summary === 'string' ? rawReport.management_summary : '',
+        mistakes: Array.isArray(rawReport.mistakes) ? rawReport.mistakes : [],
+        positives: Array.isArray(rawReport.positives) ? rawReport.positives : [],
+        recommendations: Array.isArray(rawReport.recommendations) ? rawReport.recommendations : [],
+        evidence: Array.isArray(rawReport.evidence) ? rawReport.evidence : [],
+      };
+
+      const criticalCount = report.mistakes.filter((m) => m.severity === 'critical').length;
 
       setAnalysisStage('saving_report');
       const { error: reportError } = await supabase
@@ -170,13 +198,13 @@ export function Review({ analysis, setAnalysis, employees }) {
         .insert({
           check_id: currentCheckId,
           employee_id: selectedEmployee.id,
-          score: report.score ?? 0,
-          title: report.title ?? 'Отчёт',
-          management_summary: report.management_summary ?? '',
-          mistakes: report.mistakes ?? [],
-          positives: report.positives ?? [],
-          recommendations: report.recommendations ?? [],
-          evidence: report.evidence ?? []
+          score: report.score,
+          title: report.title,
+          management_summary: report.management_summary,
+          mistakes: report.mistakes,
+          positives: report.positives,
+          recommendations: report.recommendations,
+          evidence: report.evidence
         });
 
       if (reportError) throw new Error('Не удалось сохранить отчёт в базе данных.');
@@ -185,9 +213,9 @@ export function Review({ analysis, setAnalysis, employees }) {
         .from('qa_checks')
         .update({
           status: 'complete',
-          score: report.score ?? 0,
+          score: report.score,
           completed_at: new Date().toISOString(),
-          summary: report.management_summary ?? '',
+          summary: report.management_summary,
           critical_errors_count: criticalCount
         })
         .eq('id', currentCheckId);
