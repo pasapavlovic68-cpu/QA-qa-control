@@ -26,9 +26,10 @@ export function EmployeeFormModal({ form, setForm, saving, error, onClose, onSub
 
   return (
     <ModalPortal>
-      <motion.div className="modal-backdrop employee-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="modal-backdrop employee-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.form
         className="modal-shell modal-shell--small employee-modal"
+        onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         initial={modalMotion.initial}
@@ -80,7 +81,7 @@ export function DeleteEmployeeModal({ employee, onCancel, onConfirm }) {
 
   return (
     <ModalPortal>
-      <motion.div className="modal-backdrop employee-modal-backdrop subtle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="modal-backdrop employee-modal-backdrop subtle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onCancel}>
       <motion.div
         className="modal-shell modal-shell--small delete-modal"
         role="dialog"
@@ -89,6 +90,7 @@ export function DeleteEmployeeModal({ employee, onCancel, onConfirm }) {
         animate={modalMotion.animate}
         exit={modalMotion.exit}
         transition={modalMotion.transition}
+        onClick={(e) => e.stopPropagation()}
       >
         <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
           <motion.div className="delete-icon" variants={modalSectionVariants}><Trash2 size={18} /></motion.div>
@@ -114,9 +116,10 @@ export function EmployeeDrawer({ employee, onClose, onNewReview }) {
 
   return (
     <ModalPortal>
-      <motion.div className="modal-backdrop drawer-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="modal-backdrop drawer-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.aside
         layoutId={`employee-${employee.id}`}
+        onClick={(e) => e.stopPropagation()}
         className="modal-shell modal-shell--large drawer"
         role="dialog"
         aria-modal="true"
@@ -183,9 +186,10 @@ export function ReportDetailModal({ report, onClose }) {
 
   return (
     <ModalPortal>
-      <motion.div className="modal-backdrop report-detail-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="modal-backdrop report-detail-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.aside
         layoutId={`report-${report.id}`}
+        onClick={(e) => e.stopPropagation()}
         className="modal-shell modal-shell--large report-detail"
         role="dialog"
         aria-modal="true"
@@ -275,9 +279,10 @@ export function RuleModal({ mode, rule, setRule, onClose, onSubmit }) {
 
   return (
     <ModalPortal>
-      <motion.div className="modal-backdrop rule-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="modal-backdrop rule-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.form
         className="modal-shell modal-shell--medium rule-modal"
+        onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         initial={modalMotion.initial}
@@ -336,7 +341,7 @@ export function DeleteRuleModal({ rule, onCancel, onConfirm }) {
 
   return (
     <ModalPortal>
-      <motion.div className="modal-backdrop rule-modal-backdrop subtle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="modal-backdrop rule-modal-backdrop subtle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onCancel}>
       <motion.div
         className="modal-shell modal-shell--small delete-modal"
         role="dialog"
@@ -345,6 +350,7 @@ export function DeleteRuleModal({ rule, onCancel, onConfirm }) {
         animate={modalMotion.animate}
         exit={modalMotion.exit}
         transition={modalMotion.transition}
+        onClick={(e) => e.stopPropagation()}
       >
         <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
           <motion.div className="delete-icon" variants={modalSectionVariants}><Trash2 size={18} /></motion.div>
