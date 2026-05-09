@@ -43,23 +43,32 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
     setSaving(true);
     setAddError(null);
+
+    const payload = {
+      name: employeeName,
+      role: 'Сотрудник QA',
+      status: 'На контроле',
+      score: 0,
+      checks_count: 0,
+      trend: 0
+    };
+    console.log('[Employees] insert payload:', payload);
+
     const { data, error } = await supabase
       .from('employees')
-      .insert({
-        name: employeeName,
-        role: 'Сотрудник QA',
-        status: 'На контроле',
-        score: 0,
-        checks_count: 0,
-        trend: 0
-      })
+      .insert(payload)
       .select()
       .single();
     setSaving(false);
 
     if (error) {
-      console.error('[Employees] insert error:', error);
-      setAddError('Не удалось добавить сотрудника. Проверьте соединение и попробуйте снова.');
+      console.error('[Employees] insert FAILED');
+      console.error('  code:', error.code);
+      console.error('  message:', error.message);
+      console.error('  details:', error.details);
+      console.error('  hint:', error.hint);
+      console.error('  full error:', error);
+      setAddError(`Ошибка [${error.code || 'network'}]: ${error.message}`);
       return;
     }
 
