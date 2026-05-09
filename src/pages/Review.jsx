@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, FolderUp, Play } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
+import { parseDialogue } from '../lib/parseDialogue.js';
 import { PremiumCard } from '../components/shared.jsx';
 import { AnalysisState, PremiumDropdown } from '../components/display.jsx';
 
@@ -158,7 +159,18 @@ export function Review({ analysis, setAnalysis, employees }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employeeName: selectedEmployeeName,
-          dialogues: dialogues.map((d) => ({ fileName: d.file_name, rawText: d.raw_text })),
+          dialogues: dialogues.map((d) => {
+            const meta = parseDialogue(d.raw_text);
+            return {
+              fileName: d.file_name,
+              rawText: d.raw_text,
+              cleanedText: meta.cleanedText,
+              detectedFormat: meta.detectedFormat,
+              messageCount: meta.messageCount,
+              clientMessageCount: meta.clientMessageCount,
+              operatorMessageCount: meta.operatorMessageCount
+            };
+          }),
           rules: (rules ?? []).map((r) => ({
             title: r.title,
             description: r.description,
