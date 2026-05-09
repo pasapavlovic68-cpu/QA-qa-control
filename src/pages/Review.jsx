@@ -31,13 +31,22 @@ export function Review({ analysis, setAnalysis, employees }) {
     }
   }, [employees]);
 
+  const parseXlsx = async (file) => {
+    const { read, utils } = await import('@e965/xlsx');
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = read(arrayBuffer, { type: 'array' });
+    if (!workbook.SheetNames.length) throw new Error('XLSX файл не содержит листов.');
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    return utils.sheet_to_csv(firstSheet, { blankrows: false });
+  };
+
   const handleFiles = async (fileList) => {
     const supported = Array.from(fileList).filter(
-      (f) => f.name.endsWith('.txt') || f.name.endsWith('.csv')
+      (f) => f.name.endsWith('.txt') || f.name.endsWith('.csv') || f.name.endsWith('.xlsx')
     );
 
     if (supported.length === 0) {
-      setUploadError('Поддерживаются только .txt и .csv файлы. XLSX будет добавлен позже.');
+      setUploadError('Поддерживаются только .txt, .csv и .xlsx файлы.');
       return;
     }
 
@@ -53,7 +62,10 @@ export function Review({ analysis, setAnalysis, employees }) {
 
     try {
       const fileData = await Promise.all(
-        supported.map(async (file) => ({ file, text: await file.text() }))
+        supported.map(async (file) => ({
+          file,
+          text: file.name.endsWith('.xlsx') ? await parseXlsx(file) : await file.text()
+        }))
       );
 
       const { data: check, error: checkError } = await supabase
@@ -89,7 +101,7 @@ export function Review({ analysis, setAnalysis, employees }) {
       setAnalysis('idle');
     } catch (err) {
       console.error('[Review] upload error:', err);
-      setUploadError('Ошибка загрузки. Проверьте соединение и попробуйте снова.');
+      setUploadError(err.message || 'Ошибка загрузки. Проверьте соединение и попробуйте снова.');
     } finally {
       setUploading(false);
     }
@@ -309,13 +321,13 @@ export function Review({ analysis, setAnalysis, employees }) {
         >
           <FolderUp size={30} />
           <strong>{uploading ? 'Загружаем файлы…' : 'Перетащите или нажмите для выбора'}</strong>
-          <span>Поддерживаются .txt и .csv файлы диалогов</span>
+          <span>Поддерживаются .txt, .csv и .xlsx файлы диалогов</span>
         </motion.div>
 
         <input
           ref={fileInputRef}
           type="file"
-          accept=".txt,.csv"
+          accept=".txt,.csv,.xlsx"
           multiple
           style={{ display: 'none' }}
           onChange={(e) => { if (e.target.files?.length) handleFiles(e.target.files); }}
