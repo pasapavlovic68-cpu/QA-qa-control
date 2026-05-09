@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Clock3, Download, Plus, Trash2, X } from 'lucide-react';
+import { Clock3, Plus, Trash2, X } from 'lucide-react';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from './modal.jsx';
 import { Avatar, Metric, PremiumCard, Evidence, ChatSnippet } from './shared.jsx';
 import { TrendChart, PremiumDropdown, RuleToggle } from './display.jsx';
@@ -218,29 +218,37 @@ export function ReportDetailModal({ report, onClose }) {
                 {report.score}
               </motion.div>
               <p>{report.summary}</p>
-              <motion.button className="primary-button full" whileTap={{ scale: 0.98 }} whileHover={{ y: -2 }}>
-                <Download size={17} />
-                Экспорт отчёта
-              </motion.button>
             </PremiumCard>
             <PremiumCard className="wide" title="Резюме для руководителя">
               <p className="management-text">{report.management}</p>
               <div className="report-columns">
-                <Evidence title="Ошибка" tone="danger" text="Оператор не подтвердил, что клиенту понятно дальнейшее действие." />
-                <Evidence title="Положительный момент" tone="success" text="В сложном моменте сотрудник сохранил спокойный тон и предложил альтернативу." />
+                {report.mistakes.slice(0, 1).map((m, i) => (
+                  <Evidence key={i} title="Ошибка" tone="danger" text={m.description || m.title || ''} />
+                ))}
+                {report.positives.slice(0, 1).map((p, i) => (
+                  <Evidence key={i} title="Положительный момент" tone="success" text={p.description || p.title || p.text || ''} />
+                ))}
               </div>
             </PremiumCard>
             <PremiumCard title="Ошибки">
-              <div className="tag-cloud">
-                <span>Нет финального резюме</span>
-                <span>Превышение SLA</span>
-                <span>Не заполнено поле CRM</span>
-                <span>Слабое уточнение</span>
-              </div>
+              {report.mistakes.length > 0 ? (
+                <div className="tag-cloud">
+                  {report.mistakes.map((m, i) => (
+                    <span key={i}>{m.title || m.description || ''}</span>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ opacity: 0.4, fontSize: '0.875rem' }}>Ошибок не выявлено.</p>
+              )}
             </PremiumCard>
             <PremiumCard title="Визуальные доказательства">
-              <ChatSnippet role="Клиент" text="Я уже третий раз уточняю статус заявки. Когда будет ответ?" />
-              <ChatSnippet role="Оператор" text="Понимаю ситуацию. Проверю статус и вернусь с точным временем решения." good />
+              {report.evidence.length > 0 ? (
+                report.evidence.map((e, i) => (
+                  <ChatSnippet key={i} role={e.role || 'Диалог'} text={e.text || ''} good={e.good ?? false} />
+                ))
+              ) : (
+                <p style={{ opacity: 0.4, fontSize: '0.875rem' }}>Цитаты диалогов не добавлены.</p>
+              )}
             </PremiumCard>
           </motion.div>
 

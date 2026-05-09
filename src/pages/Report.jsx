@@ -5,19 +5,33 @@ import { supabase, fetchWithTimeout } from '../lib/supabase.js';
 import { AnimatedProgress, Avatar } from '../components/shared.jsx';
 import { reportCardTransition, ReportDetailModal } from '../components/modals.jsx';
 
-function toReport(row) {
+function toReport(row, employeeMap) {
+  const mistakes = Array.isArray(row.mistakes) ? row.mistakes : [];
+  const positives = Array.isArray(row.positives) ? row.positives : [];
+  const recommendations = Array.isArray(row.recommendations) ? row.recommendations : [];
+  const evidence = Array.isArray(row.evidence) ? row.evidence : [];
+  const criticalCount = mistakes.filter((m) => m.severity === 'critical').length;
+  const employeeName = employeeMap[row.employee_id] || 'Сотрудник';
+  const summary = row.management_summary || '';
+
   return {
     id: row.id,
-    employee: '',
+    checkId: row.check_id,
     employeeId: row.employee_id,
+    employee: employeeName,
     score: row.score ?? 0,
     title: row.title || 'Отчёт',
-    summary: row.management_summary || '',
+    summary,
+    management: summary,
     date: row.created_at ? new Date(row.created_at).toLocaleDateString('ru-RU') : '',
     status: 'Готово',
     tone: 'success',
     dialogs: 0,
-    critical: 0
+    critical: criticalCount,
+    mistakes,
+    positives,
+    recommendations,
+    evidence
   };
 }
 
@@ -28,21 +42,30 @@ export function Report() {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    fetchWithTimeout(
-      supabase
-        .from('reports')
-        .select('id, employee_id, score, title, management_summary, created_at')
-        .order('created_at', { ascending: false }),
-      'Report'
-    ).then(({ data, error }) => {
-      if (error) { setLoading(false); return; }
-      setReports((data ?? []).map(toReport));
+    Promise.all([
+      fetchWithTimeout(
+        supabase
+          .from('reports')
+          .select('id, check_id, employee_id, score, title, management_summary, mistakes, positives, recommendations, evidence, created_at')
+          .order('created_at', { ascending: false }),
+        'Report'
+      ),
+      fetchWithTimeout(
+        supabase.from('employees').select('id, name'),
+        'Report:employees'
+      )
+    ]).then(([reportsResult, employeesResult]) => {
+      const employeeMap = {};
+      (employeesResult.data ?? []).forEach((e) => { employeeMap[e.id] = e.name; });
+
+      if (reportsResult.error) { setLoading(false); return; }
+      setReports((reportsResult.data ?? []).map((row) => toReport(row, employeeMap)));
       setLoading(false);
     });
   }, []);
 
   const filteredReports = reports.filter((report) => {
-    const searchValue = `${report.title} ${report.summary}`.toLowerCase();
+    const searchValue = `${report.title} ${report.employee} ${report.summary}`.toLowerCase();
     return searchValue.includes(query.toLowerCase());
   });
 
@@ -86,9 +109,9 @@ export function Report() {
                 <span className={`report-status ${report.tone}`}>{report.status}</span>
               </div>
               <div className="report-person">
-                <Avatar name={report.employee || '?'} />
+                <Avatar name={report.employee} />
                 <div>
-                  <h3>{report.employee || 'Сотрудник'}</h3>
+                  <h3>{report.employee}</h3>
                   <p>{report.date}</p>
                 </div>
               </div>
