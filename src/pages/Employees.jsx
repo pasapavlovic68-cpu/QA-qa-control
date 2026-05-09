@@ -31,6 +31,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState(null);
   const [form, setForm] = useState({ name: '' });
 
   const resetForm = () => setForm({ name: '' });
@@ -41,6 +42,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
     if (!employeeName || saving) return;
 
     setSaving(true);
+    setAddError(null);
     const { data, error } = await supabase
       .from('employees')
       .insert({
@@ -57,6 +59,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
     if (error) {
       console.error('[Employees] insert error:', error);
+      setAddError('Не удалось добавить сотрудника. Проверьте соединение и попробуйте снова.');
       return;
     }
 
@@ -90,7 +93,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
           <span className="eyebrow">Команда на контроле</span>
           <h2>Карточки сотрудников</h2>
         </div>
-        <motion.button className="primary-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={() => setAddOpen(true)}>
+        <motion.button className="primary-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={() => { setAddOpen(true); setAddError(null); }}>
           <Plus size={17} />
           Добавить сотрудника
         </motion.button>
@@ -170,8 +173,11 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
           <EmployeeFormModal
             form={form}
             setForm={setForm}
+            saving={saving}
+            error={addError}
             onClose={() => {
               resetForm();
+              setAddError(null);
               setAddOpen(false);
             }}
             onSubmit={handleAddEmployee}

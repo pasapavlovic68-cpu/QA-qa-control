@@ -16,7 +16,7 @@ export const reportCardTransition = {
   scale: { duration: 0.18 }
 };
 
-export function EmployeeFormModal({ form, setForm, onClose, onSubmit }) {
+export function EmployeeFormModal({ form, setForm, saving, error, onClose, onSubmit }) {
   useModalScrollLock();
 
   const updateField = (field) => (event) => {
@@ -51,13 +51,21 @@ export function EmployeeFormModal({ form, setForm, onClose, onSubmit }) {
               <input value={form.name} onChange={updateField('name')} placeholder="Например, София Орлова" autoFocus />
             </label>
           </motion.div>
+          {error && (
+            <motion.p
+              variants={modalSectionVariants}
+              style={{ fontSize: '0.82rem', color: '#e05c5c', textAlign: 'center', marginBottom: 4 }}
+            >
+              {error}
+            </motion.p>
+          )}
           <motion.div className="modal-actions" variants={modalSectionVariants}>
             <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>
               Отмена
             </motion.button>
-            <motion.button className="primary-button" type="submit" whileTap={{ scale: canSubmit ? 0.97 : 1 }} disabled={!canSubmit}>
+            <motion.button className="primary-button" type="submit" whileTap={{ scale: canSubmit && !saving ? 0.97 : 1 }} disabled={!canSubmit || saving}>
               <Plus size={17} />
-              Добавить сотрудника
+              {saving ? 'Сохраняем…' : 'Добавить сотрудника'}
             </motion.button>
           </motion.div>
         </motion.div>
