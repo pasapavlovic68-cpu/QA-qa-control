@@ -10,10 +10,9 @@ function formatSize(bytes) {
   return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
-export function Review({ analysis }) {
+export function Review({ analysis, employees }) {
   const fileInputRef = useRef(null);
 
-  const [liveEmployees, setLiveEmployees] = useState([]);
   const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
   const [selectedPreset, setSelectedPreset] = useState('Стандарт поддержки');
   const [notReady, setNotReady] = useState(false);
@@ -22,20 +21,10 @@ export function Review({ analysis }) {
   const [uploadError, setUploadError] = useState(null);
 
   useEffect(() => {
-    supabase
-      .from('employees')
-      .select('id, name, created_at')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('[Review] fetch employees error:', error);
-          return;
-        }
-        const list = data ?? [];
-        setLiveEmployees(list);
-        if (list.length > 0) setSelectedEmployeeName(list[0].name);
-      });
-  }, []);
+    if (employees.length > 0 && !selectedEmployeeName) {
+      setSelectedEmployeeName(employees[0].name);
+    }
+  }, [employees]);
 
   const handleFiles = async (fileList) => {
     const supported = Array.from(fileList).filter(
@@ -47,7 +36,7 @@ export function Review({ analysis }) {
       return;
     }
 
-    const selectedEmployee = liveEmployees.find((e) => e.name === selectedEmployeeName);
+    const selectedEmployee = employees.find((e) => e.name === selectedEmployeeName);
     if (!selectedEmployee) {
       setUploadError('Сначала выберите сотрудника.');
       return;
@@ -111,10 +100,10 @@ export function Review({ analysis }) {
         <div className="form-row">
           <label>
             <span>Сотрудник</span>
-            {liveEmployees.length > 0 ? (
+            {employees.length > 0 ? (
               <PremiumDropdown
                 value={selectedEmployeeName}
-                options={liveEmployees.map((e) => e.name)}
+                options={employees.map((e) => e.name)}
                 onChange={(name) => {
                   setSelectedEmployeeName(name);
                   setUploadedFiles([]);

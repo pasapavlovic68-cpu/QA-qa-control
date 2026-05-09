@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -7,45 +6,19 @@ import {
   MessageSquareText,
   UsersRound
 } from 'lucide-react';
-import { supabase } from '../lib/supabase.js';
 import { PremiumCard, RevealCard, Stagger } from '../components/shared.jsx';
 import { KpiCard } from '../components/display.jsx';
-
-function toEmployee(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    role: row.role || 'Сотрудник QA',
-    score: row.score ?? 0,
-    status: row.status || 'На контроле'
-  };
-}
 
 const emptyCardText = (text) => (
   <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.875rem', padding: '24px 0' }}>{text}</p>
 );
 
-export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee }) {
-  const [liveEmployees, setLiveEmployees] = useState([]);
-
-  useEffect(() => {
-    supabase
-      .from('employees')
-      .select('*')
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('[Dashboard] fetch employees error:', error);
-          return;
-        }
-        setLiveEmployees((data ?? []).map(toEmployee));
-      });
-  }, []);
-
-  const needsAttention = liveEmployees.filter(
+export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, employees, employeesLoading }) {
+  const needsAttention = employees.filter(
     (e) => e.status === 'Критично' || e.status === 'На контроле'
   ).length;
 
-  const topEmployees = [...liveEmployees].sort((a, b) => b.score - a.score).slice(0, 4);
+  const topEmployees = [...employees].sort((a, b) => b.score - a.score).slice(0, 4);
 
   const kpis = [
     { label: 'Проверено диалогов', value: '0', delta: 'Проверки не запущены', icon: MessageSquareText },
@@ -53,7 +26,7 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee }) {
     { label: 'Критические ошибки', value: '0', delta: 'Нет данных', icon: AlertTriangle },
     {
       label: 'Сотрудников на контроле',
-      value: String(liveEmployees.length || '—'),
+      value: employeesLoading ? '…' : String(employees.length || '—'),
       delta: needsAttention > 0 ? `${needsAttention} требуют внимания` : 'Всё в порядке',
       icon: UsersRound
     }
@@ -87,7 +60,7 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee }) {
                 </span>
                 <b>{employee.score}</b>
               </motion.button>
-            )) : emptyCardText('Сотрудники пока не добавлены.')}
+            )) : emptyCardText(employeesLoading ? 'Загружаем…' : 'Сотрудники пока не добавлены.')}
           </div>
         </PremiumCard>
         <RevealCard title="Частые ошибки" action="Приоритеты">

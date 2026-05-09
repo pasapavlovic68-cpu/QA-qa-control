@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
@@ -27,29 +27,11 @@ function toEmployee(row) {
   };
 }
 
-export function Employees({ setDetailOpen, setSelectedEmployee }) {
-  const [employeeList, setEmployeeList] = useState([]);
-  const [loading, setLoading] = useState(true);
+export function Employees({ setDetailOpen, setSelectedEmployee, employees, employeesLoading, onAdd, onDelete }) {
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: '' });
-
-  useEffect(() => {
-    supabase
-      .from('employees')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('[Employees] fetch error:', error);
-          setLoading(false);
-          return;
-        }
-        setEmployeeList((data ?? []).map(toEmployee));
-        setLoading(false);
-      });
-  }, []);
 
   const resetForm = () => setForm({ name: '' });
 
@@ -78,7 +60,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee }) {
       return;
     }
 
-    setEmployeeList((current) => [toEmployee(data), ...current]);
+    onAdd(toEmployee(data));
     resetForm();
     setAddOpen(false);
   };
@@ -97,7 +79,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee }) {
       return;
     }
 
-    setEmployeeList((current) => current.filter((employee) => employee.id !== deleteTarget.id));
+    onDelete(deleteTarget.id);
     setDeleteTarget(null);
   };
 
@@ -114,11 +96,11 @@ export function Employees({ setDetailOpen, setSelectedEmployee }) {
         </motion.button>
       </div>
 
-      {loading ? (
+      {employeesLoading ? (
         <div className="employee-grid" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 220 }}>
           <p style={{ opacity: 0.45, fontSize: '0.95rem' }}>Загружаем сотрудников…</p>
         </div>
-      ) : employeeList.length === 0 ? (
+      ) : employees.length === 0 ? (
         <div className="employee-grid" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 220, gap: 8, textAlign: 'center' }}>
           <p style={{ fontWeight: 600, opacity: 0.65, fontSize: '1rem' }}>Пока нет сотрудников</p>
           <p style={{ opacity: 0.4, fontSize: '0.875rem', maxWidth: 320 }}>Добавьте первого сотрудника, чтобы начать проверку диалогов.</p>
@@ -126,7 +108,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee }) {
       ) : (
         <motion.div className="employee-grid" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}>
           <AnimatePresence mode="popLayout">
-            {employeeList.map((employee) => (
+            {employees.map((employee) => (
               <motion.article
                 layout
                 layoutId={`employee-${employee.id}`}
