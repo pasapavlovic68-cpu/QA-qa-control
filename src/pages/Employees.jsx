@@ -52,8 +52,6 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
       checks_count: 0,
       trend: 0
     };
-    console.log('[Employees] insert payload:', payload);
-
     const { data, error } = await supabase
       .from('employees')
       .insert(payload)
@@ -62,12 +60,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
     setSaving(false);
 
     if (error) {
-      console.error('[Employees] insert FAILED');
-      console.error('  code:', error.code);
-      console.error('  message:', error.message);
-      console.error('  details:', error.details);
-      console.error('  hint:', error.hint);
-      console.error('  full error:', error);
+      console.error('[Employees] insert error:', error);
       setAddError(`Ошибка [${error.code || 'network'}]: ${error.message}`);
       return;
     }

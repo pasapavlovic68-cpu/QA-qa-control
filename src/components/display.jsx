@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronDown, Sparkles } from 'lucide-react';
-import { qualityPoints, mistakes } from '../data/demoData.js';
+import { qualityPoints } from '../data/demoData.js';
 import { AnimatedProgress } from './shared.jsx';
 
 export function KpiCard({ label, value, delta, icon: Icon }) {
@@ -38,20 +38,6 @@ export function TrendChart({ compact = false, data }) {
   );
 }
 
-export function ErrorBars() {
-  return (
-    <div className="error-bars">
-      {mistakes.map((item, index) => (
-        <div className="bar-row" key={item.label}>
-          <div><span>{item.label}</span><b>{item.value}</b></div>
-          <div className="bar-track">
-            <motion.span initial={{ width: 0 }} animate={{ width: `${item.value * 2}%` }} transition={{ delay: index * 0.12, duration: 0.7 }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 const STAGE_LABEL = {
   preparing: 'Подготовка данных...',
