@@ -45,6 +45,7 @@ function App() {
 
   const [employeesData, setEmployeesData] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [supabaseStatus, setSupabaseStatus] = useState('checking');
 
   useEffect(() => {
     supabase
@@ -54,9 +55,11 @@ function App() {
       .then(({ data, error }) => {
         if (error) {
           console.error('[App] fetch employees error:', error);
+          setSupabaseStatus('offline');
           setEmployeesLoading(false);
           return;
         }
+        setSupabaseStatus('connected');
         setEmployeesData((data ?? []).map(toEmployee));
         setEmployeesLoading(false);
       });
@@ -70,7 +73,17 @@ function App() {
   return (
     <LayoutGroup>
       <div className="app-shell">
-        <Sidebar active={active} setActive={setActive} />
+        <Sidebar
+          active={active}
+          setActive={setActive}
+          systemStatus={{
+            supabase: supabaseStatus,
+            analysis: analysis,
+            upload: 'beta',
+            reports: analysis === 'complete' ? 'active' : 'beta',
+            pdf: 'not_implemented'
+          }}
+        />
         <main className="workspace">
           <Topbar title={currentTitle} onNewReview={() => setActive('review')} />
           <AnimatePresence mode="wait">

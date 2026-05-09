@@ -222,6 +222,10 @@ button {
   background: #c2b8ac;
 }
 
+.dot.warn {
+  background: #e07b3c;
+}
+
 .workspace {
   min-width: 0;
   padding: 28px 34px 48px;

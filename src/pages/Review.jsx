@@ -185,7 +185,7 @@ export function Review({ analysis, setAnalysis, employees }) {
       setAnalysisMessage({ type: 'success', text: 'Отчёт сформирован и сохранён.' });
     } catch (err) {
       console.error('[Review] analysis error:', err);
-      setAnalysis('idle');
+      setAnalysis('error');
       setAnalysisMessage({ type: 'error', text: `Ошибка анализа: ${err.message}` });
 
       if (currentCheckId) {

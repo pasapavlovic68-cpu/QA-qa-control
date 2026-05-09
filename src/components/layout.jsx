@@ -18,7 +18,33 @@ export const tabs = [
   { id: 'rules', label: 'Правила', icon: Settings2 }
 ];
 
-export function Sidebar({ active, setActive }) {
+const STATUS_LABEL = {
+  checking: 'проверка…',
+  connected: 'подключена',
+  active: 'активен',
+  beta: 'бета',
+  degraded: 'сбой',
+  offline: 'недоступна',
+  not_implemented: 'в разработке',
+};
+
+const STATUS_DOT = {
+  checking: 'demo',
+  connected: 'ready',
+  active: 'ready',
+  beta: 'demo',
+  not_implemented: 'demo',
+  degraded: 'warn',
+  offline: 'warn',
+};
+
+function analysisToStatus(analysis) {
+  if (analysis === 'complete' || analysis === 'running') return 'active';
+  if (analysis === 'error') return 'degraded';
+  return 'beta';
+}
+
+export function Sidebar({ active, setActive, systemStatus = {} }) {
   return (
     <aside className="sidebar">
       <motion.div className="brand" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
@@ -46,11 +72,18 @@ export function Sidebar({ active, setActive }) {
           <strong>Статус MVP</strong>
         </div>
         <div className="mvp-status-list">
-          <div className="mvp-status-row"><span><i className="dot demo" />AI-анализ</span><b>в разработке</b></div>
-          <div className="mvp-status-row"><span><i className="dot demo" />Загрузка файлов</span><b>базовая версия</b></div>
-          <div className="mvp-status-row"><span><i className="dot ready" />База данных</span><b>подключена</b></div>
-          <div className="mvp-status-row"><span><i className="dot ready" />API</span><b>Supabase</b></div>
-          <div className="mvp-status-row"><span><i className="dot demo" />PDF-экспорт</span><b>в разработке</b></div>
+          {[
+            { label: 'AI-анализ', value: analysisToStatus(systemStatus.analysis) },
+            { label: 'Загрузка файлов', value: systemStatus.upload ?? 'beta' },
+            { label: 'База данных', value: systemStatus.supabase ?? 'checking' },
+            { label: 'API', value: systemStatus.supabase === 'connected' ? 'connected' : systemStatus.supabase === 'offline' ? 'offline' : 'checking' },
+            { label: 'PDF-экспорт', value: systemStatus.pdf ?? 'not_implemented' },
+          ].map(({ label, value }) => (
+            <div className="mvp-status-row" key={label}>
+              <span><i className={`dot ${STATUS_DOT[value] ?? 'demo'}`} />{label}</span>
+              <b>{STATUS_LABEL[value] ?? value}</b>
+            </div>
+          ))}
         </div>
       </motion.div>
     </aside>
