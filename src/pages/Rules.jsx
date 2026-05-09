@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
-import { supabase } from '../lib/supabase.js';
+import { supabase, fetchWithTimeout } from '../lib/supabase.js';
 import { RuleToggle } from '../components/display.jsx';
 import { RuleModal, DeleteRuleModal } from '../components/modals.jsx';
 
@@ -33,19 +33,14 @@ export function Rules() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    supabase
-      .from('qa_rules')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('[Rules] fetch error:', error);
-          setLoading(false);
-          return;
-        }
-        setRules((data ?? []).map(toRule));
-        setLoading(false);
-      });
+    fetchWithTimeout(
+      supabase.from('qa_rules').select('*').order('created_at', { ascending: false }),
+      'Rules'
+    ).then(({ data, error }) => {
+      if (error) { setLoading(false); return; }
+      setRules((data ?? []).map(toRule));
+      setLoading(false);
+    });
   }, []);
 
   const openAddModal = () => {

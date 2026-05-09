@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search } from 'lucide-react';
-import { supabase } from '../lib/supabase.js';
+import { supabase, fetchWithTimeout } from '../lib/supabase.js';
 import { AnimatedProgress, Avatar } from '../components/shared.jsx';
 import { reportCardTransition, ReportDetailModal } from '../components/modals.jsx';
 
@@ -28,19 +28,17 @@ export function Report() {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    supabase
-      .from('reports')
-      .select('id, employee_id, score, title, management_summary, created_at')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('[Report] fetch error:', error);
-          setLoading(false);
-          return;
-        }
-        setReports((data ?? []).map(toReport));
-        setLoading(false);
-      });
+    fetchWithTimeout(
+      supabase
+        .from('reports')
+        .select('id, employee_id, score, title, management_summary, created_at')
+        .order('created_at', { ascending: false }),
+      'Report'
+    ).then(({ data, error }) => {
+      if (error) { setLoading(false); return; }
+      setReports((data ?? []).map(toReport));
+      setLoading(false);
+    });
   }, []);
 
   const filteredReports = reports.filter((report) => {
