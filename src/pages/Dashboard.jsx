@@ -3,15 +3,13 @@ import { motion } from 'framer-motion';
 import {
   Activity,
   AlertTriangle,
-  CheckCircle2,
   ChevronRight,
   MessageSquareText,
   UsersRound
 } from 'lucide-react';
-import { employees as demoEmployees, checks } from '../data/demoData.js';
 import { supabase } from '../lib/supabase.js';
 import { PremiumCard, RevealCard, Stagger } from '../components/shared.jsx';
-import { KpiCard, TrendChart, ErrorBars } from '../components/display.jsx';
+import { KpiCard } from '../components/display.jsx';
 
 function toEmployee(row) {
   return {
@@ -23,6 +21,10 @@ function toEmployee(row) {
   };
 }
 
+const emptyCardText = (text) => (
+  <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.875rem', padding: '24px 0' }}>{text}</p>
+);
+
 export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee }) {
   const [liveEmployees, setLiveEmployees] = useState([]);
 
@@ -33,7 +35,6 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee }) {
       .then(({ data, error }) => {
         if (error) {
           console.error('[Dashboard] fetch employees error:', error);
-          setLiveEmployees(demoEmployees);
           return;
         }
         setLiveEmployees((data ?? []).map(toEmployee));
@@ -47,9 +48,9 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee }) {
   const topEmployees = [...liveEmployees].sort((a, b) => b.score - a.score).slice(0, 4);
 
   const kpis = [
-    { label: 'Проверено диалогов', value: '1 284', delta: '+18% за неделю', icon: MessageSquareText },
-    { label: 'Средняя оценка качества', value: '86.4', delta: '+3.2 пункта', icon: Activity },
-    { label: 'Критические ошибки', value: '27', delta: '-9 за период', icon: AlertTriangle },
+    { label: 'Проверено диалогов', value: '0', delta: 'Проверки не запущены', icon: MessageSquareText },
+    { label: 'Средняя оценка качества', value: '—', delta: 'Нет данных', icon: Activity },
+    { label: 'Критические ошибки', value: '0', delta: 'Нет данных', icon: AlertTriangle },
     {
       label: 'Сотрудников на контроле',
       value: String(liveEmployees.length || '—'),
@@ -65,11 +66,11 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee }) {
       </Stagger>
       <div className="dashboard-grid">
         <PremiumCard className="chart-card wide" title="Динамика качества" action="Последние 8 недель">
-          <TrendChart />
+          {emptyCardText('Динамика появится после первых проверок.')}
         </PremiumCard>
         <PremiumCard title="Топ сотрудников" action="Рейтинг">
           <div className="rank-list">
-            {topEmployees.map((employee, index) => (
+            {topEmployees.length > 0 ? topEmployees.map((employee, index) => (
               <motion.button
                 className="rank-row"
                 key={employee.id}
@@ -86,21 +87,14 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee }) {
                 </span>
                 <b>{employee.score}</b>
               </motion.button>
-            ))}
+            )) : emptyCardText('Сотрудники пока не добавлены.')}
           </div>
         </PremiumCard>
         <RevealCard title="Частые ошибки" action="Приоритеты">
-          <ErrorBars />
+          {emptyCardText('Ошибки появятся после AI-анализа диалогов.')}
         </RevealCard>
         <RevealCard title="Последние проверки" action="Журнал">
-          <div className="check-list">
-            {checks.map((item) => (
-              <div className="check-row" key={item}>
-                <CheckCircle2 size={17} />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
+          {emptyCardText('Проверок пока нет.')}
           <motion.button className="ghost-button full" whileTap={{ scale: 0.98 }} onClick={() => setActive('review')}>
             Перейти к проверке <ChevronRight size={16} />
           </motion.button>
