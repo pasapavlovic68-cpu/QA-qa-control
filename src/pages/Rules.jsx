@@ -155,12 +155,16 @@ export function Rules() {
         </motion.button>
       </div>
 
-      {!loading && rules.length === 0 && (
+      {loading ? (
+        <div className="rules-grid" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+          <p style={{ opacity: 0.4, fontSize: '0.875rem' }}>Загружаем правила…</p>
+        </div>
+      ) : rules.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 200, gap: 8, textAlign: 'center' }}>
           <p style={{ fontWeight: 600, opacity: 0.65, fontSize: '1rem' }}>Правил пока нет</p>
           <p style={{ opacity: 0.4, fontSize: '0.875rem' }}>Добавьте первое правило проверки.</p>
         </div>
-      )}
+      ) : (
       <motion.div className="rules-grid" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.065 } } }}>
         <AnimatePresence mode="popLayout">
           {rules.map((rule) => (
@@ -200,6 +204,7 @@ export function Rules() {
           ))}
         </AnimatePresence>
       </motion.div>
+      )}
 
       <AnimatePresence>
         {modalMode && (
