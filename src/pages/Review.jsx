@@ -23,6 +23,7 @@ export function Review({ analysis, setAnalysis, employees }) {
   const [uploadError, setUploadError] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisMessage, setAnalysisMessage] = useState(null);
+  const [analysisStage, setAnalysisStage] = useState(null);
 
   useEffect(() => {
     if (employees.length > 0 && !selectedEmployeeName) {
@@ -110,27 +111,36 @@ export function Review({ analysis, setAnalysis, employees }) {
       return;
     }
 
+    const startedAt = performance.now();
     setAnalyzing(true);
     setAnalysisMessage(null);
     setUploadError(null);
     setAnalysis('running');
+    setAnalysisStage('preparing');
+
+    const workerController = new AbortController();
+    const workerAbortTimer = setTimeout(() => workerController.abort(), 45000);
 
     try {
+      setAnalysisStage('reading_dialogues');
       const { data: dialogues, error: dialoguesError } = await supabase
         .from('uploaded_dialogues')
         .select('file_name, raw_text')
         .eq('check_id', currentCheckId);
 
-      if (dialoguesError) throw dialoguesError;
+      if (dialoguesError) throw new Error('Не удалось загрузить диалоги из базы данных.');
       if (!dialogues || dialogues.length === 0) throw new Error('Нет загруженных диалогов для анализа.');
 
+      setAnalysisStage('loading_rules');
       const { data: rules, error: rulesError } = await supabase
         .from('qa_rules')
         .select('title, description')
         .eq('enabled', true);
 
-      if (rulesError) throw rulesError;
+      if (rulesError) throw new Error('Не удалось загрузить правила QA.');
 
+      setAnalysisStage('contacting_ai');
+      const workerStartedAt = performance.now();
       const response = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -138,12 +148,14 @@ export function Review({ analysis, setAnalysis, employees }) {
           employeeName: selectedEmployeeName,
           dialogues: dialogues.map((d) => ({ fileName: d.file_name, rawText: d.raw_text })),
           rules: (rules ?? []).map((r) => ({ title: r.title, description: r.description }))
-        })
+        }),
+        signal: workerController.signal
       });
+      console.log(`[Review] worker ms: ${Math.round(performance.now() - workerStartedAt)}`);
 
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Worker вернул ошибку ${response.status}: ${errText}`);
+        throw new Error(`Worker недоступен (${response.status}): ${errText}`);
       }
 
       const { report } = await response.json();
@@ -152,6 +164,7 @@ export function Review({ analysis, setAnalysis, employees }) {
         ? report.mistakes.filter((m) => m.severity === 'critical').length
         : 0;
 
+      setAnalysisStage('saving_report');
       const { error: reportError } = await supabase
         .from('reports')
         .insert({
@@ -166,7 +179,7 @@ export function Review({ analysis, setAnalysis, employees }) {
           evidence: report.evidence ?? []
         });
 
-      if (reportError) throw reportError;
+      if (reportError) throw new Error('Не удалось сохранить отчёт в базе данных.');
 
       const { error: checkUpdateError } = await supabase
         .from('qa_checks')
@@ -181,12 +194,18 @@ export function Review({ analysis, setAnalysis, employees }) {
 
       if (checkUpdateError) throw checkUpdateError;
 
+      setAnalysisStage('completed');
+      console.log(`[Review] total analysis ms: ${Math.round(performance.now() - startedAt)}`);
       setAnalysis('complete');
       setAnalysisMessage({ type: 'success', text: 'Отчёт сформирован и сохранён.' });
     } catch (err) {
+      const userMessage = err.name === 'AbortError'
+        ? 'AI timeout: сервер не ответил за 45 секунд.'
+        : err.message || 'Неизвестная ошибка анализа.';
       console.error('[Review] analysis error:', err);
+      setAnalysisStage('failed');
       setAnalysis('error');
-      setAnalysisMessage({ type: 'error', text: `Ошибка анализа: ${err.message}` });
+      setAnalysisMessage({ type: 'error', text: userMessage });
 
       if (currentCheckId) {
         supabase
@@ -198,6 +217,7 @@ export function Review({ analysis, setAnalysis, employees }) {
           });
       }
     } finally {
+      clearTimeout(workerAbortTimer);
       setAnalyzing(false);
     }
   };
@@ -229,6 +249,7 @@ export function Review({ analysis, setAnalysis, employees }) {
                   setUploadError(null);
                   setAnalysisMessage(null);
                   setAnalysis('idle');
+                  setAnalysisStage(null);
                 }}
               />
             ) : (
@@ -332,7 +353,7 @@ export function Review({ analysis, setAnalysis, employees }) {
       </PremiumCard>
 
       <PremiumCard title="Состояние анализа" action={analysisCardAction}>
-        <AnalysisState status={analysis} />
+        <AnalysisState status={analysis} stage={analysisStage} />
       </PremiumCard>
     </div>
   );

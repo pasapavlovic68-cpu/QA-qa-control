@@ -49,19 +49,32 @@ export function ErrorBars() {
   );
 }
 
-export function AnalysisState({ status }) {
-  const progress = status === 'complete' ? 100 : status === 'running' ? 72 : 8;
+const STAGE_LABEL = {
+  preparing: 'Подготовка данных...',
+  reading_dialogues: 'Чтение диалогов...',
+  loading_rules: 'Загрузка правил...',
+  contacting_ai: 'AI-анализ...',
+  saving_report: 'Сохранение отчёта...',
+  completed: 'Отчёт готов',
+  failed: 'Ошибка анализа',
+};
+
+export function AnalysisState({ status, stage }) {
+  const progress = status === 'complete' ? 100 : status === 'running' ? 72 : status === 'error' ? 0 : 8;
   const message = status === 'complete'
     ? 'Анализ завершён. Отчёт сохранён в разделе Отчёты.'
     : status === 'running'
       ? 'Анализируем диалоги: SLA, тональность, обязательные действия и критичные ошибки.'
-      : 'Загрузите файлы диалогов и нажмите «Начать анализ».';
+      : status === 'error'
+        ? 'Анализ завершился с ошибкой. Проверьте детали ниже.'
+        : 'Загрузите файлы диалогов и нажмите «Начать анализ».';
 
   return (
     <div className="analysis-state">
       <div className="analysis-orb"><Sparkles size={22} /></div>
       <AnimatedProgress value={progress} />
       <p>{message}</p>
+      {stage && <p style={{ fontSize: '0.78rem', opacity: 0.5, marginTop: -4, marginBottom: 4 }}>{STAGE_LABEL[stage] ?? stage}</p>}
       <div className="skeleton-stack">
         {[1, 2, 3].map((item) => (
           <motion.span
