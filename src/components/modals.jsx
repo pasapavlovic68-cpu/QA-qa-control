@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
-import { Clock3, Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from './modal.jsx';
 import { Avatar, Metric, PremiumCard, Evidence, ChatSnippet } from './shared.jsx';
-import { TrendChart, PremiumDropdown, RuleToggle } from './display.jsx';
+import { PremiumDropdown, RuleToggle } from './display.jsx';
 
 export const employeeCardTransition = {
   layout: { type: 'spring', damping: 34, stiffness: 360 },
@@ -145,35 +145,22 @@ export function EmployeeDrawer({ employee, onClose, onNewReview }) {
           </motion.div>
           <motion.div variants={modalSectionVariants}>
             <PremiumCard title="Динамика качества" compact>
-              <TrendChart compact />
+              <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '12px 0' }}>Динамика появится после первых проверок.</p>
             </PremiumCard>
           </motion.div>
           <motion.div variants={modalSectionVariants}>
             <PremiumCard title="Частые ошибки" compact>
-              <ul className="mistake-list">
-                <li>Нет краткого итога после решения</li>
-                <li>Слабая эмпатия в сложных обращениях</li>
-                <li>Задержка ответа свыше целевого SLA</li>
-              </ul>
+              <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '12px 0' }}>Ошибки появятся после AI-анализа диалогов.</p>
             </PremiumCard>
           </motion.div>
           <motion.div variants={modalSectionVariants}>
             <PremiumCard title="Рекомендации" compact>
-              <div className="recommendations">
-                <p>Использовать финальное резюме: причина, действие, следующий шаг.</p>
-                <p>Добавлять один уточняющий вопрос перед передачей заявки.</p>
-              </div>
+              <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '12px 0' }}>Рекомендации появятся после первого отчёта.</p>
             </PremiumCard>
           </motion.div>
           <motion.div className="history" variants={modalSectionVariants}>
             <h3>История проверок</h3>
-            {['Сегодня, 12:40', 'Вчера, 17:15', '05 мая, 10:20'].map((date) => (
-              <div className="history-row" key={date}>
-                <Clock3 size={16} />
-                <span>{date}</span>
-                <b>Отчёт готов</b>
-              </div>
-            ))}
+            <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '8px 0' }}>История проверок пока пуста.</p>
           </motion.div>
           <motion.button
             className="primary-button full glow"
