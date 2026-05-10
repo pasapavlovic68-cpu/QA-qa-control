@@ -2,6 +2,7 @@ import {
   ClipboardCheck,
   FileText,
   LayoutDashboard,
+  LogOut,
   Search,
   Settings2,
   ShieldCheck,
@@ -10,6 +11,7 @@ import {
   UsersRound
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { supabase } from '../lib/supabase.js';
 
 export const tabs = [
   { id: 'dashboard', label: 'Главная', icon: LayoutDashboard },
@@ -88,6 +90,16 @@ export function Sidebar({ active, setActive, systemStatus = {} }) {
           ))}
         </div>
       </motion.div>
+      <motion.button
+        className="ghost-button"
+        style={{ width: '100%', marginTop: 12, color: 'var(--muted)', fontSize: 13 }}
+        whileHover={{ y: -2, color: 'var(--danger)' }}
+        whileTap={{ scale: 0.97 }}
+        onClick={() => supabase.auth.signOut()}
+      >
+        <LogOut size={15} />
+        Выйти
+      </motion.button>
     </aside>
   );
 }
