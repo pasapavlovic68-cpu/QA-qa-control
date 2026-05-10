@@ -495,27 +495,31 @@ export function ReviewReportModal({ report, onClose }) {
     );
   }
 
+  // Field-name fallbacks: supports both Review (employeeName/createdAt/dialogueCount/management_summary)
+  // and Report page (employee/date/dialogs/summary) naming conventions.
+  const employeeName = report.employeeName || report.employee || '';
+  const dialogueCount = report.dialogueCount ?? report.dialogs ?? 0;
+  const summaryText = report.management_summary || report.summary || '';
+  const formattedDate = report.createdAt
+    ? new Date(report.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    : (report.date || '');
+
   const scoreColor =
-    report.score >= 80 ? 'var(--success)' :
-    report.score >= 60 ? 'var(--warning)' :
+    report.score >= 85 ? 'var(--success)' :
+    report.score >= 70 ? 'var(--warning)' :
     'var(--danger)';
 
   const scoreLabel =
-    report.score >= 80 ? 'Высокий уровень' :
-    report.score >= 60 ? 'Средний уровень' :
-    'Требует внимания';
+    report.score >= 85 ? 'Высокий уровень' :
+    report.score >= 70 ? 'Средний уровень' :
+    'Низкий уровень';
 
-  const criticalMistakes = (report.mistakes ?? []).filter((m) => m.severity === 'critical');
-  const otherMistakes = (report.mistakes ?? []).filter((m) => m.severity !== 'critical');
+  const allMistakes = report.mistakes ?? [];
+  const criticalMistakes = allMistakes.filter((m) => m.severity === 'critical' || m.severity === 'high');
+  const mediumMistakes = allMistakes.filter((m) => m.severity === 'medium');
+  const minorMistakes = allMistakes.filter((m) => !['critical', 'high', 'medium'].includes(m.severity));
 
-  const formattedDate = report.createdAt
-    ? new Date(report.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
-    : '';
-
-  const hasContent =
-    report.management_summary ||
-    (report.recommendations ?? []).length > 0 ||
-    (report.mistakes ?? []).length > 0;
+  const hasContent = summaryText || (report.recommendations ?? []).length > 0 || allMistakes.length > 0;
 
   return (
     <ModalPortal>
@@ -544,10 +548,10 @@ export function ReviewReportModal({ report, onClose }) {
               <div style={{ minWidth: 0 }}>
                 <span className="eyebrow">Отчёт по проверке</span>
                 <h2 style={{ margin: '2px 0 0', fontSize: 20 }}>{report.title || 'Отчёт'}</h2>
-                {(report.employeeName || formattedDate) && (
+                {(employeeName || formattedDate) && (
                   <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--muted)' }}>
-                    {[report.employeeName, formattedDate].filter(Boolean).join(' · ')}
-                    {report.dialogueCount > 0 && ` · ${report.dialogueCount} диал.`}
+                    {[employeeName, formattedDate].filter(Boolean).join(' · ')}
+                    {dialogueCount > 0 && ` · ${dialogueCount} диал.`}
                   </p>
                 )}
               </div>
@@ -585,22 +589,22 @@ export function ReviewReportModal({ report, onClose }) {
                 <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>Итоговая оценка</div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: scoreColor }}>{scoreLabel}</div>
               </div>
-              {report.dialogueCount > 0 && (
+              {dialogueCount > 0 && (
                 <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>{report.dialogueCount}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>{dialogueCount}</div>
                   <div style={{ fontSize: 11, color: 'var(--muted)' }}>диалогов</div>
                 </div>
               )}
             </motion.div>
 
             {/* Summary */}
-            {report.management_summary && (
+            {summaryText && (
               <motion.div variants={modalSectionVariants} style={{ padding: '16px 0', borderBottom: '1px solid var(--line)' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>
                   Резюме
                 </div>
                 <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.65, color: 'var(--text)' }}>
-                  {report.management_summary}
+                  {summaryText}
                 </p>
               </motion.div>
             )}
@@ -621,20 +625,15 @@ export function ReviewReportModal({ report, onClose }) {
               </motion.div>
             )}
 
-            {/* Critical mistakes */}
+            {/* Critical / high severity mistakes */}
             {criticalMistakes.length > 0 && (
-              <motion.div variants={modalSectionVariants} style={{ padding: '16px 0', borderBottom: otherMistakes.length > 0 ? '1px solid var(--line)' : 'none' }}>
+              <motion.div variants={modalSectionVariants} style={{ padding: '16px 0', borderBottom: (mediumMistakes.length > 0 || minorMistakes.length > 0) ? '1px solid var(--line)' : 'none' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
-                  Критические ошибки
+                  Критично
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {criticalMistakes.map((m, i) => (
-                    <div key={i} style={{
-                      padding: '10px 14px',
-                      borderRadius: 13,
-                      background: 'rgba(190,60,68,0.07)',
-                      border: '1px solid rgba(190,60,68,0.16)',
-                    }}>
+                    <div key={i} style={{ padding: '10px 14px', borderRadius: 13, background: 'rgba(190,60,68,0.07)', border: '1px solid rgba(190,60,68,0.16)' }}>
                       {m.title && <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--danger)', marginBottom: m.description ? 4 : 0 }}>{m.title}</div>}
                       {m.description && <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.55 }}>{m.description}</div>}
                     </div>
@@ -643,21 +642,33 @@ export function ReviewReportModal({ report, onClose }) {
               </motion.div>
             )}
 
-            {/* Other mistakes */}
-            {otherMistakes.length > 0 && (
-              <motion.div variants={modalSectionVariants} style={{ padding: '16px 0' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
-                  Замечания
+            {/* Medium severity mistakes */}
+            {mediumMistakes.length > 0 && (
+              <motion.div variants={modalSectionVariants} style={{ padding: '16px 0', borderBottom: minorMistakes.length > 0 ? '1px solid var(--line)' : 'none' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
+                  Требует внимания
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {otherMistakes.map((m, i) => (
-                    <div key={i} style={{
-                      padding: '10px 14px',
-                      borderRadius: 13,
-                      background: 'rgba(119,101,227,0.06)',
-                      border: '1px solid rgba(119,101,227,0.10)',
-                    }}>
-                      {m.title && <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)', marginBottom: m.description ? 4 : 0 }}>{m.title}</div>}
+                  {mediumMistakes.map((m, i) => (
+                    <div key={i} style={{ padding: '10px 14px', borderRadius: 13, background: 'rgba(185,120,18,0.07)', border: '1px solid rgba(185,120,18,0.18)' }}>
+                      {m.title && <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--warning)', marginBottom: m.description ? 4 : 0 }}>{m.title}</div>}
+                      {m.description && <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.55 }}>{m.description}</div>}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Low / neutral mistakes */}
+            {minorMistakes.length > 0 && (
+              <motion.div variants={modalSectionVariants} style={{ padding: '16px 0' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
+                  Замечание
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {minorMistakes.map((m, i) => (
+                    <div key={i} style={{ padding: '10px 14px', borderRadius: 13, background: 'rgba(119,101,227,0.06)', border: '1px solid rgba(119,101,227,0.12)' }}>
+                      {m.title && <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--accent)', marginBottom: m.description ? 4 : 0 }}>{m.title}</div>}
                       {m.description && <div style={{ fontSize: '0.82rem', color: 'var(--muted)', lineHeight: 1.55 }}>{m.description}</div>}
                     </div>
                   ))}

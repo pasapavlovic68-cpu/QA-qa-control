@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search } from 'lucide-react';
 import { supabase, fetchWithTimeout } from '../lib/supabase.js';
 import { AnimatedProgress, Avatar } from '../components/shared.jsx';
-import { reportCardTransition, ReportDetailModal } from '../components/modals.jsx';
+import { reportCardTransition, ReviewReportModal } from '../components/modals.jsx';
 
 function toReport(row, employeeMap, checkMap) {
   const mistakes = Array.isArray(row.mistakes) ? row.mistakes : [];
@@ -115,7 +115,6 @@ export function Report({ organizationId }) {
             <motion.button
               className="report-card"
               key={report.id}
-              layoutId={`report-${report.id}`}
               variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } }}
               transition={reportCardTransition}
               whileHover={{ y: -5, scale: 1.008 }}
@@ -149,7 +148,7 @@ export function Report({ organizationId }) {
 
       <AnimatePresence>
         {selectedReport && (
-          <ReportDetailModal report={selectedReport} onClose={() => setSelectedReport(null)} />
+          <ReviewReportModal report={selectedReport} onClose={() => setSelectedReport(null)} />
         )}
       </AnimatePresence>
     </>
