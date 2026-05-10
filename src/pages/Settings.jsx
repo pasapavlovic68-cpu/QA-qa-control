@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Building2, ChevronRight, FileText, ShieldAlert, SlidersHorizontal, Target, TrendingUp, X, Zap } from 'lucide-react';
+import { Building2, FileText, ShieldAlert, SlidersHorizontal, Target, TrendingUp, X, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
@@ -294,7 +294,7 @@ export function Settings({ organizationId }) {
             return (
               <motion.button
                 key={key}
-                className="rule-card"
+                className="rule-card rule-card--setting"
                 role="button"
                 tabIndex={0}
                 variants={{ hidden: { opacity: 0, y: 18, scale: 0.98 }, show: { opacity: 1, y: 0, scale: 1 } }}
@@ -302,31 +302,24 @@ export function Settings({ organizationId }) {
                 whileHover={{ y: -5, scale: 1.008 }}
                 whileTap={{ scale: 0.985 }}
                 onClick={() => setEditKey(key)}
-                style={{ textAlign: 'left', cursor: 'pointer', width: '100%', border: 'none', padding: 0, background: 'none' }}
+                style={{ textAlign: 'left', width: '100%', border: 'none', background: 'none' }}
               >
                 <div className="rule-card-top">
                   <div className="rule-icon"><Icon size={18} /></div>
-                  <ChevronRight size={15} style={{ color: 'var(--muted)', opacity: 0.5 }} />
-                </div>
-                <div className="rule-title-row">
-                  <h3>{meta.label}</h3>
                   <span className={`rule-status ${filled ? 'active' : 'disabled'}`}>
                     {filled ? 'Заполнено' : 'Не заполнено'}
                   </span>
                 </div>
-                <p style={{ opacity: 0.5, fontSize: '0.78rem', margin: '2px 0 8px' }}>{meta.hint}</p>
-                <p style={{
-                  fontSize: '0.82rem',
-                  color: filled ? 'var(--text)' : 'var(--muted)',
-                  fontStyle: filled ? 'normal' : 'italic',
-                  opacity: filled ? 0.75 : 0.45,
-                  margin: 0,
-                  lineHeight: 1.5,
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                }}>
+                <h3>{meta.label}</h3>
+                <p className="setting-card-desc" style={{ opacity: 0.48, fontSize: '0.78rem' }}>{meta.hint}</p>
+                <p
+                  className="setting-card-preview"
+                  style={{
+                    color: filled ? 'var(--text)' : 'var(--muted)',
+                    fontStyle: filled ? 'normal' : 'italic',
+                    opacity: filled ? 0.72 : 0.42,
+                  }}
+                >
                   {preview ?? 'Нажмите для редактирования'}
                 </p>
               </motion.button>
