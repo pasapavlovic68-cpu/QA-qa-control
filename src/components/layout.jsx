@@ -228,9 +228,222 @@ function OrganizationNameModal({ organizationId, orgName, onClose, onSaved }) {
   );
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function OrganizationInviteModal({ organizationId, onClose }) {
+  useModalScrollLock();
+
+  const showToast = useToast();
+  const [email, setEmail] = useState('');
+  const [invites, setInvites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [error, setError] = useState('');
+
+  const loadInvites = async () => {
+    if (!organizationId) {
+      setLoading(false);
+      setError('Организация не загружена. Повторите попытку.');
+      return;
+    }
+
+    setLoading(true);
+    const { data, error: loadError } = await supabase
+      .from('organization_invites')
+      .select('id, email, status, invited_at')
+      .eq('organization_id', organizationId)
+      .eq('status', 'pending')
+      .order('invited_at', { ascending: false });
+
+    setLoading(false);
+
+    if (loadError) {
+      console.error('[OrganizationInvites] load error:', loadError);
+      setError('Не удалось загрузить приглашения.');
+      return;
+    }
+
+    setInvites(data ?? []);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    loadInvites();
+  }, [organizationId]);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setError('Введите email.');
+      return;
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      setError('Введите корректный email.');
+      return;
+    }
+
+    if (!organizationId || saving) return;
+
+    setSaving(true);
+    setError('');
+
+    const { data, error: insertError } = await supabase
+      .from('organization_invites')
+      .insert({
+        organization_id: organizationId,
+        email: normalizedEmail,
+        status: 'pending',
+      })
+      .select('id, email, status, invited_at')
+      .maybeSingle();
+
+    setSaving(false);
+
+    if (insertError) {
+      console.error('[OrganizationInvites] insert error:', insertError);
+      setError('Не удалось добавить доступ.');
+      return;
+    }
+
+    if (data) {
+      setInvites((current) => [data, ...current.filter((invite) => invite.id !== data.id)]);
+    } else {
+      await loadInvites();
+    }
+
+    setEmail('');
+    showToast?.('Доступ добавлен');
+  };
+
+  const handleDelete = async (inviteId) => {
+    if (!inviteId || deletingId) return;
+
+    setDeletingId(inviteId);
+    setError('');
+
+    const { error: deleteError } = await supabase
+      .from('organization_invites')
+      .delete()
+      .eq('id', inviteId)
+      .eq('organization_id', organizationId);
+
+    setDeletingId(null);
+
+    if (deleteError) {
+      console.error('[OrganizationInvites] delete error:', deleteError);
+      setError('Не удалось удалить приглашение.');
+      return;
+    }
+
+    setInvites((current) => current.filter((invite) => invite.id !== inviteId));
+  };
+
+  return (
+    <ModalPortal>
+      <motion.div className="modal-backdrop org-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+        <motion.form
+          className="modal-shell modal-shell--small org-modal"
+          role="dialog"
+          aria-modal="true"
+          initial={modalMotion.initial}
+          animate={modalMotion.animate}
+          exit={modalMotion.exit}
+          transition={modalMotion.transition}
+          onClick={(event) => event.stopPropagation()}
+          onSubmit={handleSubmit}
+        >
+          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+            <motion.div className="modal-title" variants={modalSectionVariants}>
+              <div>
+                <span className="eyebrow">Доступ к организации</span>
+                <h2>Добавить доступ</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={onClose}>
+                <X size={18} />
+              </button>
+            </motion.div>
+
+            <motion.p className="invite-modal-helper" variants={modalSectionVariants}>
+              Если человек войдёт или зарегистрируется с этой почтой, он попадёт в эту организацию.
+            </motion.p>
+
+            <motion.label className="org-modal-field" variants={modalSectionVariants}>
+              <span>Email</span>
+              <input
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setError('');
+                }}
+                autoFocus
+                inputMode="email"
+                placeholder="name@example.com"
+              />
+            </motion.label>
+
+            {error && <motion.p className="org-modal-error" variants={modalSectionVariants}>{error}</motion.p>}
+
+            <motion.div className="invite-list" variants={modalSectionVariants}>
+              <div className="invite-list-head">
+                <span>Ожидают входа</span>
+                <b>{loading ? '…' : invites.length}</b>
+              </div>
+              {loading ? (
+                <p className="invite-list-empty">Загружаем приглашения…</p>
+              ) : invites.length === 0 ? (
+                <p className="invite-list-empty">Пока нет активных приглашений.</p>
+              ) : (
+                invites.map((invite) => (
+                  <div className="invite-row" key={invite.id}>
+                    <div>
+                      <strong>{invite.email}</strong>
+                      <span>{invite.status}</span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={deletingId === invite.id}
+                      onClick={() => handleDelete(invite.id)}
+                    >
+                      {deletingId === invite.id ? 'Удаляем…' : 'Удалить'}
+                    </button>
+                  </div>
+                ))
+              )}
+            </motion.div>
+
+            <motion.div className="modal-actions" variants={modalSectionVariants}>
+              <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>
+                Закрыть
+              </motion.button>
+              <motion.button className="primary-button" type="submit" whileTap={{ scale: saving ? 1 : 0.97 }} disabled={saving}>
+                {saving ? 'Добавляем…' : 'Добавить доступ'}
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        </motion.form>
+      </motion.div>
+    </ModalPortal>
+  );
+}
+
 function ProfileBlock({ user, orgName, organizationId, onOrgNameChange }) {
   const [open, setOpen] = useState(false);
   const [orgModalOpen, setOrgModalOpen] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
   const displayName =
     user?.user_metadata?.full_name ||
@@ -402,33 +615,32 @@ function ProfileBlock({ user, orgName, organizationId, onOrgNameChange }) {
 
               <div style={{ height: 1, background: 'var(--line)', margin: '8px 0' }} />
 
-              {/* Добавить доступ — disabled placeholder */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 10px',
-                borderRadius: 12,
-                fontSize: 13,
-                color: 'var(--muted)',
-                opacity: 0.55,
-                cursor: 'not-allowed',
-                userSelect: 'none',
-              }}>
+              <motion.button
+                type="button"
+                whileHover={{ background: 'rgba(119,101,227,0.07)' }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  setOpen(false);
+                  setInviteModalOpen(true);
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 10px',
+                  borderRadius: 12,
+                  fontSize: 13,
+                  color: 'var(--text)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
                 <UserPlus size={14} />
                 <span style={{ flex: 1 }}>Добавить доступ</span>
-                <span style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  padding: '2px 7px',
-                  borderRadius: 8,
-                  background: 'var(--accent-soft)',
-                  color: 'var(--accent)',
-                  letterSpacing: 0.3,
-                }}>
-                  Скоро
-                </span>
-              </div>
+              </motion.button>
 
               <div style={{ height: 1, background: 'var(--line)', margin: '8px 0' }} />
 
@@ -467,6 +679,14 @@ function ProfileBlock({ user, orgName, organizationId, onOrgNameChange }) {
             orgName={org}
             onClose={() => setOrgModalOpen(false)}
             onSaved={onOrgNameChange}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {inviteModalOpen && (
+          <OrganizationInviteModal
+            organizationId={organizationId}
+            onClose={() => setInviteModalOpen(false)}
           />
         )}
       </AnimatePresence>

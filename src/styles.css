@@ -1473,6 +1473,101 @@ h1 {
   font-size: 13px;
 }
 
+.invite-modal-helper {
+  margin: -6px 0 18px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.invite-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid rgba(119, 101, 227, 0.1);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.invite-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.invite-list-head b {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 9px;
+  background: rgba(119, 101, 227, 0.1);
+  color: var(--accent);
+}
+
+.invite-list-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.invite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 11px;
+  border: 1px solid rgba(122, 108, 92, 0.1);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.invite-row div {
+  min-width: 0;
+}
+
+.invite-row strong,
+.invite-row span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invite-row strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.invite-row span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.invite-row button {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid rgba(190, 60, 68, 0.12);
+  border-radius: 11px;
+  background: #fff7f7;
+  color: #a65359;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.invite-row button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
 .delete-icon {
   display: grid;
   place-items: center;
