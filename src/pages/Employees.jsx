@@ -4,6 +4,7 @@ import { AlertTriangle, Check, Plus, Tag, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { Avatar, AnimatedProgress } from '../components/shared.jsx';
 import { employeeCardTransition, EmployeeFormModal, DeleteEmployeeModal, StatusManagementModal } from '../components/modals.jsx';
+import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
 import { useToast } from '../components/Toast.jsx';
 
 function getStatusTone(status) {
@@ -450,58 +451,91 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 function EmployeeStatusAssignModal({ employee, statuses, saving, error, onClose, onManage, onAssign }) {
   const currentColor = getStatusColor(employee.status, statuses);
 
+  useModalScrollLock();
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="status-popover-backdrop" onClick={onClose}>
+    <ModalPortal>
+      <motion.div className="modal-backdrop status-popover-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.div
         className="status-popover"
         role="dialog"
         aria-modal="true"
-        initial={{ opacity: 0, y: 10, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 8, scale: 0.98 }}
-        transition={{ duration: 0.18 }}
+        initial={modalMotion.initial}
+        animate={modalMotion.animate}
+        exit={modalMotion.exit}
+        transition={modalMotion.transition}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="status-popover-title">
-          <div>
-            <span className="eyebrow">Статус сотрудника</span>
-            <h3>{employee.name}</h3>
-          </div>
-          <button className="icon-button" type="button" onClick={onClose}><X size={16} /></button>
-        </div>
+        <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+          <motion.div className="status-popover-title" variants={modalSectionVariants}>
+            <div className="status-modal-person">
+              <div className="status-modal-avatar">
+                <Avatar name={employee.name} />
+              </div>
+              <div className="status-modal-heading">
+                <span className="eyebrow">Статус сотрудника</span>
+                <h3>{employee.name}</h3>
+                <p>Сотрудник</p>
+              </div>
+            </div>
+            <button className="icon-button" type="button" onClick={onClose}><X size={16} /></button>
+          </motion.div>
 
-        <div className="status-current">
-          <span>Текущий статус</span>
-          <StatusBadge name={employee.status} statusTone={employee.statusTone} color={currentColor} />
-        </div>
+          <motion.div className="status-current status-current--hero" variants={modalSectionVariants}>
+            <span>Текущий статус</span>
+            <StatusBadge name={employee.status} statusTone={employee.statusTone} color={currentColor} />
+          </motion.div>
 
-        {statuses.length === 0 ? (
-          <div className="status-empty">
-            <p>Сначала создайте статус</p>
-            <button className="ghost-button" type="button" onClick={onManage}>Управление статусами</button>
-          </div>
-        ) : (
-          <div className="status-choice-list">
-            {statuses.map((status) => {
-              const selected = status.name === employee.status;
-              return (
-                <button
-                  key={status.id}
-                  type="button"
-                  className={`status-choice ${selected ? 'selected' : ''}`}
-                  disabled={saving}
-                  onClick={() => onAssign(status.name)}
-                >
-                  <StatusBadge name={status.name} statusTone={getStatusTone(status.name)} color={status.color} />
-                  {selected && <Check size={16} />}
-                </button>
-              );
-            })}
-          </div>
-        )}
+          <motion.div variants={modalSectionVariants}>
+            {statuses.length === 0 ? (
+              <div className="status-empty">
+                <strong>Сначала создайте статус</strong>
+                <p>После создания статусы появятся здесь, и их можно будет назначать сотруднику одним кликом.</p>
+                <button className="ghost-button" type="button" onClick={onManage}>Управление статусами</button>
+              </div>
+            ) : (
+              <div className="status-options-panel">
+                <span className="status-options-label">Выберите новый статус</span>
+                <div className="status-choice-list">
+                  {statuses.map((status) => {
+                    const selected = status.name === employee.status;
+                    return (
+                      <button
+                        key={status.id}
+                        type="button"
+                        className={`status-choice ${selected ? 'selected' : ''}`}
+                        disabled={saving}
+                        onClick={() => onAssign(status.name)}
+                      >
+                        <span className="status-choice-main">
+                          <span className="status-choice-dot" style={{ background: status.color }} />
+                          <span>{status.name}</span>
+                        </span>
+                        <span className="status-choice-check" aria-hidden="true">
+                          {selected && <Check size={16} />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </motion.div>
 
-        {error && <p className="status-error">{error}</p>}
+          {error && <motion.p className="status-error" variants={modalSectionVariants}>{error}</motion.p>}
+          <motion.p className="status-save-hint" variants={modalSectionVariants}>Изменение сохранится сразу</motion.p>
+        </motion.div>
       </motion.div>
-    </div>
+      </motion.div>
+    </ModalPortal>
   );
 }
