@@ -8,6 +8,7 @@ import {
 import './styles.css';
 import { supabase } from './lib/supabase.js';
 import { getOwnerOrganizationId } from './lib/organization.js';
+import { bootstrapEmployee } from './lib/bootstrap.js';
 import { tabs, Sidebar, Topbar } from './components/layout.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import { Employees } from './pages/Employees.jsx';
@@ -182,6 +183,24 @@ function Root() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fire-and-forget: create/link employee record on login.
+  // Runs after session is confirmed; does not block UI render.
+  useEffect(() => {
+    if (!session?.user) return;
+    console.log('[Root] session confirmed — running bootstrapEmployee for', session.user.email);
+    bootstrapEmployee(session.user)
+      .then((employee) => {
+        if (employee) {
+          console.log('[Root] bootstrap complete — employee id:', employee.id);
+        } else {
+          console.warn('[Root] bootstrap returned null — check [bootstrapEmployee] logs above');
+        }
+      })
+      .catch((err) => {
+        console.error('[Root] bootstrap threw unexpected error:', err);
+      });
+  }, [session?.user?.id]);
 
   if (session === undefined) return null;
   if (!session) return <LoginScreen />;
