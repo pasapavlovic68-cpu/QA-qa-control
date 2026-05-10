@@ -25,6 +25,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisMessage, setAnalysisMessage] = useState(null);
   const [analysisStage, setAnalysisStage] = useState(null);
+  const [analysisDlgCount, setAnalysisDlgCount] = useState(0);
 
   useEffect(() => {
     if (employees.length > 0 && !selectedEmployeeName) {
@@ -156,6 +157,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       if (!dialogues || dialogues.length === 0) throw new Error('Нет загруженных диалогов для анализа.');
 
       const dialogueCount = dialogues.length;
+      setAnalysisDlgCount(dialogueCount);
       console.log(`[ReviewCounters] loaded ${dialogueCount} dialogue(s) for check_id=${currentCheckId}`);
 
       setAnalysisStage('loading_rules');
@@ -367,6 +369,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
                   setAnalysisMessage(null);
                   setAnalysis('idle');
                   setAnalysisStage(null);
+                  setAnalysisDlgCount(0);
                 }}
               />
             ) : (
@@ -470,7 +473,14 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       </PremiumCard>
 
       <PremiumCard title="Состояние анализа" action={analysisCardAction}>
-        <AnalysisState status={analysis} stage={analysisStage} />
+        <AnalysisState
+          status={analysis}
+          stage={analysisStage}
+          filesCount={uploadedFiles.length}
+          dialogueCount={analysisDlgCount}
+          employeeName={selectedEmployeeName}
+          errorMessage={analysisMessage?.type === 'error' ? analysisMessage.text : null}
+        />
       </PremiumCard>
     </div>
   );

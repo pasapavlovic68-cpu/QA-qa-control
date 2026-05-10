@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, Sparkles } from 'lucide-react';
+import { Check, ChevronDown, Sparkles, Clock, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { qualityPoints } from '../data/demoData.js';
 import { AnimatedProgress } from './shared.jsx';
 
@@ -39,42 +39,180 @@ export function TrendChart({ compact = false, data }) {
 }
 
 
-const STAGE_LABEL = {
-  preparing: 'Подготовка данных...',
-  reading_dialogues: 'Чтение диалогов...',
-  loading_rules: 'Загрузка правил...',
-  contacting_ai: 'AI-анализ...',
-  saving_report: 'Сохранение отчёта...',
-  completed: 'Отчёт готов',
-  failed: 'Ошибка анализа',
+const ANALYSIS_STEPS = [
+  { id: 'files',     label: 'Файлы загружены',     stages: ['preparing'] },
+  { id: 'dialogues', label: 'Диалоги сохранены',   stages: ['reading_dialogues', 'loading_rules'] },
+  { id: 'ai',        label: 'AI анализирует',       stages: ['contacting_ai'] },
+  { id: 'report',    label: 'Отчёт сохранён',       stages: ['saving_report'] },
+  { id: 'counters',  label: 'Счётчики обновлены',   stages: ['completed'] },
+];
+
+const STAGE_ORDER = ['preparing', 'reading_dialogues', 'loading_rules', 'contacting_ai', 'saving_report', 'completed'];
+
+const STAGE_PROGRESS = {
+  preparing:         20,
+  reading_dialogues: 40,
+  loading_rules:     40,
+  contacting_ai:     65,
+  saving_report:     85,
+  completed:        100,
 };
 
-export function AnalysisState({ status, stage }) {
-  const progress = status === 'complete' ? 100 : status === 'running' ? 72 : status === 'error' ? 0 : 8;
-  const message = status === 'complete'
-    ? 'Анализ завершён. Отчёт сохранён в разделе Отчёты.'
-    : status === 'running'
-      ? 'Анализируем диалоги: SLA, тональность, обязательные действия и критичные ошибки.'
-      : status === 'error'
-        ? 'Анализ завершился с ошибкой. Проверьте детали ниже.'
-        : 'Загрузите файлы диалогов и нажмите «Начать анализ».';
+const STEP_CURRENT_LABEL = {
+  preparing:         'Файлы загружены',
+  reading_dialogues: 'Диалоги сохранены',
+  loading_rules:     'Диалоги сохранены',
+  contacting_ai:     'AI анализирует',
+  saving_report:     'Отчёт сохранён',
+  completed:         'Счётчики обновлены',
+};
+
+export function AnalysisState({ status, stage, filesCount = 0, dialogueCount = 0, employeeName = '', errorMessage = null }) {
+  const lastActiveStageRef = useRef(null);
+
+  useEffect(() => {
+    if (stage && stage !== 'failed') {
+      lastActiveStageRef.current = stage;
+    }
+  }, [stage]);
+
+  const effectiveStage = stage === 'failed' ? lastActiveStageRef.current : stage;
+  const currentStageIndex = STAGE_ORDER.indexOf(effectiveStage);
+
+  const getStepState = (step) => {
+    if (!stage || status === 'idle') return 'pending';
+    const stepMin = Math.min(...step.stages.map((s) => STAGE_ORDER.indexOf(s)));
+    const stepMax = Math.max(...step.stages.map((s) => STAGE_ORDER.indexOf(s)));
+    if (status === 'complete') return 'done';
+    if (status === 'error') {
+      if (currentStageIndex > stepMax) return 'done';
+      if (step.stages.includes(effectiveStage)) return 'error';
+      return 'pending';
+    }
+    if (currentStageIndex > stepMax) return 'done';
+    if (currentStageIndex >= stepMin) return 'active';
+    return 'pending';
+  };
+
+  const progress =
+    !stage || status === 'idle' ? 0
+    : status === 'complete' ? 100
+    : STAGE_PROGRESS[effectiveStage] ?? 0;
+
+  const currentStepLabel = effectiveStage ? (STEP_CURRENT_LABEL[effectiveStage] ?? '') : null;
+  const isIdle     = !stage || status === 'idle';
+  const isComplete = status === 'complete';
+  const isError    = status === 'error';
 
   return (
-    <div className="analysis-state">
-      <div className="analysis-orb"><Sparkles size={22} /></div>
-      <AnimatedProgress value={progress} />
-      <p>{message}</p>
-      {stage && <p style={{ fontSize: '0.78rem', opacity: 0.5, marginTop: -4, marginBottom: 4 }}>{STAGE_LABEL[stage] ?? stage}</p>}
-      <div className="skeleton-stack">
-        {[1, 2, 3].map((item) => (
-          <motion.span
-            key={item}
-            className={`skeleton ${status === 'complete' ? 'complete' : ''}`}
-            animate={status === 'running' ? { opacity: [0.35, 0.9, 0.35] } : {}}
-            transition={{ repeat: status === 'running' ? Infinity : 0, duration: 1.4, delay: item * 0.16 }}
-          />
-        ))}
+    <div className="asp-panel">
+      {/* Header: orb + progress bar */}
+      <div className="asp-header">
+        <div className={`asp-orb ${isComplete ? 'success' : isError ? 'error' : ''}`}>
+          {isComplete ? <CheckCircle2 size={20} /> : isError ? <AlertCircle size={20} /> : <Sparkles size={20} />}
+        </div>
+        <div className="asp-progress-wrap">
+          <div className="asp-bar-bg">
+            <motion.div
+              className={`asp-bar-fill ${isError ? 'error' : isComplete ? 'complete' : ''}`}
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            />
+          </div>
+          <div className="asp-bar-meta">
+            <span className="asp-pct">{progress}%</span>
+            {!isIdle && !isComplete && !isError && currentStepLabel && (
+              <span className="asp-current-step">Текущий этап: {currentStepLabel}</span>
+            )}
+            {isComplete && <span className="asp-status-label success">Анализ завершён</span>}
+            {isError    && <span className="asp-status-label error">Ошибка анализа</span>}
+          </div>
+        </div>
       </div>
+
+      {/* Stats row */}
+      {(filesCount > 0 || dialogueCount > 0) && (
+        <div className="asp-stats">
+          {filesCount > 0 && (
+            <div className="asp-stat">
+              <span>Файлов загружено</span>
+              <b>{filesCount}</b>
+            </div>
+          )}
+          {dialogueCount > 0 && (
+            <div className="asp-stat">
+              <span>Диалогов прочитано</span>
+              <b>{dialogueCount}</b>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step list */}
+      <div className="asp-steps">
+        {ANALYSIS_STEPS.map((step, i) => {
+          const state = getStepState(step);
+          return (
+            <motion.div
+              key={step.id}
+              className={`asp-step ${state}`}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.06, duration: 0.22 }}
+            >
+              <div className="asp-step-icon">
+                {state === 'done'    && <Check size={12} />}
+                {state === 'error'   && <AlertCircle size={12} />}
+                {state === 'pending' && <Clock size={12} />}
+                {state === 'active'  && (
+                  <motion.span
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }}
+                    style={{ display: 'flex' }}
+                  >
+                    <Loader2 size={12} />
+                  </motion.span>
+                )}
+              </div>
+              <span className="asp-step-label">{step.label}</span>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Error details */}
+      {isError && errorMessage && (
+        <motion.div
+          className="asp-message error"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <AlertCircle size={14} />
+          <span>{errorMessage}</span>
+        </motion.div>
+      )}
+
+      {/* Success summary */}
+      {isComplete && (
+        <motion.div
+          className="asp-message success"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <CheckCircle2 size={14} />
+          <div className="asp-message-body">
+            <strong>Анализ завершён</strong>
+            {employeeName  && <span>Сотрудник: {employeeName}</span>}
+            {dialogueCount > 0 && <span>Проверено диалогов: {dialogueCount}</span>}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Idle hint */}
+      {isIdle && (
+        <p className="asp-idle">Загрузите файлы диалогов и нажмите «Начать анализ».</p>
+      )}
     </div>
   );
 }

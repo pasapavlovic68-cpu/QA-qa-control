@@ -1810,3 +1810,235 @@ select {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Analysis Status Panel ────────────────────────────────── */
+.asp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.asp-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.asp-orb {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(119, 101, 227, 0.18);
+  background: linear-gradient(135deg, #ffffff, #eeeaff);
+  color: var(--accent);
+  box-shadow: 0 6px 20px rgba(119, 101, 227, 0.12);
+  transition: background 0.3s, color 0.3s;
+}
+.asp-orb.success {
+  background: linear-gradient(135deg, #eaf8f1, #d6f5e8);
+  color: var(--success);
+  border-color: rgba(25, 138, 98, 0.2);
+}
+.asp-orb.error {
+  background: linear-gradient(135deg, #fff1f1, #ffe4e4);
+  color: var(--danger);
+  border-color: rgba(190, 60, 68, 0.2);
+}
+
+.asp-progress-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.asp-bar-bg {
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(119, 101, 227, 0.1);
+  overflow: hidden;
+}
+
+.asp-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #8d7cf6, #7765e3);
+  transition: background 0.4s;
+}
+.asp-bar-fill.complete {
+  background: linear-gradient(90deg, #34d399, #198a62);
+}
+.asp-bar-fill.error {
+  background: linear-gradient(90deg, #f87171, #be3c44);
+}
+
+.asp-bar-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.asp-pct {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+
+.asp-current-step {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.asp-status-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.asp-status-label.success { color: var(--success); }
+.asp-status-label.error   { color: var(--danger); }
+
+/* Stats */
+.asp-stats {
+  display: flex;
+  gap: 10px;
+}
+
+.asp-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  background: rgba(119, 101, 227, 0.05);
+  border: 1px solid rgba(119, 101, 227, 0.1);
+  border-radius: 14px;
+}
+.asp-stat span {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.asp-stat b {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Steps */
+.asp-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.asp-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.asp-step-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0;
+  transition: background 0.2s, color 0.2s;
+}
+
+.asp-step-label {
+  font-size: 0.84rem;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+/* done */
+.asp-step.done {
+  background: rgba(25, 138, 98, 0.05);
+  border-color: rgba(25, 138, 98, 0.14);
+}
+.asp-step.done .asp-step-icon {
+  background: rgba(25, 138, 98, 0.12);
+  color: var(--success);
+}
+.asp-step.done .asp-step-label { color: var(--success); }
+
+/* active */
+.asp-step.active {
+  background: rgba(119, 101, 227, 0.07);
+  border-color: rgba(119, 101, 227, 0.2);
+}
+.asp-step.active .asp-step-icon {
+  background: rgba(119, 101, 227, 0.15);
+  color: var(--accent);
+}
+.asp-step.active .asp-step-label { color: var(--accent); font-weight: 600; }
+
+/* pending */
+.asp-step.pending .asp-step-icon {
+  background: rgba(0,0,0,0.04);
+  color: var(--muted);
+}
+.asp-step.pending .asp-step-label { color: var(--muted); opacity: 0.7; }
+
+/* error */
+.asp-step.error {
+  background: rgba(190, 60, 68, 0.05);
+  border-color: rgba(190, 60, 68, 0.16);
+}
+.asp-step.error .asp-step-icon {
+  background: rgba(190, 60, 68, 0.1);
+  color: var(--danger);
+}
+.asp-step.error .asp-step-label { color: var(--danger); font-weight: 600; }
+
+/* Messages */
+.asp-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.asp-message.success {
+  background: rgba(25, 138, 98, 0.07);
+  border: 1px solid rgba(25, 138, 98, 0.16);
+  color: var(--success);
+}
+.asp-message.error {
+  background: rgba(190, 60, 68, 0.06);
+  border: 1px solid rgba(190, 60, 68, 0.15);
+  color: var(--danger);
+}
+.asp-message-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.asp-message-body strong {
+  font-weight: 700;
+}
+.asp-message-body span {
+  opacity: 0.85;
+}
+
+.asp-idle {
+  font-size: 0.84rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.55;
+  margin: 4px 0 0;
+}
