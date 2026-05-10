@@ -3,6 +3,7 @@ import {
   Building2,
   ChevronDown,
   ClipboardCheck,
+  DollarSign,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -19,6 +20,7 @@ import { supabase } from '../lib/supabase.js';
 export const tabs = [
   { id: 'dashboard', label: 'Главная', icon: LayoutDashboard },
   { id: 'employees', label: 'Сотрудники', icon: UsersRound },
+  { id: 'sales', label: 'Продажи', icon: DollarSign },
   { id: 'review', label: 'Проверка', icon: ClipboardCheck },
   { id: 'report', label: 'Отчёт', icon: FileText },
   { id: 'rules', label: 'Правила', icon: Settings2 },

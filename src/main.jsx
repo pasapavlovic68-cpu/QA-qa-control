@@ -17,6 +17,7 @@ import { Employees } from './pages/Employees.jsx';
 import { Review } from './pages/Review.jsx';
 import { Report } from './pages/Report.jsx';
 import { Rules } from './pages/Rules.jsx';
+import { Sales } from './pages/Sales.jsx';
 import { Settings } from './pages/Settings.jsx';
 import { EmployeeDrawer } from './components/modals.jsx';
 
@@ -351,6 +352,13 @@ function App({ session }) {
                   employeesLoading={employeesLoading}
                   onAdd={onEmployeeAdd}
                   onDelete={onEmployeeDelete}
+                  organizationId={organizationId}
+                />
+              )}
+              {active === 'sales' && (
+                <Sales
+                  employees={employeesData}
+                  employeesLoading={employeesLoading}
                   organizationId={organizationId}
                 />
               )}

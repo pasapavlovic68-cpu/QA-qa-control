@@ -2313,3 +2313,152 @@ select {
 .qtc-col--compact .qtc-day-label {
   font-size: 0.6rem;
 }
+
+/* ─── Period pill toggles ──────────────────────────────────────────────────── */
+.qtc-pill {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.7);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+.qtc-pill:hover {
+  border-color: rgba(119,101,227,0.3);
+  color: var(--accent);
+}
+.qtc-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ─── Sales page ───────────────────────────────────────────────────────────── */
+.sales-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.sales-kpi-card {
+  background: rgba(252,252,253,0.96);
+  border: 1px solid rgba(255,255,255,0.82);
+  border-radius: 20px;
+  padding: 20px 22px;
+  box-shadow: 0 4px 20px rgba(35,31,58,0.07);
+}
+
+.sales-emp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.sales-emp-card {
+  background: rgba(252,252,253,0.96);
+  border: 1px solid rgba(255,255,255,0.82);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(35,31,58,0.07);
+  transition: box-shadow 0.22s ease;
+}
+
+.sales-emp-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.sales-emp-avatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ece9ff, #ddd7ff);
+  border: 1px solid rgba(119,101,227,0.18);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.4px;
+}
+
+.sales-emp-metrics {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+
+.sales-emp-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sales-emp-progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.sales-emp-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent), rgba(119,101,227,0.6));
+}
+
+.sales-history-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sales-history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(119,101,227,0.04);
+  border: 1px solid rgba(119,101,227,0.08);
+}
+
+.sales-history-date {
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 80px;
+}
+
+.sales-history-cash {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .sales-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .sales-emp-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .sales-kpi-grid,
+  .sales-emp-grid {
+    grid-template-columns: 1fr;
+  }
+}
