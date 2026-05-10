@@ -76,37 +76,97 @@ function OrganizationNameModal({ organizationId, orgName, onClose, onSaved }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     const nextName = name.trim();
+    const payload = { name: nextName };
+
+    console.group('[OrganizationRename] save');
+    console.log('[OrganizationRename] organizationId:', organizationId);
+    console.log('[OrganizationRename] payload:', payload);
 
     if (!nextName) {
+      console.warn('[OrganizationRename] blocked: empty name');
+      console.groupEnd();
       setError('Введите название организации.');
       return;
     }
 
     if (nextName.length > 60) {
+      console.warn('[OrganizationRename] blocked: name is too long', nextName.length);
+      console.groupEnd();
       setError('Название не должно быть длиннее 60 символов.');
       return;
     }
 
-    if (!organizationId || saving) return;
+    if (!organizationId) {
+      console.error('[OrganizationRename] blocked: organizationId is missing');
+      console.groupEnd();
+      setError('Организация не загружена. Повторите попытку.');
+      return;
+    }
+
+    if (saving) {
+      console.warn('[OrganizationRename] blocked: save already in progress');
+      console.groupEnd();
+      return;
+    }
 
     setSaving(true);
     setError('');
 
-    const { data, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from('organizations')
-      .update({ name: nextName })
-      .eq('id', organizationId)
-      .select('name')
-      .single();
+      .update(payload)
+      .eq('id', organizationId);
 
-    setSaving(false);
+    console.log('[OrganizationRename] updateError:', updateError);
 
     if (updateError) {
+      setSaving(false);
+      console.groupEnd();
       setError('Не удалось сохранить название. Повторите попытку.');
       return;
     }
 
-    onSaved(data?.name || nextName);
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('id', organizationId)
+      .maybeSingle();
+
+    console.log('[OrganizationRename] verifyData:', verifyData);
+    console.log('[OrganizationRename] verifyError:', verifyError);
+
+    setSaving(false);
+
+    if (verifyError) {
+      console.groupEnd();
+      setError('Не удалось сохранить название. Повторите попытку.');
+      return;
+    }
+
+    if (!verifyData) {
+      console.error('[OrganizationRename] verify returned no row. Possible id mismatch or SELECT policy issue.', { organizationId, payload });
+      console.groupEnd();
+      setError('Сохранение заблокировано политикой доступа к организации.');
+      return;
+    }
+
+    const savedName = verifyData.name || nextName;
+    if (savedName !== nextName) {
+      console.error('[OrganizationRename] update did not persist. Possible RLS UPDATE policy block or trigger rollback.', {
+        organizationId,
+        payload,
+        savedName,
+        verifyRow: verifyData,
+      });
+      console.groupEnd();
+      setError('Сохранение заблокировано политикой доступа к организации.');
+      return;
+    }
+
+    console.log('[OrganizationRename] saved organization name:', savedName);
+    console.groupEnd();
+
+    onSaved(savedName);
     showToast?.('Название организации обновлено');
     onClose();
   };
