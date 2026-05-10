@@ -22,7 +22,15 @@ function scoreColor(score) {
   return 'var(--danger)';
 }
 
-function EmployeesControlModal({ employees, criticalByEmployee, onClose }) {
+function controlReason(empId, latestScoreByEmployee, criticalByEmployee, mistakesByEmployee) {
+  const score = latestScoreByEmployee[empId];
+  const crits = criticalByEmployee[empId]?.count ?? 0;
+  if (score !== undefined && score < 70) return 'Низкая оценка';
+  if (crits > 0) return 'Критичные ошибки';
+  return 'Есть замечания';
+}
+
+function EmployeesControlModal({ employees, criticalByEmployee, latestScoreByEmployee, mistakesByEmployee, onClose }) {
   useModalScrollLock();
   return (
     <ModalPortal>
@@ -55,12 +63,17 @@ function EmployeesControlModal({ employees, criticalByEmployee, onClose }) {
 
             {employees.length === 0 ? (
               <motion.p variants={modalSectionVariants} style={{ textAlign: 'center', opacity: 0.4, padding: '32px 0' }}>
-                Сотрудники пока не добавлены.
+                Сотрудников на контроле пока нет.
               </motion.p>
             ) : (
               <motion.div variants={modalSectionVariants} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
                 {employees.map((emp) => {
-                  const crits = criticalByEmployee[emp.id] ?? { count: 0, latest: null };
+                  const crits = criticalByEmployee[emp.id] ?? { count: 0 };
+                  const latestScore = latestScoreByEmployee[emp.id];
+                  const reason = controlReason(emp.id, latestScoreByEmployee, criticalByEmployee, mistakesByEmployee);
+                  const reasonColor = reason === 'Критичные ошибки' || reason === 'Низкая оценка'
+                    ? 'var(--danger)'
+                    : 'var(--warning)';
                   return (
                     <motion.div
                       key={emp.id}
@@ -83,26 +96,19 @@ function EmployeesControlModal({ employees, criticalByEmployee, onClose }) {
                         <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--muted)', lineHeight: 1.4 }}>
                           {emp.role} · {emp.dialogs ?? 0} диалогов
                         </p>
-                        {crits.latest ? (
-                          <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--danger)', opacity: 0.82, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {crits.latest}
-                          </p>
-                        ) : (
-                          <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--success)', opacity: 0.72 }}>
-                            Нет критичных ошибок
-                          </p>
-                        )}
+                        <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: reasonColor, opacity: 0.88, fontWeight: 600 }}>
+                          {reason}
+                        </p>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-                        <strong style={{ fontSize: '1.15rem', color: scoreColor(emp.score), lineHeight: 1 }}>{emp.score}</strong>
+                        <strong style={{ fontSize: '1.15rem', color: scoreColor(latestScore ?? emp.score), lineHeight: 1 }}>
+                          {latestScore ?? emp.score}
+                        </strong>
                         {crits.count > 0 && (
                           <span style={{ fontSize: '0.72rem', background: 'rgba(190,60,68,0.09)', color: 'var(--danger)', borderRadius: 8, padding: '2px 8px', fontWeight: 600 }}>
                             {crits.count} критич.
                           </span>
                         )}
-                        <span style={{ fontSize: '0.72rem', color: 'var(--muted)', background: 'rgba(119,101,227,0.07)', borderRadius: 8, padding: '2px 8px' }}>
-                          {emp.status}
-                        </span>
                       </div>
                     </motion.div>
                   );
@@ -285,14 +291,59 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
     [completedChecks]
   );
 
-  const needsAttention = employees.filter(
-    (e) => e.status === 'Критично' || e.status === 'На контроле'
-  ).length;
+  // Critical/high mistakes per employee (across all reports)
+  const criticalByEmployee = useMemo(() => {
+    const map = {};
+    reports.forEach((r) => {
+      const crits = (Array.isArray(r.mistakes) ? r.mistakes : []).filter(
+        (m) => m.severity === 'critical' || m.severity === 'high'
+      );
+      if (!map[r.employee_id]) map[r.employee_id] = { count: 0, latest: null };
+      map[r.employee_id].count += crits.length;
+      if (!map[r.employee_id].latest && crits.length > 0) {
+        map[r.employee_id].latest = crits[0].title || crits[0].description || null;
+      }
+    });
+    return map;
+  }, [reports]);
 
-  const topEmployees = useMemo(
-    () => [...employees].sort((a, b) => b.score - a.score).slice(0, 4),
-    [employees]
-  );
+  // Per-employee latest report score (reports sorted DESC so first = latest)
+  const latestScoreByEmployee = useMemo(() => {
+    const map = {};
+    reports.forEach((r) => {
+      if (map[r.employee_id] === undefined) map[r.employee_id] = r.score ?? 0;
+    });
+    return map;
+  }, [reports]);
+
+  // Total mistake count (any severity) per employee across all reports
+  const mistakesByEmployee = useMemo(() => {
+    const map = {};
+    reports.forEach((r) => {
+      const total = (Array.isArray(r.mistakes) ? r.mistakes : []).length;
+      map[r.employee_id] = (map[r.employee_id] ?? 0) + total;
+    });
+    return map;
+  }, [reports]);
+
+  // Employees actually "under control": must have at least one report AND a real issue
+  const employeesUnderControl = useMemo(() => {
+    return employees.filter((emp) => {
+      if (latestScoreByEmployee[emp.id] === undefined) return false; // no reports — skip
+      const score = latestScoreByEmployee[emp.id];
+      const crits = criticalByEmployee[emp.id]?.count ?? 0;
+      const mistakes = mistakesByEmployee[emp.id] ?? 0;
+      return score < 70 || crits > 0 || mistakes > 0;
+    });
+  }, [employees, latestScoreByEmployee, criticalByEmployee, mistakesByEmployee]);
+
+  // Top employees: only those with at least one completed report, sorted by latest score DESC
+  const topEmployees = useMemo(() => {
+    return employees
+      .filter((e) => latestScoreByEmployee[e.id] !== undefined)
+      .sort((a, b) => (latestScoreByEmployee[b.id] ?? 0) - (latestScoreByEmployee[a.id] ?? 0))
+      .slice(0, 4);
+  }, [employees, latestScoreByEmployee]);
 
   const employeeMap = useMemo(() => {
     const map = {};
@@ -361,21 +412,6 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [reports]);
 
-  const criticalByEmployee = useMemo(() => {
-    const map = {};
-    reports.forEach((r) => {
-      const crits = (Array.isArray(r.mistakes) ? r.mistakes : []).filter(
-        (m) => m.severity === 'critical' || m.severity === 'high'
-      );
-      if (!map[r.employee_id]) map[r.employee_id] = { count: 0, latest: null };
-      map[r.employee_id].count += crits.length;
-      if (!map[r.employee_id].latest && crits.length > 0) {
-        map[r.employee_id].latest = crits[0].title || crits[0].description || null;
-      }
-    });
-    return map;
-  }, [reports]);
-
   const latestChecks = useMemo(
     () =>
       completedChecks.slice(0, 4).map((c) => ({
@@ -408,8 +444,8 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
     },
     {
       label: 'Сотрудников на контроле',
-      value: employeesLoading ? '…' : String(employees.length || '—'),
-      delta: needsAttention > 0 ? `${needsAttention} требуют внимания` : 'Всё в порядке',
+      value: dashLoading || employeesLoading ? '…' : employeesUnderControl.length > 0 ? String(employeesUnderControl.length) : '—',
+      delta: employeesUnderControl.length > 0 ? `${employeesUnderControl.length} требуют внимания` : 'Нет сотрудников с проблемами',
       icon: UsersRound,
       onClick: () => setEmployeesModalOpen(true)
     }
@@ -420,8 +456,10 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
       <AnimatePresence>
         {employeesModalOpen && (
           <EmployeesControlModal
-            employees={employees}
+            employees={employeesUnderControl}
             criticalByEmployee={criticalByEmployee}
+            latestScoreByEmployee={latestScoreByEmployee}
+            mistakesByEmployee={mistakesByEmployee}
             onClose={() => setEmployeesModalOpen(false)}
           />
         )}
@@ -474,26 +512,31 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
         </PremiumCard>
         <PremiumCard title="Топ сотрудников" action="Рейтинг">
           <div className="rank-list">
-            {topEmployees.length > 0
-              ? topEmployees.map((employee, index) => (
-                <motion.button
-                  className="rank-row"
-                  key={employee.id}
-                  whileHover={{ x: 4 }}
-                  onClick={() => {
-                    setSelectedEmployee(employee);
-                    setDetailOpen(true);
-                  }}
-                >
-                  <span className="rank">{index + 1}</span>
-                  <span>
-                    <strong>{employee.name}</strong>
-                    <small>{employee.role}</small>
-                  </span>
-                  <b>{employee.score}</b>
-                </motion.button>
-              ))
-              : emptyCardText(employeesLoading ? 'Загружаем…' : 'Сотрудники пока не добавлены.')}
+            {dashLoading || employeesLoading
+              ? emptyCardText('Загружаем…')
+              : topEmployees.length > 0
+              ? topEmployees.map((employee, index) => {
+                  const score = latestScoreByEmployee[employee.id] ?? employee.score;
+                  return (
+                    <motion.button
+                      className="rank-row"
+                      key={employee.id}
+                      whileHover={{ x: 4 }}
+                      onClick={() => {
+                        setSelectedEmployee(employee);
+                        setDetailOpen(true);
+                      }}
+                    >
+                      <span className="rank">{index + 1}</span>
+                      <span>
+                        <strong>{employee.name}</strong>
+                        <small>{employee.role}</small>
+                      </span>
+                      <b style={{ color: scoreColor(score) }}>{score}</b>
+                    </motion.button>
+                  );
+                })
+              : emptyCardText('Топ появится после первых проверок.')}
           </div>
         </PremiumCard>
         <RevealCard title="Частые ошибки" action="Приоритеты">
