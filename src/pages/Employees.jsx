@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Plus, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { Avatar, AnimatedProgress } from '../components/shared.jsx';
-import { employeeCardTransition, EmployeeFormModal, DeleteEmployeeModal } from '../components/modals.jsx';
+import { employeeCardTransition, EmployeeFormModal, DeleteEmployeeModal, AddSalesModal } from '../components/modals.jsx';
 import { useToast } from '../components/Toast.jsx';
 
 function getStatusTone(status) {
@@ -32,6 +32,7 @@ function toEmployee(row) {
 export function Employees({ setDetailOpen, setSelectedEmployee, employees, employeesLoading, onAdd, onDelete, organizationId }) {
   const showToast = useToast();
   const [addOpen, setAddOpen] = useState(false);
+  const [salesModalOpen, setSalesModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [addError, setAddError] = useState(null);
@@ -150,10 +151,15 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
           <span className="eyebrow">Команда на контроле</span>
           <h2>Карточки сотрудников</h2>
         </div>
-        <motion.button className="primary-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={() => { setAddOpen(true); setAddError(null); }}>
-          <Plus size={17} />
-          Добавить сотрудника
-        </motion.button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <motion.button className="ghost-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={() => setSalesModalOpen(true)}>
+            Добавить показатели
+          </motion.button>
+          <motion.button className="primary-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={() => { setAddOpen(true); setAddError(null); }}>
+            <Plus size={17} />
+            Добавить сотрудника
+          </motion.button>
+        </div>
       </div>
 
       {/* Inline delete/block error banner */}
@@ -284,6 +290,17 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
             employee={deleteTarget}
             onCancel={() => setDeleteTarget(null)}
             onConfirm={confirmDelete}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {salesModalOpen && (
+          <AddSalesModal
+            employees={employees}
+            organizationId={organizationId}
+            onClose={() => setSalesModalOpen(false)}
+            onSaved={() => showToast('Показатели сохранены')}
           />
         )}
       </AnimatePresence>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, X } from 'lucide-react';
+import { BadgeDollarSign, Plus, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from './modal.jsx';
 import { Avatar, Metric, PremiumCard, Evidence, ChatSnippet } from './shared.jsx';
@@ -701,6 +701,150 @@ export function ReviewReportModal({ report, onClose }) {
               </motion.button>
             </motion.div>
 
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </ModalPortal>
+  );
+}
+
+// ── AddSalesModal ─────────────────────────────────────────────────────────────
+const INPUT_STYLE = {
+  width: '100%',
+  height: 44,
+  padding: '0 14px',
+  border: '1px solid var(--line)',
+  borderRadius: 12,
+  background: 'rgba(255,255,255,0.84)',
+  color: 'var(--text)',
+  fontSize: 15,
+  outline: 'none',
+  boxSizing: 'border-box',
+  fontFamily: 'inherit',
+};
+
+export function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
+  useModalScrollLock();
+  const [empId, setEmpId] = useState(employees[0]?.id ?? '');
+  const [recordDate, setRecordDate] = useState(new Date().toISOString().slice(0, 10));
+  const [depositsCount, setDepositsCount] = useState('');
+  const [cashAmount, setCashAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSave = async () => {
+    if (saving) return;
+    if (!empId) { setError('Выберите сотрудника.'); return; }
+    if (!recordDate) { setError('Укажите дату.'); return; }
+    setSaving(true);
+    setError(null);
+    const { error: err } = await supabase.from('employee_sales').insert({
+      organization_id: organizationId,
+      employee_id: empId,
+      record_date: recordDate,
+      deposits_count: Math.max(0, parseInt(depositsCount, 10) || 0),
+      cash_amount: Math.max(0, parseFloat(cashAmount) || 0),
+      note: note.trim() || null,
+    });
+    setSaving(false);
+    if (err) {
+      console.error('[AddSalesModal] insert error:', err);
+      setError('Ошибка при сохранении. Проверьте соединение.');
+      return;
+    }
+    onSaved?.();
+    onClose();
+  };
+
+  if (employees.length === 0) {
+    return (
+      <ModalPortal>
+        <motion.div className="modal-backdrop employee-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+          <motion.div className="modal-shell modal-shell--small" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" initial={modalMotion.initial} animate={modalMotion.animate} exit={modalMotion.exit} transition={modalMotion.transition}>
+            <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+              <motion.div className="modal-title" variants={modalSectionVariants}>
+                <h2 style={{ fontSize: 18 }}>Добавить показатели</h2>
+                <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
+              </motion.div>
+              <motion.p variants={modalSectionVariants} style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
+                Сначала добавьте сотрудников на странице «Сотрудники».
+              </motion.p>
+              <motion.div className="modal-actions" variants={modalSectionVariants} style={{ marginTop: 16 }}>
+                <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>Закрыть</motion.button>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      </ModalPortal>
+    );
+  }
+
+  return (
+    <ModalPortal>
+      <motion.div className="modal-backdrop employee-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+        <motion.div
+          className="modal-shell modal-shell--medium"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          initial={modalMotion.initial}
+          animate={modalMotion.animate}
+          exit={modalMotion.exit}
+          transition={modalMotion.transition}
+          style={{ overflowY: 'auto', maxHeight: '90vh' }}
+        >
+          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+            <motion.div className="modal-title" variants={modalSectionVariants}>
+              <div>
+                <span className="eyebrow">Продажи</span>
+                <h2 style={{ margin: '2px 0 0', fontSize: 20 }}>Добавить показатели</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
+            </motion.div>
+
+            <motion.div variants={modalSectionVariants} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <label className="sales-field">
+                <span>Сотрудник</span>
+                <select value={empId} onChange={(e) => setEmpId(e.target.value)} style={{ ...INPUT_STYLE, cursor: 'pointer' }}>
+                  {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </select>
+              </label>
+              <label className="sales-field">
+                <span>Дата</span>
+                <input type="date" value={recordDate} onChange={(e) => setRecordDate(e.target.value)} max={new Date().toISOString().slice(0, 10)} style={INPUT_STYLE} />
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label className="sales-field">
+                  <span>Кол-во депозитов</span>
+                  <input type="number" min="0" step="1" value={depositsCount} onChange={(e) => setDepositsCount(e.target.value)} placeholder="0" style={INPUT_STYLE} />
+                </label>
+                <label className="sales-field">
+                  <span>Сумма (₽)</span>
+                  <input type="number" min="0" step="0.01" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="0.00" style={INPUT_STYLE} />
+                </label>
+              </div>
+              <label className="sales-field">
+                <span>Комментарий <em style={{ fontStyle: 'normal', opacity: 0.55 }}>(необязательно)</em></span>
+                <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Акция, крупный клиент…" style={INPUT_STYLE} />
+              </label>
+            </motion.div>
+
+            {error && (
+              <motion.p variants={modalSectionVariants} style={{ margin: '10px 0 0', fontSize: '0.82rem', color: 'var(--danger)' }}>
+                {error}
+              </motion.p>
+            )}
+
+            <motion.div className="modal-actions" variants={modalSectionVariants} style={{ marginTop: 20 }}>
+              <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>
+                Отмена
+              </motion.button>
+              <motion.button className="primary-button" type="button" whileTap={{ scale: saving ? 1 : 0.97 }} disabled={saving} onClick={handleSave}>
+                <BadgeDollarSign size={15} />
+                {saving ? 'Сохраняем…' : 'Сохранить'}
+              </motion.button>
+            </motion.div>
           </motion.div>
         </motion.div>
       </motion.div>

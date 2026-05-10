@@ -3,14 +3,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity,
   AlertTriangle,
+  BadgeDollarSign,
   MessageSquareText,
+  Plus,
   UsersRound,
   X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
+import { aggregateSales, formatCash, getWeekStart, getMonthStart } from '../lib/salesMetrics.js';
 import { PremiumCard, RevealCard, Stagger, Avatar } from '../components/shared.jsx';
 import { KpiCard } from '../components/display.jsx';
 import { ModalPortal, modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
+import { AddSalesModal } from '../components/modals.jsx';
+import { useToast } from '../components/Toast.jsx';
 
 const emptyCardText = (text) => (
   <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.875rem', padding: '24px 0' }}>{text}</p>
@@ -233,12 +238,17 @@ function QualityChart({ days, summary, loading, compact, employeeFiltered }) {
 }
 
 export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, employees, employeesLoading, organizationId, refreshTick }) {
+  const showToast = useToast();
   const [checks, setChecks] = useState([]);
   const [reports, setReports] = useState([]);
   const [dashLoading, setDashLoading] = useState(true);
   const [employeesModalOpen, setEmployeesModalOpen] = useState(false);
   const [trendEmployeeId, setTrendEmployeeId] = useState(null);
   const [trendPeriod, setTrendPeriod] = useState(7);
+  const [salesRows, setSalesRows] = useState([]);
+  const [salesLoading, setSalesLoading] = useState(true);
+  const [salesRefreshTick, setSalesRefreshTick] = useState(0);
+  const [salesModalOpen, setSalesModalOpen] = useState(false);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -263,6 +273,25 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
       setDashLoading(false);
     });
   }, [organizationId, refreshTick]);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    setSalesLoading(true);
+    const fetchFrom = getWeekStart() < getMonthStart() ? getWeekStart() : getMonthStart();
+    supabase
+      .from('employee_sales')
+      .select('employee_id, record_date, deposits_count, cash_amount')
+      .eq('organization_id', organizationId)
+      .gte('record_date', fetchFrom)
+      .order('record_date', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) console.error('[Dashboard] sales fetch error:', error);
+        setSalesRows(data ?? []);
+        setSalesLoading(false);
+      });
+  }, [organizationId, salesRefreshTick]);
+
+  const salesSummary = useMemo(() => aggregateSales(salesRows), [salesRows]);
 
   const completedChecks = useMemo(
     () => checks.filter((c) => c.status === 'complete'),
@@ -426,9 +455,53 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
           />
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {salesModalOpen && (
+          <AddSalesModal
+            employees={employees}
+            organizationId={organizationId}
+            onClose={() => setSalesModalOpen(false)}
+            onSaved={() => {
+              showToast('Показатели сохранены');
+              setSalesRefreshTick((t) => t + 1);
+            }}
+          />
+        )}
+      </AnimatePresence>
       <Stagger className="kpi-grid">
         {kpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
       </Stagger>
+      <PremiumCard compact title="Продажи" action="Текущий период">
+        <div className="sales-summary-grid">
+          <div className="sales-metric">
+            <span className="sales-metric-label">Депозиты / неделя</span>
+            <strong className="sales-metric-value">{salesLoading ? '…' : salesSummary.weekDeposits}</strong>
+          </div>
+          <div className="sales-metric">
+            <span className="sales-metric-label">Депозиты / месяц</span>
+            <strong className="sales-metric-value">{salesLoading ? '…' : salesSummary.monthDeposits}</strong>
+          </div>
+          <div className="sales-metric">
+            <span className="sales-metric-label">Выручка / неделя</span>
+            <strong className="sales-metric-value sales-metric-value--cash">{salesLoading ? '…' : formatCash(salesSummary.weekCash)}</strong>
+          </div>
+          <div className="sales-metric">
+            <span className="sales-metric-label">Выручка / месяц</span>
+            <strong className="sales-metric-value sales-metric-value--cash">{salesLoading ? '…' : formatCash(salesSummary.monthCash)}</strong>
+          </div>
+          <motion.button
+            className="primary-button"
+            style={{ whiteSpace: 'nowrap', alignSelf: 'center', flexShrink: 0 }}
+            onClick={() => setSalesModalOpen(true)}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            <Plus size={15} />
+            Добавить
+          </motion.button>
+        </div>
+      </PremiumCard>
+
       <div className="dashboard-grid">
         <PremiumCard className="chart-card wide" title="Динамика качества" action={`Последние ${trendPeriod} дней`}>
           <div className="qtc-filters">
