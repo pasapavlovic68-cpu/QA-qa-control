@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { FileText, FolderUp, Play } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { FileText, FolderUp, Play, ScrollText } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { parseDialogue } from '../lib/parseDialogue.js';
 import { PremiumCard } from '../components/shared.jsx';
 import { AnalysisState, PremiumDropdown } from '../components/display.jsx';
 import { useToast } from '../components/Toast.jsx';
+import { ReviewReportModal } from '../components/modals.jsx';
 
 const WORKER_URL = 'https://qa-control-ai-proxy.pasapavlovic68.workers.dev';
 
@@ -28,6 +29,8 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
   const [analysisMessage, setAnalysisMessage] = useState(null);
   const [analysisStage, setAnalysisStage] = useState(null);
   const [analysisDlgCount, setAnalysisDlgCount] = useState(0);
+  const [previewReport, setPreviewReport] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (employees.length > 0 && !selectedEmployeeName) {
@@ -319,6 +322,12 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       console.log(`[Review] total analysis ms: ${Math.round(performance.now() - startedAt)}`);
       setAnalysis('complete');
       setAnalysisMessage({ type: 'success', text: 'Отчёт сформирован и сохранён.' });
+      setPreviewReport({
+        ...report,
+        employeeName: selectedEmployeeName,
+        dialogueCount,
+        createdAt: new Date().toISOString(),
+      });
       showToast('Отчёт сформирован и сохранён');
     } catch (err) {
       const userMessage = err.name === 'AbortError'
@@ -373,6 +382,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
                   setAnalysis('idle');
                   setAnalysisStage(null);
                   setAnalysisDlgCount(0);
+                  setPreviewReport(null);
                 }}
               />
             ) : (
@@ -473,6 +483,29 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
             {analysisMessage.text}
           </motion.p>
         )}
+
+        <AnimatePresence>
+          {analysis === 'complete' && previewReport && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}
+            >
+              <motion.button
+                className="ghost-button"
+                whileTap={{ scale: 0.97 }}
+                whileHover={{ y: -2 }}
+                onClick={() => setPreviewOpen(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}
+              >
+                <ScrollText size={15} />
+                Просмотреть отчёт
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </PremiumCard>
 
       <PremiumCard title="Состояние анализа" action={analysisCardAction}>
@@ -485,6 +518,15 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           errorMessage={analysisMessage?.type === 'error' ? analysisMessage.text : null}
         />
       </PremiumCard>
+
+      <AnimatePresence>
+        {previewOpen && previewReport && (
+          <ReviewReportModal
+            report={previewReport}
+            onClose={() => setPreviewOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

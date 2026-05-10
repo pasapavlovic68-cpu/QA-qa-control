@@ -468,3 +468,231 @@ export function DeleteRuleModal({ rule, onCancel, onConfirm }) {
     </ModalPortal>
   );
 }
+
+export function ReviewReportModal({ report, onClose }) {
+  useModalScrollLock();
+
+  if (!report) {
+    return (
+      <ModalPortal>
+        <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+          <motion.div
+            className="modal-shell modal-shell--medium"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            initial={modalMotion.initial}
+            animate={modalMotion.animate}
+            exit={modalMotion.exit}
+            transition={modalMotion.transition}
+          >
+            <p style={{ opacity: 0.4, fontSize: '0.875rem', textAlign: 'center', padding: '32px 0' }}>
+              Данные отчёта пока недоступны.
+            </p>
+          </motion.div>
+        </motion.div>
+      </ModalPortal>
+    );
+  }
+
+  const scoreColor =
+    report.score >= 80 ? 'var(--success)' :
+    report.score >= 60 ? 'var(--warning)' :
+    'var(--danger)';
+
+  const scoreLabel =
+    report.score >= 80 ? 'Высокий уровень' :
+    report.score >= 60 ? 'Средний уровень' :
+    'Требует внимания';
+
+  const criticalMistakes = (report.mistakes ?? []).filter((m) => m.severity === 'critical');
+  const otherMistakes = (report.mistakes ?? []).filter((m) => m.severity !== 'critical');
+
+  const formattedDate = report.createdAt
+    ? new Date(report.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+
+  const hasContent =
+    report.management_summary ||
+    (report.recommendations ?? []).length > 0 ||
+    (report.mistakes ?? []).length > 0;
+
+  return (
+    <ModalPortal>
+      <motion.div
+        className="modal-backdrop employee-modal-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="modal-shell modal-shell--medium"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          initial={modalMotion.initial}
+          animate={modalMotion.animate}
+          exit={modalMotion.exit}
+          transition={modalMotion.transition}
+          style={{ overflowY: 'auto', maxHeight: '86vh' }}
+        >
+          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+
+            {/* Header */}
+            <motion.div className="modal-title" variants={modalSectionVariants}>
+              <div style={{ minWidth: 0 }}>
+                <span className="eyebrow">Отчёт по проверке</span>
+                <h2 style={{ margin: '2px 0 0', fontSize: 20 }}>{report.title || 'Отчёт'}</h2>
+                {(report.employeeName || formattedDate) && (
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--muted)' }}>
+                    {[report.employeeName, formattedDate].filter(Boolean).join(' · ')}
+                    {report.dialogueCount > 0 && ` · ${report.dialogueCount} диал.`}
+                  </p>
+                )}
+              </div>
+              <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
+            </motion.div>
+
+            {/* Score row */}
+            <motion.div
+              variants={modalSectionVariants}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                padding: '16px 0',
+                borderBottom: '1px solid var(--line)',
+              }}
+            >
+              <div style={{
+                flexShrink: 0,
+                width: 60,
+                height: 60,
+                borderRadius: 18,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(245,243,255,0.9))',
+                border: `1.5px solid ${scoreColor}44`,
+                boxShadow: `0 4px 18px ${scoreColor}22`,
+                display: 'grid',
+                placeItems: 'center',
+                fontSize: 22,
+                fontWeight: 800,
+                color: scoreColor,
+              }}>
+                {report.score}
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>Итоговая оценка</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: scoreColor }}>{scoreLabel}</div>
+              </div>
+              {report.dialogueCount > 0 && (
+                <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>{report.dialogueCount}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>диалогов</div>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Summary */}
+            {report.management_summary && (
+              <motion.div variants={modalSectionVariants} style={{ padding: '16px 0', borderBottom: '1px solid var(--line)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>
+                  Резюме
+                </div>
+                <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.65, color: 'var(--text)' }}>
+                  {report.management_summary}
+                </p>
+              </motion.div>
+            )}
+
+            {/* Recommendations */}
+            {(report.recommendations ?? []).length > 0 && (
+              <motion.div variants={modalSectionVariants} style={{ padding: '16px 0', borderBottom: '1px solid var(--line)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
+                  Рекомендации
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {report.recommendations.map((rec, i) => (
+                    <li key={i} style={{ fontSize: '0.875rem', lineHeight: 1.6, color: 'var(--text)' }}>
+                      {typeof rec === 'string' ? rec : (rec.text || rec.description || rec.title || '')}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            )}
+
+            {/* Critical mistakes */}
+            {criticalMistakes.length > 0 && (
+              <motion.div variants={modalSectionVariants} style={{ padding: '16px 0', borderBottom: otherMistakes.length > 0 ? '1px solid var(--line)' : 'none' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
+                  Критические ошибки
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {criticalMistakes.map((m, i) => (
+                    <div key={i} style={{
+                      padding: '10px 14px',
+                      borderRadius: 13,
+                      background: 'rgba(190,60,68,0.07)',
+                      border: '1px solid rgba(190,60,68,0.16)',
+                    }}>
+                      {m.title && <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--danger)', marginBottom: m.description ? 4 : 0 }}>{m.title}</div>}
+                      {m.description && <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.55 }}>{m.description}</div>}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Other mistakes */}
+            {otherMistakes.length > 0 && (
+              <motion.div variants={modalSectionVariants} style={{ padding: '16px 0' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
+                  Замечания
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {otherMistakes.map((m, i) => (
+                    <div key={i} style={{
+                      padding: '10px 14px',
+                      borderRadius: 13,
+                      background: 'rgba(119,101,227,0.06)',
+                      border: '1px solid rgba(119,101,227,0.10)',
+                    }}>
+                      {m.title && <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)', marginBottom: m.description ? 4 : 0 }}>{m.title}</div>}
+                      {m.description && <div style={{ fontSize: '0.82rem', color: 'var(--muted)', lineHeight: 1.55 }}>{m.description}</div>}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Empty state */}
+            {!hasContent && (
+              <motion.p
+                variants={modalSectionVariants}
+                style={{ opacity: 0.4, fontSize: '0.875rem', textAlign: 'center', padding: '28px 0' }}
+              >
+                Данные отчёта пока недоступны.
+              </motion.p>
+            )}
+
+            {/* Close */}
+            <motion.div
+              variants={modalSectionVariants}
+              style={{ paddingTop: 8, borderTop: '1px solid var(--line)', marginTop: 4 }}
+            >
+              <motion.button
+                className="ghost-button full"
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={onClose}
+              >
+                Закрыть
+              </motion.button>
+            </motion.div>
+
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </ModalPortal>
+  );
+}
