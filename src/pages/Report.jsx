@@ -35,23 +35,25 @@ function toReport(row, employeeMap) {
   };
 }
 
-export function Report() {
+export function Report({ organizationId }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
+    if (!organizationId) return;
     Promise.all([
       fetchWithTimeout(
         supabase
           .from('reports')
           .select('id, check_id, employee_id, score, title, management_summary, mistakes, positives, recommendations, evidence, created_at')
+          .eq('organization_id', organizationId)
           .order('created_at', { ascending: false }),
         'Report'
       ),
       fetchWithTimeout(
-        supabase.from('employees').select('id, name'),
+        supabase.from('employees').select('id, name').eq('organization_id', organizationId),
         'Report:employees'
       )
     ]).then(([reportsResult, employeesResult]) => {
@@ -62,7 +64,7 @@ export function Report() {
       setReports((reportsResult.data ?? []).map((row) => toReport(row, employeeMap)));
       setLoading(false);
     });
-  }, []);
+  }, [organizationId]);
 
   const filteredReports = reports.filter((report) => {
     const searchValue = `${report.title} ${report.employee} ${report.summary}`.toLowerCase();

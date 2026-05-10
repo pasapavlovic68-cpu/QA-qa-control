@@ -7,6 +7,7 @@ import {
 } from 'framer-motion';
 import './styles.css';
 import { supabase } from './lib/supabase.js';
+import { getOwnerOrganizationId } from './lib/organization.js';
 import { tabs, Sidebar, Topbar } from './components/layout.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import { Employees } from './pages/Employees.jsx';
@@ -44,14 +45,27 @@ function App() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [analysis, setAnalysis] = useState('idle');
 
+  const [organizationId, setOrganizationId] = useState(null);
   const [employeesData, setEmployeesData] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [supabaseStatus, setSupabaseStatus] = useState('checking');
 
   useEffect(() => {
+    getOwnerOrganizationId(supabase)
+      .then((id) => setOrganizationId(id))
+      .catch((err) => {
+        console.error('[App] failed to load owner organization:', err);
+        setEmployeesLoading(false);
+        setSupabaseStatus('offline');
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!organizationId) return;
     supabase
       .from('employees')
       .select('id, name, role, status, score, checks_count, trend, created_at')
+      .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
         if (error) {
@@ -64,7 +78,7 @@ function App() {
         setEmployeesData((data ?? []).map(toEmployee));
         setEmployeesLoading(false);
       });
-  }, []);
+  }, [organizationId]);
 
   const onEmployeeAdd = (employee) => setEmployeesData((prev) => [employee, ...prev]);
   const onEmployeeDelete = (id) => setEmployeesData((prev) => prev.filter((e) => e.id !== id));
@@ -103,6 +117,7 @@ function App() {
                   setSelectedEmployee={setSelectedEmployee}
                   employees={employeesData}
                   employeesLoading={employeesLoading}
+                  organizationId={organizationId}
                 />
               )}
               {active === 'employees' && (
@@ -113,6 +128,7 @@ function App() {
                   employeesLoading={employeesLoading}
                   onAdd={onEmployeeAdd}
                   onDelete={onEmployeeDelete}
+                  organizationId={organizationId}
                 />
               )}
               {active === 'review' && (
@@ -120,11 +136,12 @@ function App() {
                   analysis={analysis}
                   setAnalysis={setAnalysis}
                   employees={employeesData}
+                  organizationId={organizationId}
                 />
               )}
-              {active === 'report' && <Report />}
-              {active === 'rules' && <Rules />}
-              {active === 'settings' && <Settings />}
+              {active === 'report' && <Report organizationId={organizationId} />}
+              {active === 'rules' && <Rules organizationId={organizationId} />}
+              {active === 'settings' && <Settings organizationId={organizationId} />}
             </motion.section>
           </AnimatePresence>
         </main>

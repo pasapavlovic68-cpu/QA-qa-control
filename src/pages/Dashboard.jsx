@@ -15,20 +15,23 @@ const emptyCardText = (text) => (
   <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.875rem', padding: '24px 0' }}>{text}</p>
 );
 
-export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, employees, employeesLoading }) {
+export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, employees, employeesLoading, organizationId }) {
   const [checks, setChecks] = useState([]);
   const [reports, setReports] = useState([]);
   const [dashLoading, setDashLoading] = useState(true);
 
   useEffect(() => {
+    if (!organizationId) return;
     Promise.all([
       supabase
         .from('qa_checks')
         .select('id, employee_id, status, dialogues_count, critical_errors_count, score, created_at')
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false }),
       supabase
         .from('reports')
         .select('id, employee_id, score, mistakes, title, created_at')
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
     ]).then(([checksResult, reportsResult]) => {
       if (!checksResult.error) setChecks(checksResult.data ?? []);
@@ -37,7 +40,7 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
       else console.error('[Dashboard] reports fetch error:', reportsResult.error);
       setDashLoading(false);
     });
-  }, []);
+  }, [organizationId]);
 
   const completedChecks = useMemo(
     () => checks.filter((c) => c.status === 'complete'),

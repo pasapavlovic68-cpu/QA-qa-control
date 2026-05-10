@@ -16,7 +16,7 @@ function toRule(row) {
   };
 }
 
-export function Rules() {
+export function Rules({ organizationId }) {
   const emptyRule = {
     title: '',
     category: 'Процесс',
@@ -33,15 +33,16 @@ export function Rules() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!organizationId) return;
     fetchWithTimeout(
-      supabase.from('qa_rules').select('*').order('created_at', { ascending: false }),
+      supabase.from('qa_rules').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false }),
       'Rules'
     ).then(({ data, error }) => {
       if (error) { setLoading(false); return; }
       setRules((data ?? []).map(toRule));
       setLoading(false);
     });
-  }, []);
+  }, [organizationId]);
 
   const openAddModal = () => {
     setRuleForm(emptyRule);
@@ -61,6 +62,10 @@ export function Rules() {
   const saveRule = async (event) => {
     event.preventDefault();
     if (saving) return;
+    if (!organizationId) {
+      console.error('[Rules] organizationId missing, aborting save');
+      return;
+    }
     setSaving(true);
 
     if (modalMode === 'edit') {
@@ -73,6 +78,7 @@ export function Rules() {
           enabled: ruleForm.active
         })
         .eq('id', ruleForm.id)
+        .eq('organization_id', organizationId)
         .select()
         .single();
 
@@ -87,7 +93,8 @@ export function Rules() {
           title: ruleForm.title.trim() || 'Новое правило',
           description: ruleForm.description.trim() || 'Описание правила пока не заполнено.',
           category: ruleForm.category,
-          enabled: ruleForm.active
+          enabled: ruleForm.active,
+          organization_id: organizationId
         })
         .select()
         .single();
@@ -104,12 +111,17 @@ export function Rules() {
   const toggleRule = async (ruleId) => {
     const rule = rules.find((r) => r.id === ruleId);
     if (!rule) return;
+    if (!organizationId) {
+      console.error('[Rules] organizationId missing, aborting toggle');
+      return;
+    }
     const newEnabled = !rule.active;
 
     const { error } = await supabase
       .from('qa_rules')
       .update({ enabled: newEnabled })
-      .eq('id', ruleId);
+      .eq('id', ruleId)
+      .eq('organization_id', organizationId);
 
     if (error) {
       console.error('[Rules] toggle error:', error);
@@ -121,11 +133,17 @@ export function Rules() {
 
   const confirmDeleteRule = async () => {
     if (!deleteTarget) return;
+    if (!organizationId) {
+      console.error('[Rules] organizationId missing, aborting delete');
+      setDeleteTarget(null);
+      return;
+    }
 
     const { error } = await supabase
       .from('qa_rules')
       .delete()
-      .eq('id', deleteTarget.id);
+      .eq('id', deleteTarget.id)
+      .eq('organization_id', organizationId);
 
     if (error) {
       console.error('[Rules] delete error:', error);

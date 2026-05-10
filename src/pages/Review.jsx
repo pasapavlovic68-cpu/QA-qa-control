@@ -13,7 +13,7 @@ function formatSize(bytes) {
   return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
-export function Review({ analysis, setAnalysis, employees }) {
+export function Review({ analysis, setAnalysis, employees, organizationId }) {
   const fileInputRef = useRef(null);
 
   const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
@@ -57,6 +57,11 @@ export function Review({ analysis, setAnalysis, employees }) {
       return;
     }
 
+    if (!organizationId) {
+      setUploadError('Организация не загружена. Повторите попытку.');
+      return;
+    }
+
     setUploading(true);
     setUploadError(null);
     setAnalysisMessage(null);
@@ -73,6 +78,7 @@ export function Review({ analysis, setAnalysis, employees }) {
         .from('qa_checks')
         .insert({
           employee_id: selectedEmployee.id,
+          organization_id: organizationId,
           status: 'uploaded',
           dialogues_count: supported.length
         })
@@ -87,6 +93,7 @@ export function Review({ analysis, setAnalysis, employees }) {
           fileData.map(({ file, text }) => ({
             check_id: check.id,
             employee_id: selectedEmployee.id,
+            organization_id: organizationId,
             file_name: file.name,
             file_type: file.name.split('.').pop(),
             file_size: file.size,
@@ -109,6 +116,10 @@ export function Review({ analysis, setAnalysis, employees }) {
   };
 
   const handleStartAnalysis = async () => {
+    if (!organizationId) {
+      setUploadError('Организация не загружена. Повторите попытку.');
+      return;
+    }
     if (!selectedEmployeeName) {
       setUploadError('Сначала выберите сотрудника.');
       return;
@@ -148,6 +159,7 @@ export function Review({ analysis, setAnalysis, employees }) {
       const { data: rules, error: rulesError } = await supabase
         .from('qa_rules')
         .select('title, description, category')
+        .eq('organization_id', organizationId)
         .eq('enabled', true);
 
       if (rulesError) throw new Error('Не удалось загрузить правила QA.');
@@ -156,6 +168,7 @@ export function Review({ analysis, setAnalysis, employees }) {
       const { data: settingsRows, error: settingsError } = await supabase
         .from('team_settings')
         .select('*')
+        .eq('organization_id', organizationId)
         .order('key');
 
       if (settingsError) {
@@ -244,6 +257,7 @@ export function Review({ analysis, setAnalysis, employees }) {
         .insert({
           check_id: currentCheckId,
           employee_id: selectedEmployee.id,
+          organization_id: organizationId,
           score: report.score,
           title: report.title,
           management_summary: report.management_summary,

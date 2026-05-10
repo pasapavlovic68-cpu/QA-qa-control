@@ -50,7 +50,7 @@ const KEY_ORDER = [
   'critical_moments',
 ];
 
-export function Settings() {
+export function Settings({ organizationId }) {
   const [values, setValues] = useState({});
   const [original, setOriginal] = useState({});
   const [loading, setLoading] = useState(true);
@@ -58,9 +58,11 @@ export function Settings() {
   const [status, setStatus] = useState(null); // 'success' | 'error' | null
 
   useEffect(() => {
+    if (!organizationId) return;
     supabase
       .from('team_settings')
       .select('*')
+      .eq('organization_id', organizationId)
       .order('key')
       .then(({ data, error }) => {
         if (error) {
@@ -76,7 +78,7 @@ export function Settings() {
         setOriginal(map);
         setLoading(false);
       });
-  }, []);
+  }, [organizationId]);
 
   const handleChange = (key, val) => {
     setValues((prev) => ({ ...prev, [key]: val }));
@@ -85,14 +87,19 @@ export function Settings() {
 
   const handleSave = async () => {
     if (saving) return;
+    if (!organizationId) {
+      console.error('[Settings] organizationId missing, aborting save');
+      setStatus('error');
+      return;
+    }
     setSaving(true);
     setStatus(null);
 
-    const upserts = Object.entries(values).map(([key, value]) => ({ key, value: value ?? '' }));
+    const upserts = Object.entries(values).map(([key, value]) => ({ key, value: value ?? '', organization_id: organizationId }));
 
     const { error } = await supabase
       .from('team_settings')
-      .upsert(upserts, { onConflict: 'key' });
+      .upsert(upserts, { onConflict: 'organization_id,key' });
 
     setSaving(false);
 

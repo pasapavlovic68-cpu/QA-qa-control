@@ -27,7 +27,7 @@ function toEmployee(row) {
   };
 }
 
-export function Employees({ setDetailOpen, setSelectedEmployee, employees, employeesLoading, onAdd, onDelete }) {
+export function Employees({ setDetailOpen, setSelectedEmployee, employees, employeesLoading, onAdd, onDelete, organizationId }) {
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -41,6 +41,11 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
     const employeeName = form.name.trim();
     if (!employeeName || saving) return;
 
+    if (!organizationId) {
+      setAddError('Организация не загружена. Повторите попытку.');
+      return;
+    }
+
     setSaving(true);
     setAddError(null);
 
@@ -50,7 +55,8 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
       status: 'На контроле',
       score: 0,
       checks_count: 0,
-      trend: 0
+      trend: 0,
+      organization_id: organizationId
     };
     const { data, error } = await supabase
       .from('employees')
@@ -72,11 +78,17 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
+    if (!organizationId) {
+      console.error('[Employees] organizationId missing, aborting delete');
+      setDeleteTarget(null);
+      return;
+    }
 
     const { error } = await supabase
       .from('employees')
       .delete()
-      .eq('id', deleteTarget.id);
+      .eq('id', deleteTarget.id)
+      .eq('organization_id', organizationId);
 
     if (error) {
       console.error('[Employees] delete error:', error);
