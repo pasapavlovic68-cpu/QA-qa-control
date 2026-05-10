@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { PremiumCard, RevealCard, Stagger, Avatar } from '../components/shared.jsx';
-import { KpiCard, TrendChart } from '../components/display.jsx';
+import { KpiCard } from '../components/display.jsx';
 import { ModalPortal, modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
 
 const emptyCardText = (text) => (
@@ -122,6 +122,107 @@ function EmployeesControlModal({ employees, criticalByEmployee, onClose }) {
   );
 }
 
+const MAX_BAR_H = 72;
+
+function dayColor(score) {
+  if (score === null) return 'rgba(119,101,227,0.15)';
+  if (score >= 85) return 'var(--success)';
+  if (score >= 70) return 'var(--warning)';
+  return 'var(--danger)';
+}
+
+function SevenDayQualityChart({ days, summary, loading }) {
+  if (loading) return <p className="qtc-empty">Загружаем…</p>;
+
+  const hasSomeData = days.some((d) => d.avgScore !== null);
+  if (!hasSomeData)
+    return (
+      <p className="qtc-empty">
+        Данных за последние 7 дней нет. Динамика появится после AI‑анализа диалогов.
+      </p>
+    );
+
+  return (
+    <div className="qtc-wrap">
+      <div className="qtc-bars">
+        {days.map((d, i) => {
+          const has = d.avgScore !== null;
+          const fillH = has ? Math.max(Math.round((d.avgScore / 100) * MAX_BAR_H), 8) : 4;
+          const color = dayColor(d.avgScore);
+          return (
+            <div key={d.dayKey} className="qtc-col">
+              <div className="qtc-bar-area">
+                {has && (
+                  <span className="qtc-score-label" style={{ color }}>
+                    {d.avgScore}
+                  </span>
+                )}
+                <div className="qtc-bar-bg">
+                  <motion.div
+                    className="qtc-bar-fill"
+                    style={{ background: color, opacity: has ? 0.88 : 0.4, height: 0 }}
+                    animate={{ height: fillH }}
+                    transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: i * 0.06 }}
+                  />
+                </div>
+              </div>
+              <span className="qtc-day-label" style={{ opacity: has ? 1 : 0.38 }}>
+                {d.label}
+              </span>
+              {has && d.count > 1 && (
+                <span className="qtc-count-label">{d.count} отч.</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {summary && (
+        <div className="qtc-summary">
+          <div className="qtc-stat-item">
+            <span>7 дней ср.</span>
+            <strong style={{ color: dayColor(summary.overall) }}>{summary.overall}</strong>
+          </div>
+          <div className="qtc-divider" />
+          <div className="qtc-stat-item">
+            <span>Лучший день</span>
+            <strong style={{ color: 'var(--success)' }}>
+              {summary.best.label} · {summary.best.avgScore}
+            </strong>
+          </div>
+          <div className="qtc-divider" />
+          <div className="qtc-stat-item">
+            <span>Худший день</span>
+            <strong style={{ color: 'var(--danger)' }}>
+              {summary.worst.label} · {summary.worst.avgScore}
+            </strong>
+          </div>
+          <div className="qtc-divider" />
+          <div className="qtc-stat-item">
+            <span>Тренд</span>
+            <strong
+              style={{
+                color:
+                  summary.trend === 'growth'
+                    ? 'var(--success)'
+                    : summary.trend === 'decline'
+                    ? 'var(--danger)'
+                    : 'var(--muted)',
+              }}
+            >
+              {summary.trend === 'growth'
+                ? '↑ Рост'
+                : summary.trend === 'decline'
+                ? '↓ Снижение'
+                : '→ Стабильно'}
+            </strong>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, employees, employeesLoading, organizationId, refreshTick }) {
   const [checks, setChecks] = useState([]);
   const [reports, setReports] = useState([]);
@@ -188,14 +289,43 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
     return map;
   }, [employees]);
 
-  const trendScores = useMemo(
-    () =>
-      [...reports]
-        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-        .slice(-8)
-        .map((r) => r.score ?? 0),
-    [reports]
-  );
+  const sevenDayTrend = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(today);
+      day.setDate(today.getDate() - (6 - i));
+      const dayStart = day.getTime();
+      const dayEnd = dayStart + 86400000;
+      const dayReports = reports.filter((r) => {
+        if (!r.created_at) return false;
+        const t = new Date(r.created_at).getTime();
+        return t >= dayStart && t < dayEnd;
+      });
+      const avgScore =
+        dayReports.length > 0
+          ? Math.round(dayReports.reduce((s, r) => s + (r.score ?? 0), 0) / dayReports.length)
+          : null;
+      const weekday = day.toLocaleDateString('ru-RU', { weekday: 'short' });
+      const label = weekday.charAt(0).toUpperCase() + weekday.slice(1) + ' ' + day.getDate();
+      return { dayKey: day.toISOString().slice(0, 10), label, avgScore, count: dayReports.length };
+    });
+  }, [reports]);
+
+  const trendSummary = useMemo(() => {
+    const filled = sevenDayTrend.filter((d) => d.avgScore !== null);
+    if (filled.length === 0) return null;
+    const overall = Math.round(filled.reduce((s, d) => s + d.avgScore, 0) / filled.length);
+    const best = filled.reduce((a, b) => (b.avgScore > a.avgScore ? b : a));
+    const worst = filled.reduce((a, b) => (b.avgScore < a.avgScore ? b : a));
+    let trend = 'stable';
+    if (filled.length >= 2) {
+      const delta = filled[filled.length - 1].avgScore - filled[0].avgScore;
+      if (delta >= 3) trend = 'growth';
+      else if (delta <= -3) trend = 'decline';
+    }
+    return { overall, best, worst, trend };
+  }, [sevenDayTrend]);
 
   const topErrors = useMemo(() => {
     const counts = {};
@@ -277,10 +407,8 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
         {kpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
       </Stagger>
       <div className="dashboard-grid">
-        <PremiumCard className="chart-card wide" title="Динамика качества" action="Последние 8 проверок">
-          {trendScores.length >= 2
-            ? <TrendChart data={trendScores} />
-            : emptyCardText('Динамика появится после первых проверок.')}
+        <PremiumCard className="chart-card wide" title="Динамика качества" action="Последние 7 дней">
+          <SevenDayQualityChart days={sevenDayTrend} summary={trendSummary} loading={dashLoading} />
         </PremiumCard>
         <PremiumCard title="Топ сотрудников" action="Рейтинг">
           <div className="rank-list">
