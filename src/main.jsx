@@ -7,11 +7,11 @@ import {
 } from 'framer-motion';
 import './styles.css';
 import { supabase } from './lib/supabase.js';
-import { acceptOrganizationInvite, resolveUserOrganization } from './lib/organization.js';
+import { acceptOrganizationInvite, createWorkspaceForUser, resolveUserOrganization } from './lib/organization.js';
 import { bootstrapEmployee } from './lib/bootstrap.js';
 import { isCheckedEmployee } from './lib/employees.js';
 import { tabs, Sidebar, Topbar } from './components/layout.jsx';
-import { ToastProvider } from './components/Toast.jsx';
+import { ToastProvider, useToast } from './components/Toast.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import { Employees } from './pages/Employees.jsx';
 import { Review } from './pages/Review.jsx';
@@ -271,7 +271,166 @@ function OrganizationGate({ resolution, inviteAcceptanceStatus, inviteAcceptance
   );
 }
 
+function OnboardingWorkspaceScreen({ user, onCreated }) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+      setError('Введите название организации.');
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+
+    try {
+      await createWorkspaceForUser(supabase, user, trimmedName);
+      await onCreated();
+    } catch (err) {
+      console.error('[Onboarding] failed:', err);
+      setError(err?.message || 'Не удалось создать рабочее пространство.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const helperCards = [
+    'Добавьте сотрудников',
+    'Настройте правила',
+    'Загрузите первый диалог',
+  ];
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '32px 16px',
+    }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          width: '100%',
+          maxWidth: 680,
+          padding: '38px',
+          borderRadius: 34,
+          background: 'linear-gradient(145deg, rgba(255,255,255,0.96), rgba(246,244,255,0.9))',
+          border: '1px solid rgba(255,255,255,0.82)',
+          boxShadow: '0 34px 96px rgba(35,31,58,0.18), inset 0 1px 0 rgba(255,255,255,0.9)',
+        }}
+      >
+        <div style={{ marginBottom: 28 }}>
+          <div style={{
+            display: 'inline-grid',
+            placeItems: 'center',
+            width: 52,
+            height: 52,
+            borderRadius: 18,
+            background: 'linear-gradient(135deg,#ffffff,#eeeaff)',
+            border: '1px solid rgba(119,101,227,0.18)',
+            boxShadow: '0 12px 30px rgba(119,101,227,0.14)',
+            color: 'var(--accent)',
+            marginBottom: 18,
+          }}>
+            <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 21h18" />
+              <path d="M5 21V7l8-4v18" />
+              <path d="M19 21V11l-6-4" />
+              <path d="M9 9h1" />
+              <path d="M9 13h1" />
+              <path d="M9 17h1" />
+            </svg>
+          </div>
+          <h1 style={{ margin: '0 0 10px', fontSize: 30, color: 'var(--text)', letterSpacing: 0 }}>
+            Создайте рабочее пространство
+          </h1>
+          <p style={{ margin: 0, maxWidth: 520, color: 'var(--muted)', fontSize: 16, lineHeight: 1.55 }}>
+            Настройте LeadProof под свою команду и начните проверять диалоги.
+          </p>
+        </div>
+
+        <label style={{ display: 'grid', gap: 9, marginBottom: 16 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+            Название организации
+          </span>
+          <input
+            autoFocus
+            type="text"
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value);
+              if (error) setError('');
+            }}
+            placeholder="Например: Sales Team"
+            maxLength={60}
+            style={{
+              width: '100%',
+              height: 54,
+              padding: '0 16px',
+              border: '1px solid rgba(119,101,227,0.18)',
+              borderRadius: 18,
+              background: 'rgba(255,255,255,0.82)',
+              color: 'var(--text)',
+              fontSize: 16,
+              outline: 0,
+              boxSizing: 'border-box',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.72)',
+            }}
+          />
+        </label>
+
+        {error && (
+          <p style={{ margin: '0 0 16px', color: 'var(--danger)', fontSize: 13, fontWeight: 600 }}>
+            {error}
+          </p>
+        )}
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: 10,
+          margin: '18px 0 24px',
+        }}>
+          {helperCards.map((text) => (
+            <div
+              key={text}
+              style={{
+                padding: '14px 13px',
+                borderRadius: 18,
+                background: 'rgba(255,255,255,0.66)',
+                border: '1px solid rgba(119,101,227,0.12)',
+                color: 'var(--text)',
+                fontSize: 13,
+                fontWeight: 700,
+                lineHeight: 1.35,
+              }}
+            >
+              {text}
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="submit"
+          className="primary-button full"
+          disabled={loading}
+          style={{ height: 52 }}
+        >
+          {loading ? 'Создаём...' : 'Создать пространство'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function App({ session }) {
+  const showToast = useToast();
   const [active, setActive] = useState('dashboard');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -408,9 +567,27 @@ function App({ session }) {
 
   const currentTitle = tabs.find((tab) => tab.id === active)?.label ?? 'Главная';
 
+  const handleWorkspaceCreated = async () => {
+    const result = await resolveUserOrganization(supabase, session?.user);
+    setOrgResolution(result);
+
+    if (result.status !== 'member') {
+      throw new Error('Рабочее пространство создано, но пользователь ещё не подключён.');
+    }
+
+    setOrganizationId(result.organizationId);
+    setOrgName(result.organizationName ?? '');
+    setSupabaseStatus('connected');
+    showToast?.('Рабочее пространство создано');
+  };
+
   if (!orgResolution) return null;
 
-  if (orgResolution.status === 'invite_found' || orgResolution.status === 'needs_onboarding') {
+  if (orgResolution.status === 'needs_onboarding') {
+    return <OnboardingWorkspaceScreen user={session?.user} onCreated={handleWorkspaceCreated} />;
+  }
+
+  if (orgResolution.status === 'invite_found') {
     return (
       <OrganizationGate
         resolution={orgResolution}
