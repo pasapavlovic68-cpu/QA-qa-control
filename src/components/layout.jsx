@@ -6,7 +6,6 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
-  Search,
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
@@ -308,23 +307,21 @@ export function Sidebar({ active, setActive, user, orgName, systemStatus = {} })
   );
 }
 
-export function Topbar({ title, onNewReview }) {
+export function Topbar({ title, onNewReview, showNewReview = false }) {
   return (
     <header className="topbar">
       <div>
         <span className="eyebrow">Внутренний QA-контур</span>
         <h1>{title}</h1>
       </div>
-      <div className="topbar-actions">
-        <label className="search">
-          <Search size={17} />
-          <input placeholder="Поиск сотрудника или проверки" />
-        </label>
-        <motion.button className="primary-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={onNewReview}>
-          <Sparkles size={17} />
-          Новая проверка
-        </motion.button>
-      </div>
+      {showNewReview && (
+        <div className="topbar-actions">
+          <motion.button className="primary-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={onNewReview}>
+            <Sparkles size={17} />
+            Новая проверка
+          </motion.button>
+        </div>
+      )}
     </header>
   );
 }

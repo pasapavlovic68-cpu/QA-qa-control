@@ -239,12 +239,17 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
                   </div>
                 </div>
                 <div className="score-line">
-                  <strong>{employee.score}</strong>
+                  <div>
+                    <strong>{employee.score}</strong>
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--muted)', marginTop: 2, fontWeight: 500, letterSpacing: 0.2 }}>/ 100</span>
+                  </div>
                   <AnimatedProgress value={employee.score} />
                 </div>
                 <div className="employee-meta">
-                  <span>{employee.dialogs} диалогов</span>
-                  <span>{employee.trend}</span>
+                  <span><b style={{ color: 'var(--text)', marginRight: 3 }}>{employee.dialogs}</b>диалогов</span>
+                  <span style={{ color: employee.trend > 0 ? 'var(--success)' : employee.trend < 0 ? 'var(--danger)' : 'var(--muted)', fontWeight: 600 }}>
+                    {employee.trend > 0 ? '+' : ''}{employee.trend}
+                  </span>
                 </div>
               </motion.article>
             ))}

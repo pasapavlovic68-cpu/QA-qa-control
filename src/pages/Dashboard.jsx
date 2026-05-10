@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import {
   Activity,
   AlertTriangle,
-  ChevronRight,
   MessageSquareText,
   UsersRound
 } from 'lucide-react';
@@ -209,9 +208,6 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
               </div>
             )
             : emptyCardText(dashLoading ? 'Загружаем…' : 'Проверок пока нет.')}
-          <motion.button className="ghost-button full" whileTap={{ scale: 0.98 }} onClick={() => setActive('review')}>
-            Перейти к проверке <ChevronRight size={16} />
-          </motion.button>
         </RevealCard>
       </div>
     </>

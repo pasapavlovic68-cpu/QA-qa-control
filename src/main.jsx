@@ -321,7 +321,7 @@ function App({ session }) {
           }}
         />
         <main className="workspace">
-          <Topbar title={currentTitle} onNewReview={() => setActive('review')} />
+          <Topbar title={currentTitle} onNewReview={() => setActive('review')} showNewReview={active === 'dashboard'} />
           <AnimatePresence mode="wait">
             <motion.section
               key={active}
