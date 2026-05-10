@@ -7,7 +7,7 @@ import {
 } from 'framer-motion';
 import './styles.css';
 import { supabase } from './lib/supabase.js';
-import { getOwnerOrganizationId, getOwnerOrganization } from './lib/organization.js';
+import { resolveUserOrganization } from './lib/organization.js';
 import { bootstrapEmployee } from './lib/bootstrap.js';
 import { isCheckedEmployee } from './lib/employees.js';
 import { tabs, Sidebar, Topbar } from './components/layout.jsx';
@@ -233,6 +233,43 @@ function toEmployee(row) {
   };
 }
 
+function OrganizationGate({ resolution }) {
+  const organizationName = resolution?.organizationName || 'организацию';
+  const isInvite = resolution?.status === 'invite_found';
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '32px 16px',
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: 520,
+        padding: '34px 32px',
+        borderRadius: 30,
+        background: 'rgba(252,252,253,0.94)',
+        border: '1px solid rgba(255,255,255,0.82)',
+        boxShadow: '0 34px 96px rgba(35,31,58,0.18)',
+        textAlign: 'center',
+      }}>
+        <h2 style={{ margin: '0 0 10px', fontSize: 24, color: 'var(--text)' }}>
+          {isInvite
+            ? `Найдено приглашение в организацию: ${organizationName}`
+            : 'Рабочее пространство ещё не создано'}
+        </h2>
+        <p style={{ margin: 0, color: 'var(--muted)', fontSize: 15, lineHeight: 1.55 }}>
+          {isInvite
+            ? 'Подключение по приглашению будет добавлено следующим шагом.'
+            : 'Создание организации будет добавлено следующим шагом.'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function App({ session }) {
   const [active, setActive] = useState('dashboard');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -242,22 +279,45 @@ function App({ session }) {
 
   const [organizationId, setOrganizationId] = useState(null);
   const [orgName, setOrgName] = useState('');
+  const [orgResolution, setOrgResolution] = useState(null);
   const [employeesData, setEmployeesData] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [supabaseStatus, setSupabaseStatus] = useState('checking');
 
   useEffect(() => {
-    getOwnerOrganization(supabase)
-      .then(({ id, name }) => {
-        setOrganizationId(id);
-        setOrgName(name ?? '');
+    let cancelled = false;
+    setOrgResolution(null);
+    setOrganizationId(null);
+    setOrgName('');
+    setEmployeesData([]);
+    setEmployeesLoading(true);
+    setSupabaseStatus('checking');
+
+    resolveUserOrganization(supabase, session?.user)
+      .then((result) => {
+        if (cancelled) return;
+        setOrgResolution(result);
+
+        if (result.status === 'member') {
+          setOrganizationId(result.organizationId);
+          setOrgName(result.organizationName ?? '');
+          return;
+        }
+
+        setEmployeesLoading(false);
+        setSupabaseStatus(result.status === 'no_user' ? 'offline' : 'connected');
       })
       .catch((err) => {
-        console.error('[App] failed to load owner organization:', err);
+        if (cancelled) return;
+        console.error('[App] failed to resolve user organization:', err);
         setEmployeesLoading(false);
         setSupabaseStatus('offline');
       });
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -305,6 +365,12 @@ function App({ session }) {
   };
 
   const currentTitle = tabs.find((tab) => tab.id === active)?.label ?? 'Главная';
+
+  if (!orgResolution) return null;
+
+  if (orgResolution.status === 'invite_found' || orgResolution.status === 'needs_onboarding') {
+    return <OrganizationGate resolution={orgResolution} />;
+  }
 
   return (
     <LayoutGroup>
