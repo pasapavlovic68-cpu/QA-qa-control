@@ -4,9 +4,14 @@ import { Check, ChevronDown, Sparkles, Clock, Loader2, AlertCircle, CheckCircle2
 import { qualityPoints } from '../data/demoData.js';
 import { AnimatedProgress } from './shared.jsx';
 
-export function KpiCard({ label, value, delta, icon: Icon }) {
+export function KpiCard({ label, value, delta, icon: Icon, onClick }) {
   return (
-    <motion.div className="kpi-card" whileHover={{ y: -5, boxShadow: '0 22px 60px rgba(92, 82, 143, 0.13)' }}>
+    <motion.div
+      className="kpi-card"
+      whileHover={{ y: -5, boxShadow: '0 22px 60px rgba(92, 82, 143, 0.13)' }}
+      onClick={onClick}
+      style={onClick ? { cursor: 'pointer' } : undefined}
+    >
       <div className="kpi-icon"><Icon size={20} /></div>
       <span>{label}</span>
       <strong>{value}</strong>
