@@ -6,6 +6,12 @@ import { modalMotion, modalContentVariants, modalSectionVariants, useModalScroll
 import { Avatar, Metric, PremiumCard, Evidence, ChatSnippet } from './shared.jsx';
 import { PremiumDropdown, RuleToggle } from './display.jsx';
 
+const STATUS_PRESETS = [
+  '#7765e3', '#4f8ef7', '#3cb87a', '#d4920a',
+  '#d94f5c', '#e0703a', '#2bb5c8', '#8a8fa8',
+  '#d064a8', '#2e9e8f',
+];
+
 export const employeeCardTransition = {
   layout: { type: 'spring', damping: 34, stiffness: 360 },
   opacity: { duration: 0.18 },
@@ -845,6 +851,186 @@ export function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
                 {saving ? 'Сохраняем…' : 'Сохранить'}
               </motion.button>
             </motion.div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </ModalPortal>
+  );
+}
+
+// ── StatusManagementModal ─────────────────────────────────────────────────────
+export function StatusManagementModal({ statuses, organizationId, onClose, onAdd, onDelete }) {
+  useModalScrollLock();
+  const [name, setName] = useState('');
+  const [color, setColor] = useState(STATUS_PRESETS[0]);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed || adding) return;
+    if (statuses.some((s) => s.name === trimmed)) {
+      setAddError('Статус с таким названием уже существует.');
+      return;
+    }
+    setAdding(true);
+    setAddError(null);
+    const { data, error } = await supabase
+      .from('employee_statuses')
+      .insert({ name: trimmed, color, organization_id: organizationId })
+      .select()
+      .single();
+    setAdding(false);
+    if (error) {
+      console.error('[StatusManagementModal] insert error:', error);
+      setAddError('Ошибка при сохранении. Проверьте соединение.');
+      return;
+    }
+    onAdd(data);
+    setName('');
+  };
+
+  const handleDelete = async (statusId) => {
+    setDeletingId(statusId);
+    const { error } = await supabase
+      .from('employee_statuses')
+      .delete()
+      .eq('id', statusId)
+      .eq('organization_id', organizationId);
+    setDeletingId(null);
+    if (error) {
+      console.error('[StatusManagementModal] delete error:', error);
+    } else {
+      onDelete(statusId);
+    }
+  };
+
+  return (
+    <ModalPortal>
+      <motion.div
+        className="modal-backdrop employee-modal-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="modal-shell modal-shell--small"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          initial={modalMotion.initial}
+          animate={modalMotion.animate}
+          exit={modalMotion.exit}
+          transition={modalMotion.transition}
+          style={{ overflowY: 'auto', maxHeight: '88vh' }}
+        >
+          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+
+            {/* Header */}
+            <motion.div className="modal-title" variants={modalSectionVariants}>
+              <div>
+                <span className="eyebrow">Настройки команды</span>
+                <h2>Статусы сотрудников</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={onClose}>
+                <X size={18} />
+              </button>
+            </motion.div>
+
+            {/* Existing statuses */}
+            <motion.div variants={modalSectionVariants} style={{ marginBottom: 20 }}>
+              <div className="status-mgmt-section-label">Текущие статусы</div>
+              {statuses.length === 0 ? (
+                <p className="status-mgmt-empty">Пока нет статусов. Создайте первый ниже.</p>
+              ) : (
+                <div className="status-mgmt-list">
+                  {statuses.map((s) => (
+                    <div key={s.id} className="status-mgmt-row">
+                      <span className="status-mgmt-dot" style={{ background: s.color }} />
+                      <span className="status-mgmt-name">{s.name}</span>
+                      <motion.button
+                        className="status-mgmt-delete"
+                        type="button"
+                        whileTap={{ scale: 0.88 }}
+                        disabled={deletingId === s.id}
+                        onClick={() => handleDelete(s.id)}
+                        aria-label={`Удалить статус ${s.name}`}
+                      >
+                        <Trash2 size={13} />
+                      </motion.button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Add new status */}
+            <motion.form variants={modalSectionVariants} onSubmit={handleAdd}>
+              <div className="status-mgmt-section-label">Новый статус</div>
+              <input
+                value={name}
+                onChange={(e) => { setName(e.target.value); setAddError(null); }}
+                placeholder="Например, В обучении"
+                className="status-mgmt-input"
+              />
+              <div className="status-mgmt-section-label" style={{ marginTop: 12 }}>Цвет</div>
+              <div className="status-color-grid">
+                {STATUS_PRESETS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`status-color-swatch${color === c ? ' selected' : ''}`}
+                    style={{ background: c }}
+                    onClick={() => setColor(c)}
+                    aria-label={`Цвет ${c}`}
+                  />
+                ))}
+              </div>
+
+              {/* Preview */}
+              {name.trim() && (
+                <div style={{ margin: '12px 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>Превью:</span>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      padding: '4px 10px',
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      background: `${color}1e`,
+                      border: `1px solid ${color}4d`,
+                      color: color,
+                    }}
+                  >
+                    {name.trim()}
+                  </span>
+                </div>
+              )}
+
+              {addError && (
+                <p style={{ fontSize: '0.82rem', color: 'var(--danger)', margin: '8px 0 0' }}>{addError}</p>
+              )}
+
+              <div className="modal-actions" style={{ marginTop: 16 }}>
+                <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>
+                  Закрыть
+                </motion.button>
+                <motion.button
+                  className="primary-button"
+                  type="submit"
+                  whileTap={{ scale: name.trim() && !adding ? 0.97 : 1 }}
+                  disabled={!name.trim() || adding}
+                >
+                  <Plus size={15} />
+                  {adding ? 'Создаём…' : 'Создать статус'}
+                </motion.button>
+              </div>
+            </motion.form>
+
           </motion.div>
         </motion.div>
       </motion.div>
