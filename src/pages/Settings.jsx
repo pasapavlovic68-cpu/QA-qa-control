@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SlidersHorizontal } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
+import { useToast } from '../components/Toast.jsx';
 
 const FIELD_META = {
   company_instruction: {
@@ -51,11 +52,12 @@ const KEY_ORDER = [
 ];
 
 export function Settings({ organizationId }) {
+  const showToast = useToast();
   const [values, setValues] = useState({});
   const [original, setOriginal] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState(null); // 'success' | 'error' | null
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -82,18 +84,18 @@ export function Settings({ organizationId }) {
 
   const handleChange = (key, val) => {
     setValues((prev) => ({ ...prev, [key]: val }));
-    setStatus(null);
+    setSaveError(null);
   };
 
   const handleSave = async () => {
     if (saving) return;
     if (!organizationId) {
       console.error('[Settings] organizationId missing, aborting save');
-      setStatus('error');
+      setSaveError('Организация не загружена. Повторите попытку.');
       return;
     }
     setSaving(true);
-    setStatus(null);
+    setSaveError(null);
 
     const upserts = Object.entries(values).map(([key, value]) => ({ key, value: value ?? '', organization_id: organizationId }));
 
@@ -105,12 +107,12 @@ export function Settings({ organizationId }) {
 
     if (error) {
       console.error('[Settings] save error:', error);
-      setStatus('error');
+      setSaveError('Ошибка при сохранении. Проверьте соединение с базой данных.');
       return;
     }
 
     setOriginal({ ...values });
-    setStatus('success');
+    showToast('Настройки сохранены');
   };
 
   const orderedKeys = KEY_ORDER.filter((k) => k in values || k in FIELD_META);
@@ -134,14 +136,9 @@ export function Settings({ organizationId }) {
         </motion.button>
       </div>
 
-      {status === 'success' && (
-        <p style={{ color: 'var(--green, #34d399)', fontSize: '0.875rem', marginBottom: 8 }}>
-          Настройки успешно сохранены.
-        </p>
-      )}
-      {status === 'error' && (
-        <p style={{ color: 'var(--red, #f87171)', fontSize: '0.875rem', marginBottom: 8 }}>
-          Ошибка при сохранении. Проверьте соединение с базой данных.
+      {saveError && (
+        <p style={{ color: 'var(--danger)', fontSize: '0.875rem', marginBottom: 8 }}>
+          {saveError}
         </p>
       )}
 

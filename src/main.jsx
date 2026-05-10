@@ -11,6 +11,7 @@ import { getOwnerOrganizationId, getOwnerOrganization } from './lib/organization
 import { bootstrapEmployee } from './lib/bootstrap.js';
 import { isCheckedEmployee } from './lib/employees.js';
 import { tabs, Sidebar, Topbar } from './components/layout.jsx';
+import { ToastProvider } from './components/Toast.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import { Employees } from './pages/Employees.jsx';
 import { Review } from './pages/Review.jsx';
@@ -386,4 +387,8 @@ function App({ session }) {
   );
 }
 
-createRoot(document.getElementById('root')).render(<Root />);
+createRoot(document.getElementById('root')).render(
+  <ToastProvider>
+    <Root />
+  </ToastProvider>
+);

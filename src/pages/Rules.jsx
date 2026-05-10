@@ -4,6 +4,7 @@ import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
 import { supabase, fetchWithTimeout } from '../lib/supabase.js';
 import { RuleToggle } from '../components/display.jsx';
 import { RuleModal, DeleteRuleModal } from '../components/modals.jsx';
+import { useToast } from '../components/Toast.jsx';
 
 function toRule(row) {
   return {
@@ -17,6 +18,7 @@ function toRule(row) {
 }
 
 export function Rules({ organizationId }) {
+  const showToast = useToast();
   const emptyRule = {
     title: '',
     category: 'Процесс',
@@ -86,6 +88,7 @@ export function Rules({ organizationId }) {
       if (error) { console.error('[Rules] update error:', error); return; }
 
       setRules((current) => current.map((rule) => rule.id === data.id ? toRule(data) : rule));
+      showToast('Правило обновлено');
     } else {
       const { data, error } = await supabase
         .from('qa_rules')
@@ -103,6 +106,7 @@ export function Rules({ organizationId }) {
       if (error) { console.error('[Rules] insert error:', error); return; }
 
       setRules((current) => [toRule(data), ...current]);
+      showToast('Правило добавлено');
     }
 
     closeModal();
@@ -152,6 +156,7 @@ export function Rules({ organizationId }) {
     }
 
     setRules((current) => current.filter((rule) => rule.id !== deleteTarget.id));
+    showToast('Правило удалено');
     setDeleteTarget(null);
   };
 

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase.js';
 import { parseDialogue } from '../lib/parseDialogue.js';
 import { PremiumCard } from '../components/shared.jsx';
 import { AnalysisState, PremiumDropdown } from '../components/display.jsx';
+import { useToast } from '../components/Toast.jsx';
 
 const WORKER_URL = 'https://qa-control-ai-proxy.pasapavlovic68.workers.dev';
 
@@ -14,6 +15,7 @@ function formatSize(bytes) {
 }
 
 export function Review({ analysis, setAnalysis, employees, organizationId, onDialogueAnalyzed }) {
+  const showToast = useToast();
   const fileInputRef = useRef(null);
 
   const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
@@ -317,6 +319,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       console.log(`[Review] total analysis ms: ${Math.round(performance.now() - startedAt)}`);
       setAnalysis('complete');
       setAnalysisMessage({ type: 'success', text: 'Отчёт сформирован и сохранён.' });
+      showToast('Отчёт сформирован и сохранён');
     } catch (err) {
       const userMessage = err.name === 'AbortError'
         ? 'AI timeout: сервер не ответил за 45 секунд.'

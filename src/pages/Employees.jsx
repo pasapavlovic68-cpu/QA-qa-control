@@ -4,6 +4,7 @@ import { AlertTriangle, Plus, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { Avatar, AnimatedProgress } from '../components/shared.jsx';
 import { employeeCardTransition, EmployeeFormModal, DeleteEmployeeModal } from '../components/modals.jsx';
+import { useToast } from '../components/Toast.jsx';
 
 function getStatusTone(status) {
   if (status === 'Улучшается') return 'success';
@@ -29,6 +30,7 @@ function toEmployee(row) {
 }
 
 export function Employees({ setDetailOpen, setSelectedEmployee, employees, employeesLoading, onAdd, onDelete, organizationId }) {
+  const showToast = useToast();
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -74,6 +76,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
     }
 
     onAdd(toEmployee(data));
+    showToast('Сотрудник успешно добавлен');
     resetForm();
     setAddOpen(false);
   };
@@ -136,6 +139,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
     console.log(`[Employees] deleted id=${deleteTarget.id} (${deleted.length} row)`);
     onDelete(deleteTarget.id);
+    showToast('Сотрудник удалён');
     setDeleteTarget(null);
   };
 
