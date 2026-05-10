@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Building2,
   ChevronDown,
@@ -11,11 +11,14 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  X,
   UserPlus,
   UsersRound
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from '../lib/supabase.js';
+import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from './modal.jsx';
+import { useToast } from './Toast.jsx';
 
 export const tabs = [
   { id: 'dashboard', label: 'Главная', icon: LayoutDashboard },
@@ -53,8 +56,121 @@ function analysisToStatus(analysis) {
   return 'beta';
 }
 
-function ProfileBlock({ user, orgName }) {
+function OrganizationNameModal({ organizationId, orgName, onClose, onSaved }) {
+  useModalScrollLock();
+
+  const showToast = useToast();
+  const [name, setName] = useState(orgName || 'Моя организация');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const nextName = name.trim();
+
+    if (!nextName) {
+      setError('Введите название организации.');
+      return;
+    }
+
+    if (nextName.length > 60) {
+      setError('Название не должно быть длиннее 60 символов.');
+      return;
+    }
+
+    if (!organizationId || saving) return;
+
+    setSaving(true);
+    setError('');
+
+    const { data, error: updateError } = await supabase
+      .from('organizations')
+      .update({ name: nextName })
+      .eq('id', organizationId)
+      .select('name')
+      .single();
+
+    setSaving(false);
+
+    if (updateError) {
+      setError('Не удалось сохранить название. Повторите попытку.');
+      return;
+    }
+
+    onSaved(data?.name || nextName);
+    showToast?.('Название организации обновлено');
+    onClose();
+  };
+
+  return (
+    <ModalPortal>
+      <motion.div className="modal-backdrop org-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+        <motion.form
+          className="modal-shell modal-shell--small org-modal"
+          role="dialog"
+          aria-modal="true"
+          initial={modalMotion.initial}
+          animate={modalMotion.animate}
+          exit={modalMotion.exit}
+          transition={modalMotion.transition}
+          onClick={(event) => event.stopPropagation()}
+          onSubmit={handleSubmit}
+        >
+          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+            <motion.div className="modal-title" variants={modalSectionVariants}>
+              <div>
+                <span className="eyebrow">Профиль организации</span>
+                <h2>Редактировать организацию</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={onClose}>
+                <X size={18} />
+              </button>
+            </motion.div>
+
+            <motion.label className="org-modal-field" variants={modalSectionVariants}>
+              <span>Название организации</span>
+              <input
+                value={name}
+                onChange={(event) => {
+                  setName(event.target.value.slice(0, 60));
+                  setError('');
+                }}
+                autoFocus
+                maxLength={60}
+                placeholder="Моя организация"
+              />
+              <small>{name.trim().length}/60</small>
+            </motion.label>
+
+            {error && <motion.p className="org-modal-error" variants={modalSectionVariants}>{error}</motion.p>}
+
+            <motion.div className="modal-actions" variants={modalSectionVariants}>
+              <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>
+                Отмена
+              </motion.button>
+              <motion.button className="primary-button" type="submit" whileTap={{ scale: saving ? 1 : 0.97 }} disabled={saving}>
+                {saving ? 'Сохраняем…' : 'Сохранить'}
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        </motion.form>
+      </motion.div>
+    </ModalPortal>
+  );
+}
+
+function ProfileBlock({ user, orgName, organizationId, onOrgNameChange }) {
   const [open, setOpen] = useState(false);
+  const [orgModalOpen, setOrgModalOpen] = useState(false);
 
   const displayName =
     user?.user_metadata?.full_name ||
@@ -63,7 +179,7 @@ function ProfileBlock({ user, orgName }) {
     'Пользователь';
 
   const email = user?.email ?? '';
-  const org = orgName || 'LeadProof Workspace';
+  const org = orgName?.trim() || 'Моя организация';
 
   const initials = displayName
     .split(' ')
@@ -197,6 +313,35 @@ function ProfileBlock({ user, orgName }) {
 
               <div style={{ height: 1, background: 'var(--line)', margin: '10px 0' }} />
 
+              <motion.button
+                type="button"
+                whileHover={{ background: 'rgba(119,101,227,0.07)' }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  setOpen(false);
+                  setOrgModalOpen(true);
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 10px',
+                  borderRadius: 12,
+                  fontSize: 13,
+                  color: 'var(--text)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <Building2 size={14} />
+                Редактировать организацию
+              </motion.button>
+
+              <div style={{ height: 1, background: 'var(--line)', margin: '8px 0' }} />
+
               {/* Добавить доступ — disabled placeholder */}
               <div style={{
                 display: 'flex',
@@ -255,14 +400,24 @@ function ProfileBlock({ user, orgName }) {
           </>
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {orgModalOpen && (
+          <OrganizationNameModal
+            organizationId={organizationId}
+            orgName={org}
+            onClose={() => setOrgModalOpen(false)}
+            onSaved={onOrgNameChange}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-export function Sidebar({ active, setActive, user, orgName, systemStatus = {} }) {
+export function Sidebar({ active, setActive, user, orgName, organizationId, onOrgNameChange, systemStatus = {} }) {
   return (
     <aside className="sidebar">
-      <ProfileBlock user={user} orgName={orgName} />
+      <ProfileBlock user={user} orgName={orgName} organizationId={organizationId} onOrgNameChange={onOrgNameChange} />
 
       <motion.div className="brand" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="brand-mark"><ShieldCheck size={22} /></div>

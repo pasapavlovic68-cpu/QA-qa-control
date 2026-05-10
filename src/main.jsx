@@ -314,6 +314,8 @@ function App({ session }) {
           setActive={setActive}
           user={session?.user}
           orgName={orgName}
+          organizationId={organizationId}
+          onOrgNameChange={setOrgName}
           systemStatus={{
             supabase: supabaseStatus,
             analysis: analysis,
