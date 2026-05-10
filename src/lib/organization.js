@@ -10,3 +10,14 @@ export async function getOwnerOrganizationId(supabase) {
   if (error) throw error;
   return data.id;
 }
+
+export async function getOwnerOrganization(supabase) {
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('id, name')
+    .eq('slug', OWNER_ORG_SLUG)
+    .single();
+
+  if (error) throw error;
+  return data;
+}

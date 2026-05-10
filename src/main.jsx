@@ -7,7 +7,7 @@ import {
 } from 'framer-motion';
 import './styles.css';
 import { supabase } from './lib/supabase.js';
-import { getOwnerOrganizationId } from './lib/organization.js';
+import { getOwnerOrganizationId, getOwnerOrganization } from './lib/organization.js';
 import { bootstrapEmployee } from './lib/bootstrap.js';
 import { tabs, Sidebar, Topbar } from './components/layout.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
@@ -204,7 +204,7 @@ function Root() {
 
   if (session === undefined) return null;
   if (!session) return <LoginScreen />;
-  return <App />;
+  return <App session={session} />;
 }
 
 function getStatusTone(status) {
@@ -229,20 +229,24 @@ function toEmployee(row) {
   };
 }
 
-function App() {
+function App({ session }) {
   const [active, setActive] = useState('dashboard');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [analysis, setAnalysis] = useState('idle');
 
   const [organizationId, setOrganizationId] = useState(null);
+  const [orgName, setOrgName] = useState('');
   const [employeesData, setEmployeesData] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [supabaseStatus, setSupabaseStatus] = useState('checking');
 
   useEffect(() => {
-    getOwnerOrganizationId(supabase)
-      .then((id) => setOrganizationId(id))
+    getOwnerOrganization(supabase)
+      .then(({ id, name }) => {
+        setOrganizationId(id);
+        setOrgName(name ?? '');
+      })
       .catch((err) => {
         console.error('[App] failed to load owner organization:', err);
         setEmployeesLoading(false);
@@ -281,6 +285,8 @@ function App() {
         <Sidebar
           active={active}
           setActive={setActive}
+          user={session?.user}
+          orgName={orgName}
           systemStatus={{
             supabase: supabaseStatus,
             analysis: analysis,
