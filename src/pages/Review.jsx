@@ -458,17 +458,6 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           )}
         </div>
 
-        <motion.button
-          className="primary-button large"
-          whileTap={{ scale: 0.97 }}
-          whileHover={{ y: -2 }}
-          disabled={analyzing || uploading}
-          onClick={handleStartAnalysis}
-        >
-          <Play size={18} />
-          {analyzing ? 'Анализируем…' : 'Начать анализ'}
-        </motion.button>
-
         {analysisMessage && (
           <motion.p
             initial={{ opacity: 0, y: 6 }}
@@ -477,35 +466,45 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
               fontSize: '0.82rem',
               color: analysisMessage.type === 'success' ? '#5bb97b' : '#e05c5c',
               textAlign: 'center',
-              marginTop: 8
+              marginBottom: 4,
             }}
           >
             {analysisMessage.text}
           </motion.p>
         )}
 
-        <AnimatePresence>
-          {analysis === 'complete' && previewReport && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}
-            >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <motion.button
+            className="primary-button large"
+            style={{ flex: 1 }}
+            whileTap={{ scale: 0.97 }}
+            whileHover={{ y: -2 }}
+            disabled={analyzing || uploading}
+            onClick={handleStartAnalysis}
+          >
+            <Play size={18} />
+            {analyzing ? 'Анализируем…' : 'Начать анализ'}
+          </motion.button>
+
+          <AnimatePresence>
+            {analysis === 'complete' && previewReport && (
               <motion.button
-                className="ghost-button"
+                className="primary-button large"
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.94 }}
+                transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
                 whileTap={{ scale: 0.97 }}
                 whileHover={{ y: -2 }}
                 onClick={() => setPreviewOpen(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}
+                style={{ flexShrink: 0 }}
               >
-                <ScrollText size={15} />
+                <ScrollText size={18} />
                 Просмотреть отчёт
               </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+          </AnimatePresence>
+        </div>
       </PremiumCard>
 
       <PremiumCard title="Состояние анализа" action={analysisCardAction}>
