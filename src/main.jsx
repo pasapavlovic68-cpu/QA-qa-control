@@ -9,6 +9,7 @@ import './styles.css';
 import { supabase } from './lib/supabase.js';
 import { getOwnerOrganizationId, getOwnerOrganization } from './lib/organization.js';
 import { bootstrapEmployee } from './lib/bootstrap.js';
+import { isCheckedEmployee } from './lib/employees.js';
 import { tabs, Sidebar, Topbar } from './components/layout.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import { Employees } from './pages/Employees.jsx';
@@ -270,12 +271,16 @@ function App({ session }) {
           return;
         }
         setSupabaseStatus('connected');
-        setEmployeesData((data ?? []).map(toEmployee));
+        // Exclude cabinet/auth users — only show rows where auth_user_id is null
+        setEmployeesData((data ?? []).map(toEmployee).filter(isCheckedEmployee));
         setEmployeesLoading(false);
       });
   }, [organizationId]);
 
-  const onEmployeeAdd = (employee) => setEmployeesData((prev) => [employee, ...prev]);
+  const onEmployeeAdd = (employee) => {
+    if (!isCheckedEmployee(employee)) return; // never add cabinet users to checked list
+    setEmployeesData((prev) => [employee, ...prev]);
+  };
   const onEmployeeDelete = (id) => setEmployeesData((prev) => prev.filter((e) => e.id !== id));
 
   const currentTitle = tabs.find((tab) => tab.id === active)?.label ?? 'Главная';
