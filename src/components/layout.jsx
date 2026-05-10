@@ -5,6 +5,7 @@ import {
   Search,
   Settings2,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   UsersRound
 } from 'lucide-react';
@@ -15,7 +16,8 @@ export const tabs = [
   { id: 'employees', label: 'Сотрудники', icon: UsersRound },
   { id: 'review', label: 'Проверка', icon: ClipboardCheck },
   { id: 'report', label: 'Отчёт', icon: FileText },
-  { id: 'rules', label: 'Правила', icon: Settings2 }
+  { id: 'rules', label: 'Правила', icon: Settings2 },
+  { id: 'settings', label: 'Настройки', icon: SlidersHorizontal }
 ];
 
 const STATUS_LABEL = {

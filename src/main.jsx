@@ -13,6 +13,7 @@ import { Employees } from './pages/Employees.jsx';
 import { Review } from './pages/Review.jsx';
 import { Report } from './pages/Report.jsx';
 import { Rules } from './pages/Rules.jsx';
+import { Settings } from './pages/Settings.jsx';
 import { EmployeeDrawer } from './components/modals.jsx';
 
 function getStatusTone(status) {
@@ -123,6 +124,7 @@ function App() {
               )}
               {active === 'report' && <Report />}
               {active === 'rules' && <Rules />}
+              {active === 'settings' && <Settings />}
             </motion.section>
           </AnimatePresence>
         </main>
