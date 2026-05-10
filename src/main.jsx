@@ -22,25 +22,81 @@ import { Settings } from './pages/Settings.jsx';
 import { EmployeeDrawer } from './components/modals.jsx';
 
 function LoginScreen() {
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [message, setMessage] = useState(null);
 
   const redirectTo = window.location.origin + import.meta.env.BASE_URL;
+  const isRegister = mode === 'register';
+
+  const switchMode = (nextMode) => {
+    setMode(nextMode);
+    setError(null);
+    setMessage(null);
+    setPassword('');
+    setConfirmPassword('');
+  };
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setMessage(null);
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     if (err) setError(err.message);
+    setLoading(false);
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    const trimmedEmail = email.trim();
+
+    setError(null);
+    setMessage(null);
+
+    if (!trimmedEmail) {
+      setError('Введите email.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Пароль должен быть не короче 6 символов.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Пароли не совпадают.');
+      return;
+    }
+
+    setLoading(true);
+
+    const { data, error: err } = await supabase.auth.signUp({
+      email: trimmedEmail,
+      password,
+    });
+
+    if (err) {
+      setError(err.message);
+      setLoading(false);
+      return;
+    }
+
+    if (!data?.session) {
+      setMessage('Проверьте почту для подтверждения регистрации.');
+    }
+
     setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
+    setMessage(null);
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
@@ -86,7 +142,47 @@ function LoginScreen() {
             </svg>
           </div>
           <h2 style={{ margin: '0 0 4px', fontSize: 22 }}>LeadProof</h2>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14 }}>Войдите в систему</p>
+          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14 }}>
+            {isRegister ? 'Создайте аккаунт' : 'Войдите в систему'}
+          </p>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 6,
+          padding: 5,
+          marginBottom: 18,
+          borderRadius: 16,
+          background: 'rgba(246,244,255,0.72)',
+          border: '1px solid rgba(119,101,227,0.12)',
+        }}>
+          {[
+            ['login', 'Вход'],
+            ['register', 'Регистрация'],
+          ].map(([value, label]) => {
+            const active = mode === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => switchMode(value)}
+                disabled={loading}
+                style={{
+                  height: 38,
+                  border: 0,
+                  borderRadius: 12,
+                  background: active ? 'rgba(255,255,255,0.96)' : 'transparent',
+                  boxShadow: active ? '0 10px 22px rgba(119,101,227,0.12)' : 'none',
+                  color: active ? 'var(--text)' : 'var(--muted)',
+                  fontWeight: 700,
+                  cursor: loading ? 'default' : 'pointer',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         <button
@@ -117,7 +213,7 @@ function LoginScreen() {
           <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
         </div>
 
-        <form onSubmit={handleEmailLogin} style={{ display: 'grid', gap: 12 }}>
+        <form onSubmit={isRegister ? handleRegister : handleEmailLogin} style={{ display: 'grid', gap: 12 }}>
           <input
             type="email"
             placeholder="Email"
@@ -143,6 +239,7 @@ function LoginScreen() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            minLength={isRegister ? 6 : undefined}
             style={{
               width: '100%',
               height: 48,
@@ -156,17 +253,52 @@ function LoginScreen() {
               boxSizing: 'border-box',
             }}
           />
+          {isRegister && (
+            <input
+              type="password"
+              placeholder="Повторите пароль"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={6}
+              style={{
+                width: '100%',
+                height: 48,
+                padding: '0 14px',
+                border: '1px solid var(--line)',
+                borderRadius: 15,
+                background: 'rgba(255,255,255,0.84)',
+                color: 'var(--text)',
+                fontSize: 15,
+                outline: 0,
+                boxSizing: 'border-box',
+              }}
+            />
+          )}
           {error && (
             <p style={{ margin: 0, color: 'var(--danger)', fontSize: 13 }}>{error}</p>
+          )}
+          {message && (
+            <p style={{ margin: 0, color: 'var(--success)', fontSize: 13 }}>{message}</p>
           )}
           <button
             type="submit"
             className="primary-button full"
             disabled={loading}
           >
-            {loading ? 'Загрузка…' : 'Войти'}
+            {loading ? 'Загрузка…' : isRegister ? 'Зарегистрироваться' : 'Войти'}
           </button>
         </form>
+
+        <button
+          type="button"
+          className="ghost-button full"
+          onClick={() => switchMode(isRegister ? 'login' : 'register')}
+          disabled={loading}
+          style={{ marginTop: 12 }}
+        >
+          {isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+        </button>
       </div>
     </div>
   );
