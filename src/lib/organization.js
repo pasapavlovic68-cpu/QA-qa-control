@@ -72,6 +72,100 @@ export async function resolveUserOrganization(supabase, user) {
   return { status: 'needs_onboarding' };
 }
 
+export async function acceptOrganizationInvite(supabase, user, invite) {
+  console.log('[InviteAcceptance] starting');
+
+  if (!user) {
+    const error = new Error('Пользователь не найден.');
+    console.error('[InviteAcceptance] failed:', error);
+    throw error;
+  }
+
+  if (!invite || invite.status !== 'pending') {
+    const error = new Error('Приглашение уже не активно.');
+    console.error('[InviteAcceptance] failed:', error);
+    throw error;
+  }
+
+  const userEmail = user.email?.trim().toLowerCase();
+  const inviteEmail = invite.email?.trim().toLowerCase();
+
+  if (!userEmail || userEmail !== inviteEmail) {
+    const error = new Error('Email пользователя не совпадает с приглашением.');
+    console.error('[InviteAcceptance] failed:', error);
+    throw error;
+  }
+
+  const { data: existingMember, error: existingError } = await supabase
+    .from('employees')
+    .select('id, organization_id')
+    .eq('auth_user_id', user.id)
+    .maybeSingle();
+
+  if (existingError) {
+    console.error('[InviteAcceptance] failed:', existingError);
+    throw existingError;
+  }
+
+  if (existingMember) {
+    if (existingMember.organization_id !== invite.organization_id) {
+      const error = new Error('Пользователь уже подключён к другой организации.');
+      console.error('[InviteAcceptance] failed:', error);
+      throw error;
+    }
+
+    console.log('[InviteAcceptance] employee already exists:', existingMember.id);
+  } else {
+    const displayName =
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      userEmail.split('@')[0] ||
+      'Новый пользователь';
+
+    const { error: insertError } = await supabase
+      .from('employees')
+      .insert({
+        organization_id: invite.organization_id,
+        auth_user_id: user.id,
+        email: user.email,
+        name: displayName,
+        role: 'member',
+        status: 'Активен',
+        score: 0,
+        checks_count: 0,
+      });
+
+    if (insertError) {
+      console.error('[InviteAcceptance] failed:', insertError);
+      throw insertError;
+    }
+
+    console.log('[InviteAcceptance] employee created:', user.id);
+  }
+
+  const { error: inviteError } = await supabase
+    .from('organization_invites')
+    .update({
+      status: 'accepted',
+      accepted_at: new Date().toISOString(),
+      accepted_auth_user_id: user.id,
+    })
+    .eq('id', invite.id)
+    .eq('organization_id', invite.organization_id);
+
+  if (inviteError) {
+    console.error('[InviteAcceptance] failed:', inviteError);
+    throw inviteError;
+  }
+
+  console.log('[InviteAcceptance] invite accepted:', invite.id);
+
+  return {
+    success: true,
+    organizationId: invite.organization_id,
+  };
+}
+
 export async function getOwnerOrganizationId(supabase) {
   const { data, error } = await supabase
     .from('organizations')

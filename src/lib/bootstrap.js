@@ -37,6 +37,17 @@ export async function bootstrapEmployee(user) {
   }
 
   if (byEmail) {
+    const authMemberRoles = new Set(['owner', 'admin', 'member', 'employee']);
+    if (byEmail.auth_user_id && byEmail.auth_user_id !== user.id) {
+      console.warn(`${TAG} email record already belongs to another auth user — skipping link`);
+      return null;
+    }
+
+    if (!authMemberRoles.has(byEmail.role)) {
+      console.log(`${TAG} email record is not an auth member role — skipping link`);
+      return null;
+    }
+
     console.log(`${TAG} found by email — id=${byEmail.id} name="${byEmail.name}" — linking auth_user_id`);
     const updates = { auth_user_id: user.id };
     if (!byEmail.email) updates.email = user.email;

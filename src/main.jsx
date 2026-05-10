@@ -7,7 +7,7 @@ import {
 } from 'framer-motion';
 import './styles.css';
 import { supabase } from './lib/supabase.js';
-import { resolveUserOrganization } from './lib/organization.js';
+import { acceptOrganizationInvite, resolveUserOrganization } from './lib/organization.js';
 import { bootstrapEmployee } from './lib/bootstrap.js';
 import { isCheckedEmployee } from './lib/employees.js';
 import { tabs, Sidebar, Topbar } from './components/layout.jsx';
@@ -233,9 +233,10 @@ function toEmployee(row) {
   };
 }
 
-function OrganizationGate({ resolution }) {
+function OrganizationGate({ resolution, inviteAcceptanceStatus, inviteAcceptanceError }) {
   const organizationName = resolution?.organizationName || 'организацию';
   const isInvite = resolution?.status === 'invite_found';
+  const hasInviteError = isInvite && inviteAcceptanceStatus === 'error';
 
   return (
     <div style={{
@@ -256,14 +257,14 @@ function OrganizationGate({ resolution }) {
         textAlign: 'center',
       }}>
         <h2 style={{ margin: '0 0 10px', fontSize: 24, color: 'var(--text)' }}>
-          {isInvite
-            ? `Найдено приглашение в организацию: ${organizationName}`
-            : 'Рабочее пространство ещё не создано'}
+          {hasInviteError && 'Не удалось подключить организацию'}
+          {isInvite && !hasInviteError && 'Подключаем организацию...'}
+          {!isInvite && 'Рабочее пространство ещё не создано'}
         </h2>
         <p style={{ margin: 0, color: 'var(--muted)', fontSize: 15, lineHeight: 1.55 }}>
-          {isInvite
-            ? 'Подключение по приглашению будет добавлено следующим шагом.'
-            : 'Создание организации будет добавлено следующим шагом.'}
+          {hasInviteError && (inviteAcceptanceError || 'Проверьте приглашение и попробуйте войти снова.')}
+          {isInvite && !hasInviteError && `Найдено приглашение в организацию: ${organizationName}`}
+          {!isInvite && 'Создание организации будет добавлено следующим шагом.'}
         </p>
       </div>
     </div>
@@ -280,6 +281,8 @@ function App({ session }) {
   const [organizationId, setOrganizationId] = useState(null);
   const [orgName, setOrgName] = useState('');
   const [orgResolution, setOrgResolution] = useState(null);
+  const [inviteAcceptanceStatus, setInviteAcceptanceStatus] = useState('idle');
+  const [inviteAcceptanceError, setInviteAcceptanceError] = useState('');
   const [employeesData, setEmployeesData] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [supabaseStatus, setSupabaseStatus] = useState('checking');
@@ -292,6 +295,8 @@ function App({ session }) {
     setEmployeesData([]);
     setEmployeesLoading(true);
     setSupabaseStatus('checking');
+    setInviteAcceptanceStatus('idle');
+    setInviteAcceptanceError('');
 
     resolveUserOrganization(supabase, session?.user)
       .then((result) => {
@@ -318,6 +323,43 @@ function App({ session }) {
       cancelled = true;
     };
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (orgResolution?.status !== 'invite_found') return;
+    if (inviteAcceptanceStatus !== 'idle') return;
+
+    let cancelled = false;
+    setInviteAcceptanceStatus('accepting');
+    setInviteAcceptanceError('');
+
+    acceptOrganizationInvite(supabase, session?.user, orgResolution.invite)
+      .then(() => resolveUserOrganization(supabase, session?.user))
+      .then((result) => {
+        if (cancelled) return;
+        setOrgResolution(result);
+
+        if (result.status === 'member') {
+          setOrganizationId(result.organizationId);
+          setOrgName(result.organizationName ?? '');
+          setInviteAcceptanceStatus('accepted');
+          return;
+        }
+
+        throw new Error('Приглашение обработано, но организация не найдена.');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('[InviteAcceptance] failed:', err);
+        setInviteAcceptanceStatus('error');
+        setInviteAcceptanceError(err?.message || 'Не удалось подключить организацию.');
+        setEmployeesLoading(false);
+        setSupabaseStatus('offline');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orgResolution, inviteAcceptanceStatus, session?.user]);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -369,7 +411,13 @@ function App({ session }) {
   if (!orgResolution) return null;
 
   if (orgResolution.status === 'invite_found' || orgResolution.status === 'needs_onboarding') {
-    return <OrganizationGate resolution={orgResolution} />;
+    return (
+      <OrganizationGate
+        resolution={orgResolution}
+        inviteAcceptanceStatus={inviteAcceptanceStatus}
+        inviteAcceptanceError={inviteAcceptanceError}
+      />
+    );
   }
 
   return (
