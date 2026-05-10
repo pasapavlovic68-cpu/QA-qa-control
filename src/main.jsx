@@ -225,7 +225,8 @@ function toEmployee(row) {
     statusTone: getStatusTone(status),
     score: row.score ?? 0,
     dialogs: row.checks_count ?? 0,
-    trend: row.trend ?? 0
+    trend: row.trend ?? 0,
+    auth_user_id: row.auth_user_id ?? null,
   };
 }
 
@@ -258,7 +259,7 @@ function App({ session }) {
     if (!organizationId) return;
     supabase
       .from('employees')
-      .select('id, name, role, status, score, checks_count, trend, created_at')
+      .select('id, name, role, status, score, checks_count, trend, created_at, auth_user_id')
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {

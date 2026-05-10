@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { Avatar, AnimatedProgress } from '../components/shared.jsx';
 import { employeeCardTransition, EmployeeFormModal, DeleteEmployeeModal } from '../components/modals.jsx';
@@ -23,7 +23,8 @@ function toEmployee(row) {
     statusTone: getStatusTone(status),
     score: row.score ?? 0,
     dialogs: row.checks_count ?? 0,
-    trend: row.trend ?? 0
+    trend: row.trend ?? 0,
+    auth_user_id: row.auth_user_id ?? null,
   };
 }
 
@@ -32,6 +33,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [addError, setAddError] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
   const [form, setForm] = useState({ name: '' });
 
   const resetForm = () => setForm({ name: '' });
@@ -76,26 +78,63 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
     setAddOpen(false);
   };
 
+  const requestDelete = (employee, event) => {
+    event.stopPropagation();
+
+    // Block deletion of authenticated users (app access accounts)
+    if (employee.auth_user_id) {
+      console.warn(`[Employees] blocked delete: employee id=${employee.id} has auth_user_id — system account`);
+      setDeleteError('Нельзя удалить пользователя с доступом к кабинету.');
+      return;
+    }
+
+    setDeleteError(null);
+    setDeleteTarget(employee);
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
+
+    // Double-check: should not happen if requestDelete works, but guard anyway
+    if (deleteTarget.auth_user_id) {
+      console.warn(`[Employees] confirmDelete blocked: auth_user_id present on id=${deleteTarget.id}`);
+      setDeleteError('Нельзя удалить пользователя с доступом к кабинету.');
+      setDeleteTarget(null);
+      return;
+    }
+
     if (!organizationId) {
       console.error('[Employees] organizationId missing, aborting delete');
       setDeleteTarget(null);
       return;
     }
 
-    const { error } = await supabase
+    console.log(`[Employees] deleting employee id=${deleteTarget.id} org=${organizationId}`);
+
+    // Use .select('id') to detect silent RLS failure (RLS block returns data:[] with no error)
+    const { data: deleted, error } = await supabase
       .from('employees')
       .delete()
       .eq('id', deleteTarget.id)
-      .eq('organization_id', organizationId);
+      .eq('organization_id', organizationId)
+      .select('id');
 
     if (error) {
-      console.error('[Employees] delete error:', error);
+      console.error(`[Employees] delete error for id=${deleteTarget.id}:`, error);
+      setDeleteError(`Ошибка удаления: ${error.message}`);
       setDeleteTarget(null);
       return;
     }
 
+    if (!deleted || deleted.length === 0) {
+      // Supabase returned no error but also deleted nothing — classic RLS silent block
+      console.error(`[Employees] delete returned 0 rows for id=${deleteTarget.id} — RLS policy likely blocking. See RLS note.`);
+      setDeleteError('Удаление заблокировано (0 строк затронуто). Нужна RLS-политика для DELETE в таблице employees.');
+      setDeleteTarget(null);
+      return;
+    }
+
+    console.log(`[Employees] deleted id=${deleteTarget.id} (${deleted.length} row)`);
     onDelete(deleteTarget.id);
     setDeleteTarget(null);
   };
@@ -112,6 +151,40 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
           Добавить сотрудника
         </motion.button>
       </div>
+
+      {/* Inline delete/block error banner */}
+      <AnimatePresence>
+        {deleteError && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.22 }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '11px 16px',
+              marginBottom: 16,
+              borderRadius: 14,
+              background: 'rgba(190,60,68,0.07)',
+              border: '1px solid rgba(190,60,68,0.18)',
+              fontSize: 13,
+              color: 'var(--danger)',
+            }}
+          >
+            <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>{deleteError}</span>
+            <button
+              type="button"
+              onClick={() => setDeleteError(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: 2, display: 'flex' }}
+            >
+              <X size={14} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {employeesLoading ? (
         <div className="employee-grid" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 220 }}>
@@ -159,10 +232,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
                       className="employee-delete"
                       aria-label={`Удалить сотрудника ${employee.name}`}
                       whileTap={{ scale: 0.9 }}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setDeleteTarget(employee);
-                      }}
+                      onClick={(event) => requestDelete(employee, event)}
                     >
                       <Trash2 size={15} />
                     </motion.button>
