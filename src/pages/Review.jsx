@@ -379,7 +379,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
             )}
           </label>
           <label>
-            <span>Набор правил QA</span>
+            <span>Набор правил проверки</span>
             <PremiumDropdown
               value={selectedPreset}
               options={['Стандарт поддержки', 'Продажи и удержание', 'B2B сопровождение']}

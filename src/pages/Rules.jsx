@@ -159,7 +159,7 @@ export function Rules({ organizationId }) {
     <>
       <div className="rules-head">
         <div>
-          <span className="eyebrow">Конфигурация QA</span>
+          <span className="eyebrow">Конфигурация проверки</span>
           <h2>Правила проверки</h2>
         </div>
         <motion.button className="primary-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={openAddModal}>

@@ -311,7 +311,7 @@ export function Topbar({ title, onNewReview, showNewReview = false }) {
   return (
     <header className="topbar">
       <div>
-        <span className="eyebrow">Внутренний QA-контур</span>
+        <span className="eyebrow">Внутренний контур качества</span>
         <h1>{title}</h1>
       </div>
       {showNewReview && (
