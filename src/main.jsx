@@ -283,6 +283,13 @@ function App({ session }) {
   };
   const onEmployeeDelete = (id) => setEmployeesData((prev) => prev.filter((e) => e.id !== id));
 
+  // Called after successful AI analysis to sync local state without a full refetch
+  const onDialogueAnalyzed = (employeeId, count) => {
+    setEmployeesData((prev) =>
+      prev.map((e) => e.id === employeeId ? { ...e, dialogs: (e.dialogs ?? 0) + count } : e)
+    );
+  };
+
   const currentTitle = tabs.find((tab) => tab.id === active)?.label ?? 'Главная';
 
   return (
@@ -339,6 +346,7 @@ function App({ session }) {
                   setAnalysis={setAnalysis}
                   employees={employeesData}
                   organizationId={organizationId}
+                  onDialogueAnalyzed={onDialogueAnalyzed}
                 />
               )}
               {active === 'report' && <Report organizationId={organizationId} />}

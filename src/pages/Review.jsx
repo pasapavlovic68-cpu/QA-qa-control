@@ -13,7 +13,7 @@ function formatSize(bytes) {
   return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
-export function Review({ analysis, setAnalysis, employees, organizationId }) {
+export function Review({ analysis, setAnalysis, employees, organizationId, onDialogueAnalyzed }) {
   const fileInputRef = useRef(null);
 
   const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
@@ -155,6 +155,9 @@ export function Review({ analysis, setAnalysis, employees, organizationId }) {
       if (dialoguesError) throw new Error('Не удалось загрузить диалоги из базы данных.');
       if (!dialogues || dialogues.length === 0) throw new Error('Нет загруженных диалогов для анализа.');
 
+      const dialogueCount = dialogues.length;
+      console.log(`[ReviewCounters] loaded ${dialogueCount} dialogue(s) for check_id=${currentCheckId}`);
+
       setAnalysisStage('loading_rules');
       const { data: rules, error: rulesError } = await supabase
         .from('qa_rules')
@@ -281,6 +284,32 @@ export function Review({ analysis, setAnalysis, employees, organizationId }) {
         .eq('id', currentCheckId);
 
       if (checkUpdateError) throw checkUpdateError;
+
+      // Update employee checks_count: read current value, add analyzed dialogue count
+      console.log(`[ReviewCounters] updating employee id=${selectedEmployee.id} checks_count +${dialogueCount}`);
+      const { data: empRow, error: empFetchErr } = await supabase
+        .from('employees')
+        .select('checks_count')
+        .eq('id', selectedEmployee.id)
+        .single();
+
+      if (empFetchErr) {
+        console.error(`[ReviewCounters] failed to fetch employee checks_count:`, empFetchErr);
+      } else {
+        const newCount = (empRow.checks_count ?? 0) + dialogueCount;
+        const { error: empUpdateErr } = await supabase
+          .from('employees')
+          .update({ checks_count: newCount })
+          .eq('id', selectedEmployee.id);
+
+        if (empUpdateErr) {
+          console.error(`[ReviewCounters] failed to update checks_count for employee id=${selectedEmployee.id}:`, empUpdateErr);
+        } else {
+          console.log(`[ReviewCounters] checks_count updated: id=${selectedEmployee.id} new value=${newCount} (+${dialogueCount})`);
+          // Sync local state so employee card updates immediately without refresh
+          onDialogueAnalyzed?.(selectedEmployee.id, dialogueCount);
+        }
+      }
 
       setAnalysisStage('completed');
       console.log(`[Review] total analysis ms: ${Math.round(performance.now() - startedAt)}`);
