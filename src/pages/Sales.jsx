@@ -1,13 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, TrendingUp } from 'lucide-react';
+import { BarChart2, Plus, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
-import { PremiumCard, Stagger } from '../components/shared.jsx';
+import { PremiumCard } from '../components/shared.jsx';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
 import { aggregateSales, formatCash, getWeekStart, getMonthStart } from '../lib/salesMetrics.js';
 import { useToast } from '../components/Toast.jsx';
 
-// ─── Add Sales Modal ────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [, m, d] = iso.split('-');
+  const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]}`;
+}
+
+function initials(name) {
+  return (name ?? '').split(' ').map((p) => p[0] ?? '').join('').slice(0, 2).toUpperCase();
+}
+
+// ─── Add Sales Modal ─────────────────────────────────────────────────────────
 
 function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
   useModalScrollLock();
@@ -28,7 +41,6 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
     if (!canSubmit || saving) return;
     setSaving(true);
     setError(null);
-
     const payload = {
       employee_id: form.employee_id,
       organization_id: organizationId,
@@ -36,7 +48,6 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
       cash_amount: form.cash_amount !== '' ? parseFloat(form.cash_amount) : 0,
       record_date: form.record_date,
     };
-
     const { data, error: err } = await supabase.from('employee_sales').insert(payload).select().single();
     setSaving(false);
     if (err) { setError(`Ошибка: ${err.message}`); return; }
@@ -62,7 +73,7 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
           <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
             <motion.div className="modal-title" variants={modalSectionVariants}>
               <div>
-                <span className="eyebrow">Показатели продаж</span>
+                <span className="eyebrow">Коммерческие показатели</span>
                 <h2>Добавить данные</h2>
               </div>
               <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
@@ -86,17 +97,17 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
                 <input type="date" value={form.record_date} onChange={(e) => setForm((f) => ({ ...f, record_date: e.target.value }))} />
               </label>
               <label>
-                <span>Депозиты (шт.)</span>
+                <span>Количество депозитов</span>
                 <input type="number" min="0" placeholder="0" value={form.deposits_count} onChange={(e) => setForm((f) => ({ ...f, deposits_count: e.target.value }))} />
               </label>
               <label>
-                <span>Сумма ($)</span>
+                <span>Сумма (USD)</span>
                 <input type="number" min="0" step="0.01" placeholder="0.00" value={form.cash_amount} onChange={(e) => setForm((f) => ({ ...f, cash_amount: e.target.value }))} />
               </label>
             </motion.div>
 
             {error && (
-              <motion.p variants={modalSectionVariants} style={{ fontSize: '0.82rem', color: '#e05c5c', textAlign: 'center', marginBottom: 4 }}>
+              <motion.p variants={modalSectionVariants} style={{ fontSize: '0.82rem', color: 'var(--danger)', textAlign: 'center', marginBottom: 4 }}>
                 {error}
               </motion.p>
             )}
@@ -115,9 +126,9 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
   );
 }
 
-// ─── Sales Day Chart (vertical bars) ───────────────────────────────────────
+// ─── Mini bar chart ──────────────────────────────────────────────────────────
 
-const MAX_H = 80;
+const CHART_H = 72;
 
 function SalesDayChart({ rows }) {
   const days = useMemo(() => {
@@ -129,29 +140,36 @@ function SalesDayChart({ rows }) {
     return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).slice(-14);
   }, [rows]);
 
-  if (days.length === 0) return <p style={{ opacity: 0.4, fontSize: '0.85rem', padding: '12px 0' }}>Нет данных за период.</p>;
+  if (days.length === 0) {
+    return (
+      <p style={{ textAlign: 'center', opacity: 0.38, fontSize: '0.85rem', padding: '24px 0' }}>
+        Нет данных за период
+      </p>
+    );
+  }
 
   const maxVal = Math.max(...days.map(([, v]) => v), 1);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: MAX_H + 28, paddingTop: 8 }}>
-      {days.map(([date, val]) => {
-        const fillH = Math.max(4, Math.round((val / maxVal) * MAX_H));
-        const label = date.slice(5); // MM-DD
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: CHART_H + 22, paddingTop: 6 }}>
+      {days.map(([date, val], i) => {
+        const fillH = Math.max(4, Math.round((val / maxVal) * CHART_H));
         return (
           <div key={date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0, gap: 4 }}>
             <motion.div
               initial={{ height: 0 }}
               animate={{ height: fillH }}
-              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: i * 0.025 }}
               style={{
                 width: '100%',
-                borderRadius: 6,
-                background: 'linear-gradient(180deg, var(--accent) 0%, rgba(119,101,227,0.55) 100%)',
-                boxShadow: '0 2px 8px rgba(119,101,227,0.18)',
+                borderRadius: 5,
+                background: 'linear-gradient(180deg, var(--accent) 0%, rgba(119,101,227,0.45) 100%)',
+                boxShadow: '0 2px 6px rgba(119,101,227,0.14)',
               }}
             />
-            <span style={{ fontSize: 9, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{label}</span>
+            <span style={{ fontSize: 8, color: 'var(--muted)', whiteSpace: 'nowrap', letterSpacing: 0.2 }}>
+              {date.slice(5)}
+            </span>
           </div>
         );
       })}
@@ -159,7 +177,7 @@ function SalesDayChart({ rows }) {
   );
 }
 
-// ─── Employee Sales Detail Modal ────────────────────────────────────────────
+// ─── Employee Detail Modal ───────────────────────────────────────────────────
 
 function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, onClose }) {
   useModalScrollLock();
@@ -186,6 +204,8 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, onClose }
     return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
 
+  const isEmpty = filtered.length === 0;
+
   return (
     <ModalPortal>
       <motion.div className="modal-backdrop report-detail-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
@@ -200,59 +220,63 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, onClose }
           transition={modalMotion.transition}
         >
           <motion.div className="report-detail-content" variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+
+            {/* Header */}
             <motion.div className="report-detail-header" variants={modalSectionVariants}>
-              <div>
-                <span className="eyebrow">Продажи</span>
-                <h2>{employee.name}</h2>
-                <p>{employee.role}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
+                <div className="sales-emp-avatar" style={{ width: 42, height: 42, borderRadius: 14, fontSize: 14, flexShrink: 0 }}>
+                  {initials(employee.name)}
+                </div>
+                <div>
+                  <span className="eyebrow">Продажи · {period === 'week' ? 'Эта неделя' : 'Этот месяц'}</span>
+                  <h2 style={{ margin: '1px 0 0' }}>{employee.name}</h2>
+                  <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--muted)' }}>{employee.role}</p>
+                </div>
               </div>
               <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
             </motion.div>
 
             {/* Period toggle */}
-            <motion.div variants={modalSectionVariants} style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              {['week', 'month'].map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  className={`qtc-pill${period === p ? ' active' : ''}`}
-                  onClick={() => setPeriod(p)}
-                >
-                  {p === 'week' ? 'Эта неделя' : 'Этот месяц'}
+            <motion.div variants={modalSectionVariants} style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+              {[['week', 'Неделя'], ['month', 'Месяц']].map(([p, label]) => (
+                <button key={p} type="button" className={`qtc-pill${period === p ? ' active' : ''}`} onClick={() => setPeriod(p)}>
+                  {label}
                 </button>
               ))}
             </motion.div>
 
             {/* KPI row */}
-            <motion.div variants={modalSectionVariants} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-              <PremiumCard compact title="Депозиты">
-                <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)', lineHeight: 1.15 }}>{deposits}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>за период</div>
-              </PremiumCard>
-              <PremiumCard compact title="Сумма">
-                <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)', lineHeight: 1.15 }}>{formatCash(cash)}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>за период</div>
-              </PremiumCard>
+            <motion.div variants={modalSectionVariants} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+              <div className="sales-detail-kpi">
+                <span className="sales-detail-kpi-label">Депозиты</span>
+                <strong className="sales-detail-kpi-value">{isEmpty ? '—' : deposits}</strong>
+              </div>
+              <div className="sales-detail-kpi">
+                <span className="sales-detail-kpi-label">Касса</span>
+                <strong className="sales-detail-kpi-value">{isEmpty ? '$—' : formatCash(cash)}</strong>
+              </div>
             </motion.div>
 
             {/* Chart */}
             <motion.div variants={modalSectionVariants}>
-              <PremiumCard compact title="Динамика по дням">
+              <PremiumCard compact title="Динамика кассы по дням">
                 <SalesDayChart rows={filtered} />
               </PremiumCard>
             </motion.div>
 
-            {/* History table */}
-            <motion.div variants={modalSectionVariants} style={{ marginTop: 16 }}>
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', marginBottom: 10, letterSpacing: 0.3, textTransform: 'uppercase' }}>История</h3>
+            {/* History */}
+            <motion.div variants={modalSectionVariants} style={{ marginTop: 18 }}>
+              <p className="sales-section-label">История</p>
               {history.length === 0 ? (
-                <p style={{ opacity: 0.4, fontSize: '0.875rem' }}>Нет записей за период.</p>
+                <p style={{ opacity: 0.38, fontSize: '0.875rem', textAlign: 'center', padding: '20px 0' }}>
+                  Нет данных за выбранный период
+                </p>
               ) : (
                 <div className="sales-history-table">
                   {history.map(([date, { deposits: d, cash: c }]) => (
                     <div key={date} className="sales-history-row">
-                      <span className="sales-history-date">{date}</span>
-                      <span style={{ fontSize: 13, color: 'var(--text)' }}>{d} деп.</span>
+                      <span className="sales-history-date">{fmtDate(date)}</span>
+                      <span style={{ fontSize: 13, color: 'var(--muted)' }}>{d}&thinsp;деп.</span>
                       <span className="sales-history-cash">{formatCash(c)}</span>
                     </div>
                   ))}
@@ -260,7 +284,13 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, onClose }
               )}
             </motion.div>
 
-            <motion.button className="ghost-button full report-back-button" variants={modalSectionVariants} whileTap={{ scale: 0.98 }} onClick={onClose}>
+            <motion.button
+              className="ghost-button full"
+              style={{ marginTop: 22 }}
+              variants={modalSectionVariants}
+              whileTap={{ scale: 0.98 }}
+              onClick={onClose}
+            >
               Закрыть
             </motion.button>
           </motion.div>
@@ -270,77 +300,89 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, onClose }
   );
 }
 
-// ─── Employee Sales Card ────────────────────────────────────────────────────
+// ─── Employee Sales Card ─────────────────────────────────────────────────────
 
 function EmployeeSalesCard({ employee, rows, period, onClick }) {
   const { weekDeposits, weekCash, monthDeposits, monthCash } = useMemo(() => aggregateSales(rows), [rows]);
 
   const deposits = period === 'week' ? weekDeposits : monthDeposits;
   const cash = period === 'week' ? weekCash : monthCash;
+  const hasData = deposits > 0 || cash > 0;
 
-  const maxDeposits = 30;
-  const progress = Math.min(deposits / maxDeposits, 1);
-
-  const cashTone = cash >= 5000 ? 'var(--success)' : cash >= 2000 ? 'var(--warn)' : 'var(--accent)';
+  const MAX_DEPOSITS = 30;
+  const progress = Math.min(deposits / MAX_DEPOSITS, 1);
 
   return (
     <motion.div
       className="sales-emp-card"
-      whileHover={{ y: -3, boxShadow: '0 16px 48px rgba(119,101,227,0.16)' }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ y: -3, boxShadow: '0 18px 52px rgba(119,101,227,0.15)' }}
+      whileTap={{ scale: 0.985 }}
       onClick={onClick}
-      style={{ cursor: 'pointer' }}
+      style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
     >
+      {/* Employee identity */}
       <div className="sales-emp-header">
-        <div className="sales-emp-avatar">
-          {employee.name.split(' ').map((p) => p[0] ?? '').join('').slice(0, 2).toUpperCase()}
-        </div>
+        <div className="sales-emp-avatar">{initials(employee.name)}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{employee.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{employee.role}</div>
-        </div>
-        <TrendingUp size={15} style={{ color: 'var(--muted)', flexShrink: 0 }} />
-      </div>
-
-      <div className="sales-emp-metrics">
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent)', lineHeight: 1.1 }}>{deposits}</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>депозиты</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: cashTone, lineHeight: 1.1 }}>{formatCash(cash)}</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>сумма</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {employee.name}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+            {employee.role}
+          </div>
         </div>
       </div>
 
-      <div className="sales-emp-progress">
-        <div className="sales-emp-progress-track">
-          <motion.div
-            className="sales-emp-progress-fill"
-            initial={{ width: 0 }}
-            animate={{ width: `${progress * 100}%` }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          />
+      {/* Metrics */}
+      {hasData ? (
+        <>
+          <div className="sales-emp-metrics">
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', lineHeight: 1.1 }}>{deposits}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>депозиты</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', lineHeight: 1.1 }}>{formatCash(cash)}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>касса</div>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="sales-emp-progress" style={{ marginTop: 'auto' }}>
+            <div className="sales-emp-progress-track">
+              <motion.div
+                className="sales-emp-progress-fill"
+                initial={{ width: 0 }}
+                animate={{ width: `${progress * 100}%` }}
+                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              />
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {deposits} / {MAX_DEPOSITS}
+            </span>
+          </div>
+        </>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '14px 0 10px' }}>
+          <p style={{ opacity: 0.35, fontSize: '0.82rem', textAlign: 'center', margin: 0 }}>Нет данных за период</p>
         </div>
-        <span style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{deposits}/{maxDeposits}</span>
-      </div>
+      )}
     </motion.div>
   );
 }
 
-// ─── KPI Summary Card ───────────────────────────────────────────────────────
+// ─── KPI Card ────────────────────────────────────────────────────────────────
 
-function SalesKpiCard({ label, value, sub }) {
+function SalesKpiCard({ label, value, accent = false }) {
   return (
-    <div className="sales-kpi-card">
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)', lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{sub}</div>}
+    <div className={`sales-kpi-card${accent ? ' sales-kpi-card--accent' : ''}`}>
+      <div className="sales-kpi-label">{label}</div>
+      <div className="sales-kpi-value">{value}</div>
     </div>
   );
 }
 
-// ─── Sales Page ─────────────────────────────────────────────────────────────
+// ─── Sales Page ──────────────────────────────────────────────────────────────
 
 export function Sales({ employees, employeesLoading, organizationId }) {
   const [salesRows, setSalesRows] = useState([]);
@@ -352,12 +394,12 @@ export function Sales({ employees, employeesLoading, organizationId }) {
 
   useEffect(() => {
     if (!organizationId) return;
-    const cutoff = getWeekStart() < getMonthStart() ? getWeekStart() : getMonthStart();
+    // Fetch everything from week start (which is always <= month start)
     supabase
       .from('employee_sales')
       .select('id, employee_id, deposits_count, cash_amount, record_date')
       .eq('organization_id', organizationId)
-      .gte('record_date', cutoff)
+      .gte('record_date', getWeekStart())
       .order('record_date', { ascending: false })
       .then(({ data, error }) => {
         if (!error) setSalesRows(data ?? []);
@@ -366,90 +408,154 @@ export function Sales({ employees, employeesLoading, organizationId }) {
       });
   }, [organizationId]);
 
+  // Also fetch month rows separately (month start may be before week start at start of month)
+  const [monthRows, setMonthRows] = useState([]);
+  useEffect(() => {
+    if (!organizationId) return;
+    supabase
+      .from('employee_sales')
+      .select('id, employee_id, deposits_count, cash_amount, record_date')
+      .eq('organization_id', organizationId)
+      .gte('record_date', getMonthStart())
+      .order('record_date', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error) setMonthRows(data ?? []);
+        else console.error('[Sales] month fetch error:', error);
+      });
+  }, [organizationId]);
+
+  // All rows for the full month window (month rows are superset when month > week)
+  const allRows = useMemo(() => {
+    // Merge: month rows contain all week rows (week ⊆ month in date terms — always true),
+    // so just use monthRows for all aggregation, salesRows for week-only
+    // Actually: week start >= month start always except at beginning of month.
+    // Safest: union by id.
+    const seen = new Set();
+    const merged = [];
+    [...monthRows, ...salesRows].forEach((r) => {
+      if (!seen.has(r.id)) { seen.add(r.id); merged.push(r); }
+    });
+    return merged;
+  }, [monthRows, salesRows]);
+
   const rowsByEmployee = useMemo(() => {
     const map = {};
-    salesRows.forEach((r) => {
+    allRows.forEach((r) => {
       if (!map[r.employee_id]) map[r.employee_id] = [];
       map[r.employee_id].push(r);
     });
     return map;
-  }, [salesRows]);
+  }, [allRows]);
 
   const { weekDeposits, weekCash, monthDeposits, monthCash } = useMemo(
-    () => aggregateSales(salesRows),
-    [salesRows]
+    () => aggregateSales(allRows),
+    [allRows]
   );
 
-  const deposits = period === 'week' ? weekDeposits : monthDeposits;
-  const cash = period === 'week' ? weekCash : monthCash;
-  const avgDeposits = employees.length > 0 ? Math.round((deposits / employees.length) * 10) / 10 : 0;
-  const avgCash = employees.length > 0 ? Math.round(cash / employees.length) : 0;
+  const loading = salesLoading || employeesLoading;
+  const noSalesData = !loading && allRows.length === 0;
+
+  const openDetail = (emp) => {
+    setDetailEmployee(emp);
+    setDetailPeriod(period); // sync period from page
+  };
 
   return (
     <>
-      {/* Header */}
+      {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="employees-page-head">
         <div>
-          <span className="eyebrow">Коммерческие результаты</span>
+          <span className="eyebrow">Депозиты и касса по сотрудникам</span>
           <h2>Продажи</h2>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Period pills */}
-          <div style={{ display: 'flex', gap: 6 }}>
-            {['week', 'month'].map((p) => (
-              <button key={p} type="button" className={`qtc-pill${period === p ? ' active' : ''}`} onClick={() => setPeriod(p)}>
-                {p === 'week' ? 'Эта неделя' : 'Этот месяц'}
-              </button>
-            ))}
-          </div>
-          <motion.button className="primary-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={() => setAddOpen(true)}>
-            <Plus size={17} />
-            Добавить
-          </motion.button>
+        <motion.button
+          className="primary-button"
+          whileTap={{ scale: 0.97 }}
+          whileHover={{ y: -2 }}
+          onClick={() => setAddOpen(true)}
+          disabled={employees.length === 0}
+        >
+          <Plus size={17} />
+          Добавить
+        </motion.button>
+      </div>
+
+      {/* ── KPI Grid (always shows week + month, not period-dependent) ── */}
+      <div className="sales-kpi-grid">
+        <SalesKpiCard label="Депозиты за неделю" value={loading ? '…' : String(weekDeposits)} />
+        <SalesKpiCard label="Касса за неделю" value={loading ? '…' : formatCash(weekCash)} accent />
+        <SalesKpiCard label="Депозиты за месяц" value={loading ? '…' : String(monthDeposits)} />
+        <SalesKpiCard label="Касса за месяц" value={loading ? '…' : formatCash(monthCash)} accent />
+      </div>
+
+      {/* ── Period switch + employee grid ────────────────────────────── */}
+      <div className="sales-period-bar">
+        <span className="sales-section-label">По сотрудникам</span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[['week', 'Неделя'], ['month', 'Месяц']].map(([p, label]) => (
+            <button key={p} type="button" className={`qtc-pill${period === p ? ' active' : ''}`} onClick={() => setPeriod(p)}>
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* KPI summary */}
-      <Stagger className="sales-kpi-grid">
-        <SalesKpiCard label="Депозиты" value={salesLoading ? '…' : String(deposits)} sub={`всего за ${period === 'week' ? 'неделю' : 'месяц'}`} />
-        <SalesKpiCard label="Сумма" value={salesLoading ? '…' : formatCash(cash)} sub={`всего за ${period === 'week' ? 'неделю' : 'месяц'}`} />
-        <SalesKpiCard label="Сред. депозиты" value={salesLoading ? '…' : String(avgDeposits)} sub="на сотрудника" />
-        <SalesKpiCard label="Сред. сумма" value={salesLoading ? '…' : formatCash(avgCash)} sub="на сотрудника" />
-      </Stagger>
-
-      {/* Employee sales grid */}
-      {employeesLoading || salesLoading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
-          <p style={{ opacity: 0.45, fontSize: '0.95rem' }}>Загружаем данные…</p>
+      {/* ── Body ────────────────────────────────────────────────────── */}
+      {loading ? (
+        <div className="sales-empty-state">
+          <p style={{ opacity: 0.45 }}>Загружаем данные…</p>
         </div>
       ) : employees.length === 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 200, gap: 8, textAlign: 'center' }}>
-          <p style={{ fontWeight: 600, opacity: 0.65, fontSize: '1rem' }}>Нет сотрудников</p>
-          <p style={{ opacity: 0.4, fontSize: '0.875rem', maxWidth: 320 }}>Добавьте сотрудников во вкладке «Сотрудники», чтобы отслеживать продажи.</p>
+        <div className="sales-empty-state">
+          <BarChart2 size={36} style={{ opacity: 0.18, marginBottom: 10 }} />
+          <p style={{ fontWeight: 600, opacity: 0.6, marginBottom: 4 }}>Нет сотрудников</p>
+          <p style={{ opacity: 0.38, fontSize: '0.875rem', maxWidth: 300, margin: 0 }}>
+            Добавьте сотрудников во вкладке «Сотрудники», чтобы отслеживать продажи.
+          </p>
+        </div>
+      ) : noSalesData ? (
+        <div className="sales-empty-state">
+          <BarChart2 size={36} style={{ opacity: 0.18, marginBottom: 10 }} />
+          <p style={{ fontWeight: 600, opacity: 0.6, marginBottom: 4 }}>Пока нет данных</p>
+          <p style={{ opacity: 0.38, fontSize: '0.875rem', maxWidth: 320, margin: 0 }}>
+            Показатели продаж появятся после добавления данных.
+          </p>
         </div>
       ) : (
-        <motion.div className="sales-emp-grid" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}>
+        <motion.div
+          className="sales-emp-grid"
+          initial="hidden"
+          animate="show"
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.055 } } }}
+        >
           {employees.map((emp) => (
-            <motion.div key={emp.id} variants={{ hidden: { opacity: 0, y: 16, scale: 0.97 }, show: { opacity: 1, y: 0, scale: 1 } }}>
+            <motion.div
+              key={emp.id}
+              variants={{ hidden: { opacity: 0, y: 14, scale: 0.97 }, show: { opacity: 1, y: 0, scale: 1 } }}
+              style={{ display: 'flex' }}
+            >
               <EmployeeSalesCard
                 employee={emp}
                 rows={rowsByEmployee[emp.id] ?? []}
                 period={period}
-                onClick={() => { setDetailEmployee(emp); setDetailPeriod(period); }}
+                onClick={() => openDetail(emp)}
               />
             </motion.div>
           ))}
         </motion.div>
       )}
 
-      {/* Modals */}
+      {/* ── Modals ──────────────────────────────────────────────────── */}
       <AnimatePresence>
         {addOpen && (
           <AddSalesModal
             employees={employees}
             organizationId={organizationId}
             onClose={() => setAddOpen(false)}
-            onSaved={(row) => setSalesRows((prev) => [row, ...prev])}
+            onSaved={(row) => {
+              setSalesRows((prev) => [row, ...prev]);
+              setMonthRows((prev) => [row, ...prev]);
+            }}
           />
         )}
       </AnimatePresence>
@@ -457,7 +563,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
         {detailEmployee && (
           <EmployeeSalesDetailModal
             employee={detailEmployee}
-            rows={salesRows.filter((r) => r.employee_id === detailEmployee.id)}
+            rows={allRows.filter((r) => r.employee_id === detailEmployee.id)}
             period={detailPeriod}
             setPeriod={setDetailPeriod}
             onClose={() => setDetailEmployee(null)}

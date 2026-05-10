@@ -2462,3 +2462,84 @@ select {
     grid-template-columns: 1fr;
   }
 }
+
+/* Sales page — polished KPI cards */
+.sales-kpi-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+  margin-bottom: 6px;
+}
+
+.sales-kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+
+.sales-kpi-card--accent .sales-kpi-value {
+  color: var(--accent);
+}
+
+/* Sales page — period bar */
+.sales-period-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 2px;
+}
+
+/* Sales page — section label */
+.sales-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+
+/* Sales page — empty state */
+.sales-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: 8px;
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.sales-empty-state p {
+  margin: 0;
+}
+
+/* Sales page — detail modal KPI cells */
+.sales-detail-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px;
+  background: rgba(119,101,227,0.05);
+  border: 1px solid rgba(119,101,227,0.1);
+  border-radius: 14px;
+}
+
+.sales-detail-kpi-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+}
+
+.sales-detail-kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.4px;
+  line-height: 1.1;
+}
