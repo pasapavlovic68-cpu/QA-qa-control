@@ -236,6 +236,7 @@ function App({ session }) {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [analysis, setAnalysis] = useState('idle');
+  const [dashRefreshTick, setDashRefreshTick] = useState(0);
 
   const [organizationId, setOrganizationId] = useState(null);
   const [orgName, setOrgName] = useState('');
@@ -283,11 +284,22 @@ function App({ session }) {
   };
   const onEmployeeDelete = (id) => setEmployeesData((prev) => prev.filter((e) => e.id !== id));
 
-  // Called after successful AI analysis to sync local state without a full refetch
-  const onDialogueAnalyzed = (employeeId, count) => {
+  // Called after successful AI analysis to sync local state without a full refetch.
+  // count = real analyzed dialogue count; newScore = score from the saved report.
+  const onDialogueAnalyzed = (employeeId, count, newScore) => {
+    console.log(`[PostAnalysisDataFlow] local state sync: employee=${employeeId}, +${count} dialogs, score=${newScore}`);
     setEmployeesData((prev) =>
-      prev.map((e) => e.id === employeeId ? { ...e, dialogs: (e.dialogs ?? 0) + count } : e)
+      prev.map((e) => {
+        if (e.id !== employeeId) return e;
+        return {
+          ...e,
+          dialogs: (e.dialogs ?? 0) + count,
+          ...(typeof newScore === 'number' ? { score: newScore } : {}),
+        };
+      })
     );
+    // Increment tick so Dashboard re-fetches latest checks/reports data
+    setDashRefreshTick((t) => t + 1);
   };
 
   const currentTitle = tabs.find((tab) => tab.id === active)?.label ?? 'Главная';
@@ -327,6 +339,7 @@ function App({ session }) {
                   employees={employeesData}
                   employeesLoading={employeesLoading}
                   organizationId={organizationId}
+                  refreshTick={dashRefreshTick}
                 />
               )}
               {active === 'employees' && (
@@ -359,6 +372,7 @@ function App({ session }) {
           {detailOpen && selectedEmployee && (
             <EmployeeDrawer
               employee={selectedEmployee}
+              organizationId={organizationId}
               onClose={() => setDetailOpen(false)}
               onNewReview={() => {
                 setDetailOpen(false);

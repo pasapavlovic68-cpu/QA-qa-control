@@ -288,7 +288,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       if (checkUpdateError) throw checkUpdateError;
 
       // Update employee checks_count: read current value, add analyzed dialogue count
-      console.log(`[ReviewCounters] updating employee id=${selectedEmployee.id} checks_count +${dialogueCount}`);
+      console.log(`[PostAnalysisDataFlow] updating employee id=${selectedEmployee.id}: checks_count +${dialogueCount}, score=${report.score}`);
       const { data: empRow, error: empFetchErr } = await supabase
         .from('employees')
         .select('checks_count')
@@ -296,20 +296,20 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         .single();
 
       if (empFetchErr) {
-        console.error(`[ReviewCounters] failed to fetch employee checks_count:`, empFetchErr);
+        console.error(`[PostAnalysisDataFlow] failed to fetch employee checks_count:`, empFetchErr);
       } else {
         const newCount = (empRow.checks_count ?? 0) + dialogueCount;
         const { error: empUpdateErr } = await supabase
           .from('employees')
-          .update({ checks_count: newCount })
+          .update({ checks_count: newCount, score: report.score })
           .eq('id', selectedEmployee.id);
 
         if (empUpdateErr) {
-          console.error(`[ReviewCounters] failed to update checks_count for employee id=${selectedEmployee.id}:`, empUpdateErr);
+          console.error(`[PostAnalysisDataFlow] failed to update employee id=${selectedEmployee.id}:`, empUpdateErr);
         } else {
-          console.log(`[ReviewCounters] checks_count updated: id=${selectedEmployee.id} new value=${newCount} (+${dialogueCount})`);
-          // Sync local state so employee card updates immediately without refresh
-          onDialogueAnalyzed?.(selectedEmployee.id, dialogueCount);
+          console.log(`[PostAnalysisDataFlow] employee updated: id=${selectedEmployee.id} checks_count=${newCount} score=${report.score}`);
+          // Sync local state (score + dialogs) without page reload
+          onDialogueAnalyzed?.(selectedEmployee.id, dialogueCount, report.score);
         }
       }
 

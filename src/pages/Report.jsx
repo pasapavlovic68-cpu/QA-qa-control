@@ -5,7 +5,7 @@ import { supabase, fetchWithTimeout } from '../lib/supabase.js';
 import { AnimatedProgress, Avatar } from '../components/shared.jsx';
 import { reportCardTransition, ReportDetailModal } from '../components/modals.jsx';
 
-function toReport(row, employeeMap) {
+function toReport(row, employeeMap, checkMap) {
   const mistakes = Array.isArray(row.mistakes) ? row.mistakes : [];
   const positives = Array.isArray(row.positives) ? row.positives : [];
   const recommendations = Array.isArray(row.recommendations) ? row.recommendations : [];
@@ -13,6 +13,8 @@ function toReport(row, employeeMap) {
   const criticalCount = mistakes.filter((m) => m.severity === 'critical').length;
   const employeeName = employeeMap[row.employee_id] || 'Сотрудник';
   const summary = row.management_summary || '';
+  // dialogues_count lives in qa_checks; look it up by check_id
+  const dialogs = (checkMap && row.check_id) ? (checkMap[row.check_id] ?? 0) : 0;
 
   return {
     id: row.id,
@@ -26,7 +28,7 @@ function toReport(row, employeeMap) {
     date: row.created_at ? new Date(row.created_at).toLocaleDateString('ru-RU') : '',
     status: 'Готово',
     tone: 'success',
-    dialogs: 0,
+    dialogs,
     critical: criticalCount,
     mistakes,
     positives,
@@ -43,6 +45,7 @@ export function Report({ organizationId }) {
 
   useEffect(() => {
     if (!organizationId) return;
+    console.log('[PostAnalysisDataFlow] Report: fetching reports, employees, qa_checks');
     Promise.all([
       fetchWithTimeout(
         supabase
@@ -55,13 +58,26 @@ export function Report({ organizationId }) {
       fetchWithTimeout(
         supabase.from('employees').select('id, name').eq('organization_id', organizationId),
         'Report:employees'
+      ),
+      fetchWithTimeout(
+        supabase.from('qa_checks').select('id, dialogues_count').eq('organization_id', organizationId),
+        'Report:checks'
       )
-    ]).then(([reportsResult, employeesResult]) => {
+    ]).then(([reportsResult, employeesResult, checksResult]) => {
       const employeeMap = {};
       (employeesResult.data ?? []).forEach((e) => { employeeMap[e.id] = e.name; });
 
-      if (reportsResult.error) { setLoading(false); return; }
-      setReports((reportsResult.data ?? []).map((row) => toReport(row, employeeMap)));
+      // Map check id → dialogues_count so toReport can fill the dialogs field
+      const checkMap = {};
+      (checksResult.data ?? []).forEach((c) => { checkMap[c.id] = c.dialogues_count ?? 0; });
+      console.log(`[PostAnalysisDataFlow] Report: checkMap has ${Object.keys(checkMap).length} entries`);
+
+      if (reportsResult.error) {
+        console.error('[Report] reports fetch error:', reportsResult.error);
+        setLoading(false);
+        return;
+      }
+      setReports((reportsResult.data ?? []).map((row) => toReport(row, employeeMap, checkMap)));
       setLoading(false);
     });
   }, [organizationId]);

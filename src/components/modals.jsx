@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, X } from 'lucide-react';
+import { supabase } from '../lib/supabase.js';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from './modal.jsx';
 import { Avatar, Metric, PremiumCard, Evidence, ChatSnippet } from './shared.jsx';
 import { PremiumDropdown, RuleToggle } from './display.jsx';
@@ -111,8 +113,66 @@ export function DeleteEmployeeModal({ employee, onCancel, onConfirm }) {
   );
 }
 
-export function EmployeeDrawer({ employee, onClose, onNewReview }) {
+export function EmployeeDrawer({ employee, organizationId, onClose, onNewReview }) {
   useModalScrollLock();
+
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  useEffect(() => {
+    if (!employee?.id || !organizationId) {
+      setHistoryLoading(false);
+      return;
+    }
+    console.log(`[PostAnalysisDataFlow] EmployeeDrawer: fetching reports for employee=${employee.id}`);
+    setHistoryLoading(true);
+    Promise.all([
+      supabase
+        .from('reports')
+        .select('id, check_id, score, title, mistakes, recommendations, created_at')
+        .eq('employee_id', employee.id)
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false })
+        .limit(10),
+      supabase
+        .from('qa_checks')
+        .select('id, dialogues_count')
+        .eq('employee_id', employee.id)
+        .eq('organization_id', organizationId)
+        .eq('status', 'complete')
+    ]).then(([reportsRes, checksRes]) => {
+      if (reportsRes.error) {
+        console.error('[PostAnalysisDataFlow] EmployeeDrawer: reports fetch error:', reportsRes.error);
+        setHistoryLoading(false);
+        return;
+      }
+      const checkMap = {};
+      (checksRes.data ?? []).forEach((c) => { checkMap[c.id] = c.dialogues_count ?? 0; });
+
+      const rows = (reportsRes.data ?? []).map((r) => ({
+        id: r.id,
+        title: r.title || 'Отчёт',
+        score: r.score ?? 0,
+        date: r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : '',
+        mistakes: Array.isArray(r.mistakes) ? r.mistakes : [],
+        recommendations: Array.isArray(r.recommendations) ? r.recommendations : [],
+        dialogues: checkMap[r.check_id] ?? 0,
+      }));
+      console.log(`[PostAnalysisDataFlow] EmployeeDrawer: loaded ${rows.length} reports for employee=${employee.id}`);
+      setHistory(rows);
+      setHistoryLoading(false);
+    });
+  }, [employee?.id, organizationId]);
+
+  // Derive display data from history
+  const latestRecs = history[0]?.recommendations ?? [];
+  const allMistakes = history.flatMap((r) => r.mistakes);
+  const mistakeCounts = {};
+  allMistakes.forEach((m) => {
+    const key = m.title || m.description || '';
+    if (key) mistakeCounts[key] = (mistakeCounts[key] || 0) + 1;
+  });
+  const topMistakes = Object.entries(mistakeCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
   return (
     <ModalPortal>
@@ -147,23 +207,61 @@ export function EmployeeDrawer({ employee, onClose, onNewReview }) {
             <Metric label="Тренд" value={employee.trend} />
           </motion.div>
           <motion.div variants={modalSectionVariants}>
-            <PremiumCard title="Динамика качества" compact>
-              <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '12px 0' }}>Динамика появится после первых проверок.</p>
-            </PremiumCard>
-          </motion.div>
-          <motion.div variants={modalSectionVariants}>
             <PremiumCard title="Частые ошибки" compact>
-              <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '12px 0' }}>Ошибки появятся после AI-анализа диалогов.</p>
+              {historyLoading ? (
+                <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '12px 0' }}>Загружаем…</p>
+              ) : topMistakes.length > 0 ? (
+                <div className="tag-cloud" style={{ paddingTop: 8 }}>
+                  {topMistakes.map(([title, count]) => (
+                    <span key={title}>{title} ×{count}</span>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '12px 0' }}>Ошибок не выявлено.</p>
+              )}
             </PremiumCard>
           </motion.div>
           <motion.div variants={modalSectionVariants}>
             <PremiumCard title="Рекомендации" compact>
-              <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '12px 0' }}>Рекомендации появятся после первого отчёта.</p>
+              {historyLoading ? (
+                <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '12px 0' }}>Загружаем…</p>
+              ) : latestRecs.length > 0 ? (
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.875rem', lineHeight: 1.6 }}>
+                  {latestRecs.slice(0, 3).map((rec, i) => (
+                    <li key={i}>{rec.text || rec.description || rec.title || rec}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '12px 0' }}>Рекомендации появятся после первого отчёта.</p>
+              )}
             </PremiumCard>
           </motion.div>
           <motion.div className="history" variants={modalSectionVariants}>
             <h3>История проверок</h3>
-            <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '8px 0' }}>История проверок пока пуста.</p>
+            {historyLoading ? (
+              <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '8px 0' }}>Загружаем историю…</p>
+            ) : history.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                {history.map((r) => (
+                  <div key={r.id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 14px',
+                    borderRadius: 14,
+                    background: 'rgba(119,101,227,0.06)',
+                    border: '1px solid rgba(119,101,227,0.10)',
+                    fontSize: '0.85rem',
+                  }}>
+                    <span style={{ flex: 1, fontWeight: 500 }}>{r.title}</span>
+                    <span style={{ color: 'var(--muted)', marginRight: 12 }}>{r.date}</span>
+                    <span style={{ color: 'var(--accent)', fontWeight: 700, minWidth: 28, textAlign: 'right' }}>{r.score}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ opacity: 0.4, fontSize: '0.875rem', padding: '8px 0' }}>История проверок пока пуста.</p>
+            )}
           </motion.div>
           <motion.button
             className="primary-button full glow"
