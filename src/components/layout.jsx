@@ -61,7 +61,7 @@ function ProfileBlock({ user, orgName }) {
     'Пользователь';
 
   const email = user?.email ?? '';
-  const org = orgName || 'QA Control Owner Workspace';
+  const org = orgName || 'LeadProof Workspace';
 
   const initials = displayName
     .split(' ')
@@ -265,8 +265,8 @@ export function Sidebar({ active, setActive, user, orgName, systemStatus = {} })
       <motion.div className="brand" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="brand-mark"><ShieldCheck size={22} /></div>
         <div>
-          <strong>QA Control</strong>
-          <span>Контроль качества диалогов</span>
+          <strong>LeadProof</strong>
+          <span>AI-контроль качества продаж</span>
         </div>
       </motion.div>
 

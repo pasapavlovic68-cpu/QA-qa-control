@@ -83,7 +83,7 @@ function LoginScreen() {
               <path d="M9 12l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="4"/>
             </svg>
           </div>
-          <h2 style={{ margin: '0 0 4px', fontSize: 22 }}>QA Control</h2>
+          <h2 style={{ margin: '0 0 4px', fontSize: 22 }}>LeadProof</h2>
           <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14 }}>Войдите в систему</p>
         </div>
 
