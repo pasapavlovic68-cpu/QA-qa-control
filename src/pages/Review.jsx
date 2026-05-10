@@ -152,6 +152,23 @@ export function Review({ analysis, setAnalysis, employees }) {
 
       if (rulesError) throw new Error('Не удалось загрузить правила QA.');
 
+      let settings = {};
+      const { data: settingsRows, error: settingsError } = await supabase
+        .from('team_settings')
+        .select('*')
+        .order('key');
+
+      if (settingsError) {
+        console.error('[Review] team settings fetch error:', settingsError);
+      } else {
+        (settingsRows ?? []).forEach((row) => {
+          settings[row.key] = row.value ?? '';
+        });
+      }
+
+      const parseList = (str) =>
+        (str || '').split('\n').map((s) => s.trim()).filter(Boolean);
+
       setAnalysisStage('contacting_ai');
       const workerStartedAt = performance.now();
       const response = await fetch(WORKER_URL, {
@@ -178,9 +195,14 @@ export function Review({ analysis, setAnalysis, employees }) {
           })),
           analysisContext: {
             language: 'ru',
-            outputStyle: 'management_report',
+            outputStyle: settings.report_style || 'management_report',
             strictness: 'high',
-            requireEvidence: true
+            requireEvidence: true,
+            companyInstruction: settings.company_instruction || '',
+            salesGoal: settings.sales_goal || '',
+            forbiddenPhrases: parseList(settings.forbidden_phrases),
+            upsellStrategy: settings.upsell_strategy || '',
+            criticalMoments: parseList(settings.critical_moments)
           }
         }),
         signal: workerController.signal
