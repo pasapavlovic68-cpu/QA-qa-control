@@ -123,6 +123,7 @@ function EmployeesControlModal({ employees, criticalByEmployee, onClose }) {
 }
 
 const MAX_BAR_H = 72;
+const MAX_BAR_H_COMPACT = 56;
 
 function dayColor(score) {
   if (score === null) return 'rgba(119,101,227,0.15)';
@@ -131,28 +132,34 @@ function dayColor(score) {
   return 'var(--danger)';
 }
 
-function SevenDayQualityChart({ days, summary, loading }) {
+function QualityChart({ days, summary, loading, compact, employeeFiltered }) {
   if (loading) return <p className="qtc-empty">Загружаем…</p>;
 
   const hasSomeData = days.some((d) => d.avgScore !== null);
   if (!hasSomeData)
     return (
       <p className="qtc-empty">
-        Данных за последние 7 дней нет. Динамика появится после AI‑анализа диалогов.
+        {employeeFiltered
+          ? `Нет данных за последние ${days.length} дней для выбранного сотрудника.`
+          : `Данных за последние ${days.length} дней нет. Динамика появится после AI‑анализа диалогов.`}
       </p>
     );
 
+  const maxH = compact ? MAX_BAR_H_COMPACT : MAX_BAR_H;
+  const minFill = compact ? 3 : 8;
+  const emptyFill = compact ? 2 : 4;
+
   return (
     <div className="qtc-wrap">
-      <div className="qtc-bars">
+      <div className={`qtc-bars${compact ? ' qtc-bars--compact' : ''}`}>
         {days.map((d, i) => {
           const has = d.avgScore !== null;
-          const fillH = has ? Math.max(Math.round((d.avgScore / 100) * MAX_BAR_H), 8) : 4;
+          const fillH = has ? Math.max(Math.round((d.avgScore / 100) * maxH), minFill) : emptyFill;
           const color = dayColor(d.avgScore);
           return (
-            <div key={d.dayKey} className="qtc-col">
+            <div key={d.dayKey} className={`qtc-col${compact ? ' qtc-col--compact' : ''}`}>
               <div className="qtc-bar-area">
-                {has && (
+                {!compact && has && (
                   <span className="qtc-score-label" style={{ color }}>
                     {d.avgScore}
                   </span>
@@ -162,14 +169,16 @@ function SevenDayQualityChart({ days, summary, loading }) {
                     className="qtc-bar-fill"
                     style={{ background: color, opacity: has ? 0.88 : 0.4, height: 0 }}
                     animate={{ height: fillH }}
-                    transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: i * 0.06 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: i * (compact ? 0.02 : 0.06) }}
                   />
                 </div>
               </div>
-              <span className="qtc-day-label" style={{ opacity: has ? 1 : 0.38 }}>
-                {d.label}
-              </span>
-              {has && d.count > 1 && (
+              {d.showLabel && (
+                <span className="qtc-day-label" style={{ opacity: has ? 1 : 0.38 }}>
+                  {d.label}
+                </span>
+              )}
+              {!compact && has && d.count > 1 && (
                 <span className="qtc-count-label">{d.count} отч.</span>
               )}
             </div>
@@ -180,7 +189,7 @@ function SevenDayQualityChart({ days, summary, loading }) {
       {summary && (
         <div className="qtc-summary">
           <div className="qtc-stat-item">
-            <span>7 дней ср.</span>
+            <span>{summary.periodDays} дн. ср.</span>
             <strong style={{ color: dayColor(summary.overall) }}>{summary.overall}</strong>
           </div>
           <div className="qtc-divider" />
@@ -228,6 +237,8 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
   const [reports, setReports] = useState([]);
   const [dashLoading, setDashLoading] = useState(true);
   const [employeesModalOpen, setEmployeesModalOpen] = useState(false);
+  const [trendEmployeeId, setTrendEmployeeId] = useState(null);
+  const [trendPeriod, setTrendPeriod] = useState(7);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -289,16 +300,18 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
     return map;
   }, [employees]);
 
-  const sevenDayTrend = useMemo(() => {
+  const trendDays = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return Array.from({ length: 7 }, (_, i) => {
+    const compact = trendPeriod === 30;
+    return Array.from({ length: trendPeriod }, (_, i) => {
       const day = new Date(today);
-      day.setDate(today.getDate() - (6 - i));
+      day.setDate(today.getDate() - (trendPeriod - 1 - i));
       const dayStart = day.getTime();
       const dayEnd = dayStart + 86400000;
       const dayReports = reports.filter((r) => {
         if (!r.created_at) return false;
+        if (trendEmployeeId && r.employee_id !== trendEmployeeId) return false;
         const t = new Date(r.created_at).getTime();
         return t >= dayStart && t < dayEnd;
       });
@@ -306,14 +319,24 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
         dayReports.length > 0
           ? Math.round(dayReports.reduce((s, r) => s + (r.score ?? 0), 0) / dayReports.length)
           : null;
-      const weekday = day.toLocaleDateString('ru-RU', { weekday: 'short' });
-      const label = weekday.charAt(0).toUpperCase() + weekday.slice(1) + ' ' + day.getDate();
-      return { dayKey: day.toISOString().slice(0, 10), label, avgScore, count: dayReports.length };
+      let label;
+      let showLabel;
+      if (!compact) {
+        const weekday = day.toLocaleDateString('ru-RU', { weekday: 'short' });
+        label = weekday.charAt(0).toUpperCase() + weekday.slice(1) + ' ' + day.getDate();
+        showLabel = true;
+      } else {
+        showLabel = i % 5 === 0 || i === trendPeriod - 1;
+        label = showLabel
+          ? day.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+          : '';
+      }
+      return { dayKey: day.toISOString().slice(0, 10), label, showLabel, avgScore, count: dayReports.length };
     });
-  }, [reports]);
+  }, [reports, trendPeriod, trendEmployeeId]);
 
   const trendSummary = useMemo(() => {
-    const filled = sevenDayTrend.filter((d) => d.avgScore !== null);
+    const filled = trendDays.filter((d) => d.avgScore !== null);
     if (filled.length === 0) return null;
     const overall = Math.round(filled.reduce((s, d) => s + d.avgScore, 0) / filled.length);
     const best = filled.reduce((a, b) => (b.avgScore > a.avgScore ? b : a));
@@ -324,8 +347,8 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
       if (delta >= 3) trend = 'growth';
       else if (delta <= -3) trend = 'decline';
     }
-    return { overall, best, worst, trend };
-  }, [sevenDayTrend]);
+    return { overall, best, worst, trend, periodDays: trendPeriod };
+  }, [trendDays, trendPeriod]);
 
   const topErrors = useMemo(() => {
     const counts = {};
@@ -407,8 +430,47 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
         {kpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
       </Stagger>
       <div className="dashboard-grid">
-        <PremiumCard className="chart-card wide" title="Динамика качества" action="Последние 7 дней">
-          <SevenDayQualityChart days={sevenDayTrend} summary={trendSummary} loading={dashLoading} />
+        <PremiumCard className="chart-card wide" title="Динамика качества" action={`Последние ${trendPeriod} дней`}>
+          <div className="qtc-filters">
+            <div className="qtc-filter-group">
+              <button
+                type="button"
+                className={`qtc-pill${trendEmployeeId === null ? ' active' : ''}`}
+                onClick={() => setTrendEmployeeId(null)}
+              >
+                Все
+              </button>
+              {employees.map((emp) => (
+                <button
+                  key={emp.id}
+                  type="button"
+                  className={`qtc-pill${trendEmployeeId === emp.id ? ' active' : ''}`}
+                  onClick={() => setTrendEmployeeId(emp.id)}
+                >
+                  {emp.name}
+                </button>
+              ))}
+            </div>
+            <div className="qtc-filter-group qtc-filter-group--right">
+              {[7, 30].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`qtc-pill${trendPeriod === p ? ' active' : ''}`}
+                  onClick={() => setTrendPeriod(p)}
+                >
+                  {p} дн.
+                </button>
+              ))}
+            </div>
+          </div>
+          <QualityChart
+            days={trendDays}
+            summary={trendSummary}
+            loading={dashLoading}
+            compact={trendPeriod === 30}
+            employeeFiltered={trendEmployeeId !== null}
+          />
         </PremiumCard>
         <PremiumCard title="Топ сотрудников" action="Рейтинг">
           <div className="rank-list">
