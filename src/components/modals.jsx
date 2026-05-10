@@ -49,7 +49,7 @@ export function EmployeeFormModal({ form, setForm, saving, error, onClose, onSub
         <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
           <motion.div className="modal-title" variants={modalSectionVariants}>
             <div>
-              <span className="eyebrow">Новый профиль QA</span>
+              <span className="eyebrow">Новый сотрудник</span>
               <h2>Добавить сотрудника</h2>
             </div>
             <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
@@ -398,7 +398,7 @@ export function RuleModal({ mode, rule, setRule, onClose, onSubmit }) {
         <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
           <motion.div className="modal-title" variants={modalSectionVariants}>
             <div>
-              <span className="eyebrow">{mode === 'edit' ? 'Редактирование правила' : 'Новое правило QA'}</span>
+              <span className="eyebrow">{mode === 'edit' ? 'Редактирование правила' : 'Новое правило проверки'}</span>
               <h2>{mode === 'edit' ? 'Изменить правило' : 'Добавить правило'}</h2>
             </div>
             <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>

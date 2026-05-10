@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Plus, Tag, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Check, Plus, Tag, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { Avatar, AnimatedProgress } from '../components/shared.jsx';
 import { employeeCardTransition, EmployeeFormModal, DeleteEmployeeModal, StatusManagementModal } from '../components/modals.jsx';
@@ -19,7 +19,7 @@ function toEmployee(row) {
   return {
     id: row.id,
     name: row.name,
-    role: row.role || 'Сотрудник QA',
+    role: row.role === 'Сотрудник QA' ? 'Сотрудник' : row.role || 'Сотрудник',
     status,
     statusTone: getStatusTone(status),
     score: row.score ?? 0,
@@ -41,13 +41,11 @@ function getStatusColor(name, statuses) {
   return found?.color ?? null;
 }
 
-function StatusBadge({ name, statusTone, color, onClick }) {
+function StatusBadge({ name, statusTone, color }) {
   if (color) {
     return (
-      <button
-        type="button"
+      <span
         className="status-badge-btn"
-        onClick={onClick}
         style={{
           background: hexToRgba(color, 0.12),
           border: `1px solid ${hexToRgba(color, 0.3)}`,
@@ -55,13 +53,13 @@ function StatusBadge({ name, statusTone, color, onClick }) {
         }}
       >
         {name}
-      </button>
+      </span>
     );
   }
   return (
-    <button type="button" className={`status-badge-btn status ${statusTone}`} onClick={onClick}>
+    <span className={`status-badge-btn status ${statusTone}`}>
       {name}
-    </button>
+    </span>
   );
 }
 
@@ -72,14 +70,16 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
   const [addError, setAddError] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
+  const [statusError, setStatusError] = useState(null);
   const [form, setForm] = useState({ name: '' });
 
   // Status management
   const [statuses, setStatuses] = useState([]);
   const [statusMgmtOpen, setStatusMgmtOpen] = useState(false);
-  const [statusPickerFor, setStatusPickerFor] = useState(null); // employee id
+  const [statusTarget, setStatusTarget] = useState(null);
   const [statusOverrides, setStatusOverrides] = useState({}); // {employeeId: statusName}
 
   useEffect(() => {
@@ -98,33 +98,37 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
       });
   }, [organizationId]);
 
-  // Close picker when clicking outside
-  useEffect(() => {
-    if (!statusPickerFor) return;
-    const close = () => setStatusPickerFor(null);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [statusPickerFor]);
-
   const getDisplayStatus = (employee) => statusOverrides[employee.id] ?? employee.status;
 
-  const handleStatusChange = async (employeeId, newStatusName) => {
-    setStatusPickerFor(null);
-    setStatusOverrides((prev) => ({ ...prev, [employeeId]: newStatusName }));
+  const openStatusAssignment = (employee, event) => {
+    event.stopPropagation();
+    const statusName = getDisplayStatus(employee);
+    setStatusError(null);
+    setStatusTarget({
+      ...employee,
+      status: statusName,
+      statusTone: getStatusTone(statusName),
+    });
+  };
+
+  const handleStatusChange = async (employee, newStatusName) => {
+    if (!employee || statusSaving) return;
+    setStatusSaving(true);
+    setStatusError(null);
     const { error } = await supabase
       .from('employees')
       .update({ status: newStatusName })
-      .eq('id', employeeId)
+      .eq('id', employee.id)
       .eq('organization_id', organizationId);
+    setStatusSaving(false);
     if (error) {
       console.error('[Employees] status update error:', error);
-      setStatusOverrides((prev) => {
-        const copy = { ...prev };
-        delete copy[employeeId];
-        return copy;
-      });
-      showToast('Не удалось обновить статус');
+      setStatusError('Не удалось обновить статус');
+      return;
     }
+    setStatusOverrides((prev) => ({ ...prev, [employee.id]: newStatusName }));
+    setStatusTarget(null);
+    showToast('Статус сотрудника обновлён');
   };
 
   const handleAddStatus = (newStatus) => {
@@ -152,7 +156,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
     const payload = {
       name: employeeName,
-      role: 'Сотрудник QA',
+      role: 'Сотрудник',
       status: 'На контроле',
       score: 0,
       checks_count: 0,
@@ -290,14 +294,6 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         )}
       </AnimatePresence>
 
-      {/* Global status picker backdrop */}
-      {statusPickerFor && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 90 }}
-          onClick={() => setStatusPickerFor(null)}
-        />
-      )}
-
       {employeesLoading ? (
         <div className="employee-grid" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 220 }}>
           <p style={{ opacity: 0.45, fontSize: '0.95rem' }}>Загружаем сотрудников…</p>
@@ -314,7 +310,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
               const displayStatus = getDisplayStatus(employee);
               const customColor = getStatusColor(displayStatus, statuses);
               const fallbackTone = getStatusTone(displayStatus);
-              const isPickerOpen = statusPickerFor === employee.id;
+              const displayEmployee = { ...employee, status: displayStatus, statusTone: fallbackTone };
 
               return (
                 <motion.article
@@ -332,7 +328,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
                   role="button"
                   tabIndex={0}
                   onClick={() => {
-                    setSelectedEmployee(employee);
+                    setSelectedEmployee(displayEmployee);
                     setDetailOpen(true);
                   }}
                 >
@@ -344,56 +340,12 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
                         <p>{employee.role}</p>
                       </div>
                     </div>
-                    <div className="employee-head-actions" style={{ position: 'relative' }}>
+                    <div className="employee-head-actions">
                       <StatusBadge
                         name={displayStatus}
                         statusTone={fallbackTone}
                         color={customColor}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setStatusPickerFor(isPickerOpen ? null : employee.id);
-                        }}
                       />
-
-                      {/* Status picker dropdown */}
-                      {isPickerOpen && (
-                        <div
-                          className="status-picker"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="status-picker-label">Выбрать статус</div>
-                          {statuses.length === 0 ? (
-                            <div className="status-picker-empty">Статусы не созданы</div>
-                          ) : (
-                            statuses.map((s) => {
-                              const isActive = displayStatus === s.name;
-                              return (
-                                <button
-                                  key={s.id}
-                                  className={`status-picker-item${isActive ? ' active' : ''}`}
-                                  onClick={() => handleStatusChange(employee.id, s.name)}
-                                >
-                                  <span className="status-picker-dot" style={{ background: s.color }} />
-                                  {s.name}
-                                  {isActive && <span className="status-picker-check">✓</span>}
-                                </button>
-                              );
-                            })
-                          )}
-                          <div className="status-picker-divider" />
-                          <button
-                            className="status-picker-manage"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setStatusPickerFor(null);
-                              setStatusMgmtOpen(true);
-                            }}
-                          >
-                            Управление статусами…
-                          </button>
-                        </div>
-                      )}
-
                       <motion.button
                         className="employee-delete"
                         aria-label={`Удалить сотрудника ${employee.name}`}
@@ -404,6 +356,14 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
                       </motion.button>
                     </div>
                   </div>
+                  <motion.button
+                    type="button"
+                    className="employee-status-button"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={(event) => openStatusAssignment(displayEmployee, event)}
+                  >
+                    Изменить статус
+                  </motion.button>
                   <div className="score-line">
                     <div>
                       <strong>{employee.score}</strong>
@@ -452,6 +412,27 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
       </AnimatePresence>
 
       <AnimatePresence>
+        {statusTarget && (
+          <EmployeeStatusAssignModal
+            employee={statusTarget}
+            statuses={statuses}
+            saving={statusSaving}
+            error={statusError}
+            onClose={() => {
+              setStatusTarget(null);
+              setStatusError(null);
+            }}
+            onManage={() => {
+              setStatusTarget(null);
+              setStatusError(null);
+              setStatusMgmtOpen(true);
+            }}
+            onAssign={(statusName) => handleStatusChange(statusTarget, statusName)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {statusMgmtOpen && (
           <StatusManagementModal
             statuses={statuses}
@@ -463,5 +444,64 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+function EmployeeStatusAssignModal({ employee, statuses, saving, error, onClose, onManage, onAssign }) {
+  const currentColor = getStatusColor(employee.status, statuses);
+
+  return (
+    <div className="status-popover-backdrop" onClick={onClose}>
+      <motion.div
+        className="status-popover"
+        role="dialog"
+        aria-modal="true"
+        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 8, scale: 0.98 }}
+        transition={{ duration: 0.18 }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="status-popover-title">
+          <div>
+            <span className="eyebrow">Статус сотрудника</span>
+            <h3>{employee.name}</h3>
+          </div>
+          <button className="icon-button" type="button" onClick={onClose}><X size={16} /></button>
+        </div>
+
+        <div className="status-current">
+          <span>Текущий статус</span>
+          <StatusBadge name={employee.status} statusTone={employee.statusTone} color={currentColor} />
+        </div>
+
+        {statuses.length === 0 ? (
+          <div className="status-empty">
+            <p>Сначала создайте статус</p>
+            <button className="ghost-button" type="button" onClick={onManage}>Управление статусами</button>
+          </div>
+        ) : (
+          <div className="status-choice-list">
+            {statuses.map((status) => {
+              const selected = status.name === employee.status;
+              return (
+                <button
+                  key={status.id}
+                  type="button"
+                  className={`status-choice ${selected ? 'selected' : ''}`}
+                  disabled={saving}
+                  onClick={() => onAssign(status.name)}
+                >
+                  <StatusBadge name={status.name} statusTone={getStatusTone(status.name)} color={status.color} />
+                  {selected && <Check size={16} />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {error && <p className="status-error">{error}</p>}
+      </motion.div>
+    </div>
   );
 }

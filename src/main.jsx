@@ -223,7 +223,7 @@ function toEmployee(row) {
   return {
     id: row.id,
     name: row.name,
-    role: row.role || 'Сотрудник QA',
+    role: row.role === 'Сотрудник QA' ? 'Сотрудник' : row.role || 'Сотрудник',
     status,
     statusTone: getStatusTone(status),
     score: row.score ?? 0,
