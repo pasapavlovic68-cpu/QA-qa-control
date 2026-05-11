@@ -10,9 +10,155 @@ import { ReviewReportModal } from '../components/modals.jsx';
 
 const WORKER_URL = 'https://qa-control-ai-proxy.pasapavlovic68.workers.dev';
 
+const SALES_DEPARTMENT_REGULATION = {
+  role: 'sales_quality_control',
+  instruction:
+    'Оценивай диалоги строго по регламенту отдела продаж. Не выдумывай нарушения: каждое замечание должно опираться на видимый текст диалога, таймстемпы или явный контекст.',
+  criticalViolations: [
+    'promises of guaranteed profit',
+    'promises of insurance/refund/compensation',
+    'claims about platform errors or secret methods',
+    'claims of special/exclusive conditions from Pocket',
+    'insider information claims',
+    'external links to partners/bloggers/Telegram/YouTube',
+    'work with restricted countries: Russia, USA, Israel',
+    'misleading trader/client',
+    'no follow-up after client withdrew money',
+    'communication during stream if visible in dialogue',
+    'no objection handling in a clear sales-critical moment',
+  ],
+  highSeverity: [
+    'reply delay over 10 minutes if timestamps are present',
+    'no follow-up after trading session if visible',
+    'no initiative',
+    'weak lead control',
+    'weak objection handling',
+    'no clear next step',
+    'client doubts are ignored',
+    'financial difficulty objection is not handled',
+  ],
+  mediumSeverity: [
+    'dry or generic replies',
+    'weak empathy',
+    'poor message structure',
+    'no CTA',
+    'too much vague text',
+    'weak closing',
+  ],
+  restrictedCountries: ['Russia', 'USA', 'Israel'],
+  scoring: {
+    base: 100,
+    critical: 'strong penalty 30-60 depending on severity',
+    high: '10-20',
+    medium: '5-10',
+    low: '1-5',
+    constraints: [
+      'Never invent violations.',
+      'If timestamps are absent, do not penalize response delay.',
+      'If country/client geo is not visible, do not assume.',
+      'If stream context is not visible, do not penalize.',
+      'Be strict but evidence-based.',
+    ],
+  },
+  outputContract: {
+    score: 'number 0-100',
+    management_summary: 'string',
+    critical_violations: 'array',
+    mistakes: 'array with severity: critical / high / medium / low',
+    strengths: 'array',
+    recommendations: 'array',
+    next_step_quality: 'string',
+    objection_handling_quality: 'string',
+    follow_up_quality: 'string',
+    risk_flags: 'array',
+  },
+};
+
+const DEFAULT_FORBIDDEN_PHRASES = [
+  'guaranteed profit',
+  'insurance',
+  'refund',
+  'compensation',
+  'platform error',
+  'secret method',
+  'special conditions from Pocket',
+  'exclusive conditions from Pocket',
+  'insider information',
+  'Telegram',
+  'YouTube',
+];
+
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+function normalizeTextList(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === 'string') return item.trim();
+      if (!item || typeof item !== 'object') return '';
+      return item.text || item.description || item.title || '';
+    })
+    .filter(Boolean);
+}
+
+function normalizeMistakeList(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === 'string') {
+        return { title: item, description: '', severity: 'medium' };
+      }
+      if (!item || typeof item !== 'object') return null;
+      const severity = ['critical', 'high', 'medium', 'low'].includes(item.severity)
+        ? item.severity
+        : 'medium';
+      return {
+        ...item,
+        title: item.title || item.category || item.name || 'Замечание',
+        description: item.description || item.evidence || item.explanation || '',
+        severity,
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeCriticalViolations(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === 'string') {
+        return { title: item, description: '', severity: 'critical' };
+      }
+      if (!item || typeof item !== 'object') return null;
+      return {
+        ...item,
+        title: item.title || item.category || item.name || 'Критическое нарушение',
+        description: item.description || item.evidence || item.explanation || '',
+        severity: 'critical',
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeQualityValue(value) {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object') {
+    return value.summary || value.description || value.text || JSON.stringify(value);
+  }
+  return '';
+}
+
+function dedupeMistakes(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = `${item.severity}|${item.title}|${item.description}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function Review({ analysis, setAnalysis, employees, organizationId, onDialogueAnalyzed }) {
@@ -191,6 +337,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
 
       const parseList = (str) =>
         (str || '').split('\n').map((s) => s.trim()).filter(Boolean);
+      const settingsForbiddenPhrases = parseList(settings.forbidden_phrases);
 
       setAnalysisStage('contacting_ai');
       const workerStartedAt = performance.now();
@@ -216,14 +363,25 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
             description: r.description,
             category: r.category || ''
           })),
+          salesDepartmentRegulation: SALES_DEPARTMENT_REGULATION,
           analysisContext: {
             language: 'ru',
             outputStyle: settings.report_style || 'management_report',
             strictness: 'high',
             requireEvidence: true,
+            domain: 'sales_department_quality_control',
+            regulationInstruction: SALES_DEPARTMENT_REGULATION.instruction,
+            expectedReportFields: SALES_DEPARTMENT_REGULATION.outputContract,
+            scoringRules: SALES_DEPARTMENT_REGULATION.scoring,
+            severityCategories: {
+              critical: SALES_DEPARTMENT_REGULATION.criticalViolations,
+              high: SALES_DEPARTMENT_REGULATION.highSeverity,
+              medium: SALES_DEPARTMENT_REGULATION.mediumSeverity,
+            },
+            restrictedCountries: SALES_DEPARTMENT_REGULATION.restrictedCountries,
             companyInstruction: settings.company_instruction || '',
             salesGoal: settings.sales_goal || '',
-            forbiddenPhrases: parseList(settings.forbidden_phrases),
+            forbiddenPhrases: [...new Set([...DEFAULT_FORBIDDEN_PHRASES, ...settingsForbiddenPhrases])],
             upsellStrategy: settings.upsell_strategy || '',
             criticalMoments: parseList(settings.critical_moments)
           }
@@ -249,14 +407,41 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         throw new Error('Worker вернул неверный формат отчёта.');
       }
 
+      const criticalViolations = normalizeCriticalViolations(rawReport.critical_violations);
+      const mistakes = normalizeMistakeList(rawReport.mistakes);
+      const strengths = normalizeTextList(rawReport.strengths);
+      const positives = Array.isArray(rawReport.positives)
+        ? normalizeTextList(rawReport.positives)
+        : strengths;
+      const riskFlags = normalizeTextList(rawReport.risk_flags);
+      const nextStepQuality = normalizeQualityValue(rawReport.next_step_quality);
+      const objectionHandlingQuality = normalizeQualityValue(rawReport.objection_handling_quality);
+      const followUpQuality = normalizeQualityValue(rawReport.follow_up_quality);
+      const regulationEvidence = {
+        type: 'sales_department_regulation',
+        critical_violations: criticalViolations,
+        risk_flags: riskFlags,
+        next_step_quality: nextStepQuality,
+        objection_handling_quality: objectionHandlingQuality,
+        follow_up_quality: followUpQuality,
+      };
+
       const report = {
-        score: typeof rawReport.score === 'number' ? rawReport.score : 0,
+        score: typeof rawReport.score === 'number' ? Math.max(0, Math.min(100, Math.round(rawReport.score))) : 0,
         title: typeof rawReport.title === 'string' && rawReport.title.trim() ? rawReport.title.trim() : 'Отчёт',
         management_summary: typeof rawReport.management_summary === 'string' ? rawReport.management_summary : '',
-        mistakes: Array.isArray(rawReport.mistakes) ? rawReport.mistakes : [],
-        positives: Array.isArray(rawReport.positives) ? rawReport.positives : [],
+        critical_violations: criticalViolations,
+        mistakes: dedupeMistakes([...criticalViolations, ...mistakes]),
+        strengths,
+        positives,
         recommendations: Array.isArray(rawReport.recommendations) ? rawReport.recommendations : [],
-        evidence: Array.isArray(rawReport.evidence) ? rawReport.evidence : [],
+        next_step_quality: nextStepQuality,
+        objection_handling_quality: objectionHandlingQuality,
+        follow_up_quality: followUpQuality,
+        risk_flags: riskFlags,
+        evidence: Array.isArray(rawReport.evidence)
+          ? [...rawReport.evidence, regulationEvidence]
+          : [regulationEvidence],
       };
 
       const criticalCount = report.mistakes.filter((m) => m.severity === 'critical').length;
