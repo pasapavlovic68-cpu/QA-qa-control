@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Building2, FileText, ShieldAlert, SlidersHorizontal, Target, TrendingUp, X, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
-import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
+import { modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
 
 const FIELD_META = {
   company_instruction: {
@@ -65,6 +65,12 @@ const KEY_ORDER = [
   'critical_moments',
 ];
 
+const settingsSharedTransition = {
+  layout: { type: 'spring', damping: 34, stiffness: 360 },
+  opacity: { duration: 0.18 },
+  scale: { duration: 0.18 },
+};
+
 function getPreviewText(meta, val) {
   if (!val) return null;
   if (meta.type === 'select') {
@@ -75,7 +81,7 @@ function getPreviewText(meta, val) {
   return firstLine.length > 72 ? firstLine.slice(0, 70) + '…' : firstLine;
 }
 
-function SettingEditModal({ fieldKey, meta, initialValue, onClose, onSaved }) {
+function SettingEditModal({ fieldKey, meta, initialValue, layoutId, onClose, onSaved }) {
   useModalScrollLock();
 
   const [draft, setDraft] = useState(initialValue ?? '');
@@ -113,14 +119,12 @@ function SettingEditModal({ fieldKey, meta, initialValue, onClose, onSaved }) {
         onClick={onClose}
       >
         <motion.div
+          layoutId={layoutId}
           className="modal-shell modal-shell--medium"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
-          initial={modalMotion.initial}
-          animate={modalMotion.animate}
-          exit={modalMotion.exit}
-          transition={modalMotion.transition}
+          transition={settingsSharedTransition}
         >
           <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
 
@@ -293,11 +297,13 @@ export function Settings({ organizationId }) {
             return (
               <motion.button
                 key={key}
+                layout
+                layoutId={`settings-${key}`}
                 className="rule-card rule-card--setting"
                 role="button"
                 tabIndex={0}
                 variants={{ hidden: { opacity: 0, y: 18, scale: 0.98 }, show: { opacity: 1, y: 0, scale: 1 } }}
-                transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                transition={settingsSharedTransition}
                 whileHover={{ y: -5, scale: 1.008 }}
                 whileTap={{ scale: 0.985 }}
                 onClick={() => setEditKey(key)}
@@ -334,6 +340,7 @@ export function Settings({ organizationId }) {
             fieldKey={editKey}
             meta={FIELD_META[editKey]}
             initialValue={values[editKey] ?? ''}
+            layoutId={`settings-${editKey}`}
             onClose={() => setEditKey(null)}
             onSaved={{ fn: handleSaved, organizationId }}
           />
