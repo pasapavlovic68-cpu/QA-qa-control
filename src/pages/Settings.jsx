@@ -4,6 +4,7 @@ import { Building2, FileText, ShieldAlert, SlidersHorizontal, Target, TrendingUp
 import { supabase } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
 import { modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
+import { runModalSuccessFlow } from '../lib/modalSuccess.js';
 
 const FIELD_META = {
   company_instruction: {
@@ -84,6 +85,7 @@ function getPreviewText(meta, val) {
 function SettingEditModal({ fieldKey, meta, initialValue, layoutId, onClose, onSaved }) {
   useModalScrollLock();
 
+  const showToast = useToast();
   const [draft, setDraft] = useState(initialValue ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -91,22 +93,27 @@ function SettingEditModal({ fieldKey, meta, initialValue, layoutId, onClose, onS
 
   const handleSave = async () => {
     if (saving) return;
-    setSaving(true);
     setError(null);
-    const { error: err } = await supabase
-      .from('team_settings')
-      .upsert(
-        { key: fieldKey, value: draft ?? '', organization_id: organizationId },
-        { onConflict: 'organization_id,key' }
-      );
-    setSaving(false);
-    if (err) {
-      console.error('[Settings] save error:', err);
-      setError('Ошибка при сохранении. Проверьте соединение.');
-      return;
-    }
-    onSaved.fn(fieldKey, draft);
-    onClose();
+    await runModalSuccessFlow({
+      setSaving,
+      action: async () => {
+        const { error: err } = await supabase
+          .from('team_settings')
+          .upsert(
+            { key: fieldKey, value: draft ?? '', organization_id: organizationId },
+            { onConflict: 'organization_id,key' }
+          );
+        if (err) throw err;
+        return draft;
+      },
+      reset: (value) => onSaved.fn(fieldKey, value),
+      toast: () => showToast('Настройки сохранены'),
+      close: onClose,
+      onError: (err) => {
+        console.error('[Settings] save error:', err);
+        setError('Ошибка при сохранении. Проверьте соединение.');
+      },
+    });
   };
 
   return (
@@ -232,7 +239,6 @@ function SettingEditModal({ fieldKey, meta, initialValue, layoutId, onClose, onS
 }
 
 export function Settings({ organizationId }) {
-  const showToast = useToast();
   const [values, setValues] = useState({});
   const [loading, setLoading] = useState(true);
   const [editKey, setEditKey] = useState(null);
@@ -261,7 +267,6 @@ export function Settings({ organizationId }) {
 
   const handleSaved = (key, newVal) => {
     setValues((prev) => ({ ...prev, [key]: newVal }));
-    showToast('Настройки сохранены');
   };
 
   const orderedKeys = KEY_ORDER.filter((k) => k in FIELD_META);

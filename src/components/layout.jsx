@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from '../lib/supabase.js';
+import { runModalSuccessFlow } from '../lib/modalSuccess.js';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from './modal.jsx';
 import { useToast } from './Toast.jsx';
 
@@ -109,66 +110,69 @@ function OrganizationNameModal({ organizationId, orgName, onClose, onSaved }) {
       return;
     }
 
-    setSaving(true);
     setError('');
 
-    const { error: updateError } = await supabase
-      .from('organizations')
-      .update(payload)
-      .eq('id', organizationId);
+    await runModalSuccessFlow({
+      setSaving,
+      action: async () => {
+        const { error: updateError } = await supabase
+          .from('organizations')
+          .update(payload)
+          .eq('id', organizationId);
 
-    console.log('[OrganizationRename] updateError:', updateError);
+        console.log('[OrganizationRename] updateError:', updateError);
 
-    if (updateError) {
-      setSaving(false);
-      console.groupEnd();
-      setError('Не удалось сохранить название. Повторите попытку.');
-      return;
-    }
+        if (updateError) {
+          updateError.uiMessage = 'Не удалось сохранить название. Повторите попытку.';
+          throw updateError;
+        }
 
-    const { data: verifyData, error: verifyError } = await supabase
-      .from('organizations')
-      .select('id, name')
-      .eq('id', organizationId)
-      .maybeSingle();
+        const { data: verifyData, error: verifyError } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .eq('id', organizationId)
+          .maybeSingle();
 
-    console.log('[OrganizationRename] verifyData:', verifyData);
-    console.log('[OrganizationRename] verifyError:', verifyError);
+        console.log('[OrganizationRename] verifyData:', verifyData);
+        console.log('[OrganizationRename] verifyError:', verifyError);
 
-    setSaving(false);
+        if (verifyError) {
+          verifyError.uiMessage = 'Не удалось сохранить название. Повторите попытку.';
+          throw verifyError;
+        }
 
-    if (verifyError) {
-      console.groupEnd();
-      setError('Не удалось сохранить название. Повторите попытку.');
-      return;
-    }
+        if (!verifyData) {
+          console.error('[OrganizationRename] verify returned no row. Possible id mismatch or SELECT policy issue.', { organizationId, payload });
+          throw Object.assign(new Error('Сохранение заблокировано политикой доступа к организации.'), {
+            uiMessage: 'Сохранение заблокировано политикой доступа к организации.',
+          });
+        }
 
-    if (!verifyData) {
-      console.error('[OrganizationRename] verify returned no row. Possible id mismatch or SELECT policy issue.', { organizationId, payload });
-      console.groupEnd();
-      setError('Сохранение заблокировано политикой доступа к организации.');
-      return;
-    }
+        const savedName = verifyData.name || nextName;
+        if (savedName !== nextName) {
+          console.error('[OrganizationRename] update did not persist. Possible RLS UPDATE policy block or trigger rollback.', {
+            organizationId,
+            payload,
+            savedName,
+            verifyRow: verifyData,
+          });
+          throw Object.assign(new Error('Сохранение заблокировано политикой доступа к организации.'), {
+            uiMessage: 'Сохранение заблокировано политикой доступа к организации.',
+          });
+        }
 
-    const savedName = verifyData.name || nextName;
-    if (savedName !== nextName) {
-      console.error('[OrganizationRename] update did not persist. Possible RLS UPDATE policy block or trigger rollback.', {
-        organizationId,
-        payload,
-        savedName,
-        verifyRow: verifyData,
-      });
-      console.groupEnd();
-      setError('Сохранение заблокировано политикой доступа к организации.');
-      return;
-    }
-
-    console.log('[OrganizationRename] saved organization name:', savedName);
-    console.groupEnd();
-
-    onSaved(savedName);
-    showToast?.('Название организации обновлено');
-    onClose();
+        console.log('[OrganizationRename] saved organization name:', savedName);
+        console.groupEnd();
+        return savedName;
+      },
+      reset: (savedName) => onSaved(savedName),
+      toast: () => showToast?.('Название организации обновлено'),
+      close: onClose,
+      onError: (error) => {
+        console.groupEnd();
+        setError(error.uiMessage || 'Не удалось сохранить название. Повторите попытку.');
+      },
+    });
   };
 
   return (
@@ -298,58 +302,63 @@ function OrganizationInviteModal({ organizationId, onClose }) {
 
     if (!organizationId || saving) return;
 
-    setSaving(true);
     setError('');
-
-    const { data, error: insertError } = await supabase
-      .from('organization_invites')
-      .insert({
-        organization_id: organizationId,
-        email: normalizedEmail,
-        status: 'pending',
-      })
-      .select('id, email, status, invited_at')
-      .maybeSingle();
-
-    setSaving(false);
-
-    if (insertError) {
-      console.error('[OrganizationInvites] insert error:', insertError);
-      setError('Не удалось добавить доступ.');
-      return;
-    }
-
-    if (data) {
-      setInvites((current) => [data, ...current.filter((invite) => invite.id !== data.id)]);
-    } else {
-      await loadInvites();
-    }
-
-    setEmail('');
-    showToast?.('Доступ добавлен');
+    await runModalSuccessFlow({
+      setSaving,
+      action: async () => {
+        const { data, error: insertError } = await supabase
+          .from('organization_invites')
+          .insert({
+            organization_id: organizationId,
+            email: normalizedEmail,
+            status: 'pending',
+          })
+          .select('id, email, status, invited_at')
+          .maybeSingle();
+        if (insertError) throw insertError;
+        return data;
+      },
+      reload: async (data) => {
+        if (!data) await loadInvites();
+      },
+      reset: (data) => {
+        if (data) {
+          setInvites((current) => [data, ...current.filter((invite) => invite.id !== data.id)]);
+        }
+        setEmail('');
+      },
+      toast: () => showToast?.('Доступ добавлен'),
+      close: onClose,
+      onError: (insertError) => {
+        console.error('[OrganizationInvites] insert error:', insertError);
+        setError('Не удалось добавить доступ.');
+      },
+    });
   };
 
   const handleDelete = async (inviteId) => {
     if (!inviteId || deletingId) return;
 
-    setDeletingId(inviteId);
     setError('');
-
-    const { error: deleteError } = await supabase
-      .from('organization_invites')
-      .delete()
-      .eq('id', inviteId)
-      .eq('organization_id', organizationId);
-
-    setDeletingId(null);
-
-    if (deleteError) {
-      console.error('[OrganizationInvites] delete error:', deleteError);
-      setError('Не удалось удалить приглашение.');
-      return;
-    }
-
-    setInvites((current) => current.filter((invite) => invite.id !== inviteId));
+    await runModalSuccessFlow({
+      setSaving: (active) => setDeletingId(active ? inviteId : null),
+      action: async () => {
+        const { error: deleteError } = await supabase
+          .from('organization_invites')
+          .delete()
+          .eq('id', inviteId)
+          .eq('organization_id', organizationId);
+        if (deleteError) throw deleteError;
+        return inviteId;
+      },
+      reset: (deletedId) => setInvites((current) => current.filter((invite) => invite.id !== deletedId)),
+      toast: () => showToast?.('Доступ удалён'),
+      close: onClose,
+      onError: (deleteError) => {
+        console.error('[OrganizationInvites] delete error:', deleteError);
+        setError('Не удалось удалить приглашение.');
+      },
+    });
   };
 
   return (

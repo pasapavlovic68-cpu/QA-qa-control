@@ -6,6 +6,7 @@ import { Avatar, AnimatedProgress } from '../components/shared.jsx';
 import { employeeCardTransition, EmployeeFormModal, DeleteEmployeeModal, StatusManagementModal, ChannelManagementModal } from '../components/modals.jsx';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
 import { useToast } from '../components/Toast.jsx';
+import { runModalSuccessFlow } from '../lib/modalSuccess.js';
 
 function getStatusTone(status) {
   if (status === 'Улучшается') return 'success';
@@ -159,6 +160,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [deleteSaving, setDeleteSaving] = useState(false);
   const [statusSaving, setStatusSaving] = useState(false);
   const [channelSaving, setChannelSaving] = useState(false);
   const [addError, setAddError] = useState(null);
@@ -253,31 +255,32 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
   const handleStatusChange = async (employee, newStatusName) => {
     if (!employee || statusSaving) return;
-    setStatusSaving(true);
     setStatusError(null);
     const payload = { status: newStatusName };
-    console.log('[EmployeeStatus] update payload', { employeeId: employee.id, organizationId, ...payload });
-    const { data, error } = await supabase
-      .from('employees')
-      .update(payload)
-      .eq('id', employee.id)
-      .eq('organization_id', organizationId)
-      .select('id, status')
-      .maybeSingle();
-    setStatusSaving(false);
-    console.log('[EmployeeStatus] update result', { data, error });
-    if (error) {
-      console.error('[Employees] status update error:', error);
-      setStatusError('Не удалось обновить статус');
-      return;
-    }
-    if (!data) {
-      setStatusError('Статус не сохранён. Проверьте RLS-политику UPDATE для employees.');
-      return;
-    }
-    setStatusOverrides((prev) => ({ ...prev, [employee.id]: newStatusName }));
-    setStatusTarget(null);
-    showToast('Статус сотрудника обновлён');
+    await runModalSuccessFlow({
+      setSaving: setStatusSaving,
+      action: async () => {
+        console.log('[EmployeeStatus] update payload', { employeeId: employee.id, organizationId, ...payload });
+        const { data, error } = await supabase
+          .from('employees')
+          .update(payload)
+          .eq('id', employee.id)
+          .eq('organization_id', organizationId)
+          .select('id, status')
+          .maybeSingle();
+        console.log('[EmployeeStatus] update result', { data, error });
+        if (error) throw error;
+        if (!data) throw new Error('Статус не сохранён. Проверьте RLS-политику UPDATE для employees.');
+        return newStatusName;
+      },
+      reset: (statusName) => setStatusOverrides((prev) => ({ ...prev, [employee.id]: statusName })),
+      toast: () => showToast('Статус сотрудника обновлён'),
+      close: () => setStatusTarget(null),
+      onError: (error) => {
+        console.error('[Employees] status update error:', error);
+        setStatusError(error?.message || 'Не удалось обновить статус');
+      },
+    });
   };
 
   const handleAddStatus = (newStatus) => {
@@ -300,29 +303,30 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
   const handleChannelChange = async (employee, newChannelName) => {
     if (!employee || channelSaving) return;
-    setChannelSaving(true);
     setChannelError(null);
     const payload = { channel: newChannelName };
-    const { data, error } = await supabase
-      .from('employees')
-      .update(payload)
-      .eq('id', employee.id)
-      .eq('organization_id', organizationId)
-      .select('id, channel')
-      .maybeSingle();
-    setChannelSaving(false);
-    if (error) {
-      console.error('[Employees] channel update error:', error);
-      setChannelError('Не удалось обновить канал');
-      return;
-    }
-    if (!data) {
-      setChannelError('Канал не сохранён. Проверьте RLS-политику UPDATE для employees.');
-      return;
-    }
-    setChannelOverrides((prev) => ({ ...prev, [employee.id]: newChannelName }));
-    setChannelTarget(null);
-    showToast('Канал сотрудника обновлён');
+    await runModalSuccessFlow({
+      setSaving: setChannelSaving,
+      action: async () => {
+        const { data, error } = await supabase
+          .from('employees')
+          .update(payload)
+          .eq('id', employee.id)
+          .eq('organization_id', organizationId)
+          .select('id, channel')
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error('Канал не сохранён. Проверьте RLS-политику UPDATE для employees.');
+        return newChannelName;
+      },
+      reset: (channelName) => setChannelOverrides((prev) => ({ ...prev, [employee.id]: channelName })),
+      toast: () => showToast('Канал сотрудника обновлён'),
+      close: () => setChannelTarget(null),
+      onError: (error) => {
+        console.error('[Employees] channel update error:', error);
+        setChannelError(error?.message || 'Не удалось обновить канал');
+      },
+    });
   };
 
   const handleAddChannel = (newChannel) => {
@@ -367,7 +371,6 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
       return;
     }
 
-    setSaving(true);
     setAddError(null);
 
     const payload = {
@@ -380,23 +383,28 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
       trend: 0,
       organization_id: organizationId
     };
-    const { data, error } = await supabase
-      .from('employees')
-      .insert(payload)
-      .select()
-      .single();
-    setSaving(false);
-
-    if (error) {
-      console.error('[Employees] insert error:', error);
-      setAddError(`Ошибка [${error.code || 'network'}]: ${error.message}`);
-      return;
-    }
-
-    onAdd(toEmployee(data));
-    showToast('Сотрудник успешно добавлен');
-    resetForm();
-    setAddOpen(false);
+    await runModalSuccessFlow({
+      setSaving,
+      action: async () => {
+        const { data, error } = await supabase
+          .from('employees')
+          .insert(payload)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      },
+      reset: (data) => {
+        onAdd(toEmployee(data));
+        resetForm();
+      },
+      toast: () => showToast('Сотрудник успешно добавлен'),
+      close: () => setAddOpen(false),
+      onError: (error) => {
+        console.error('[Employees] insert error:', error);
+        setAddError(`Ошибка [${error.code || 'network'}]: ${error.message}`);
+      },
+    });
   };
 
   const requestDelete = (employee, event) => {
@@ -411,7 +419,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || deleteSaving) return;
     if (deleteTarget.auth_user_id) {
       console.warn(`[Employees] confirmDelete blocked: auth_user_id present on id=${deleteTarget.id}`);
       setDeleteError('Нельзя удалить пользователя с доступом к кабинету.');
@@ -424,28 +432,30 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
       return;
     }
     console.log(`[Employees] deleting employee id=${deleteTarget.id} org=${organizationId}`);
-    const { data: deleted, error } = await supabase
-      .from('employees')
-      .delete()
-      .eq('id', deleteTarget.id)
-      .eq('organization_id', organizationId)
-      .select('id');
-    if (error) {
-      console.error(`[Employees] delete error for id=${deleteTarget.id}:`, error);
-      setDeleteError(`Ошибка удаления: ${error.message}`);
-      setDeleteTarget(null);
-      return;
-    }
-    if (!deleted || deleted.length === 0) {
-      console.error(`[Employees] delete returned 0 rows for id=${deleteTarget.id} — RLS policy likely blocking.`);
-      setDeleteError('Удаление заблокировано (0 строк затронуто). Нужна RLS-политика для DELETE в таблице employees.');
-      setDeleteTarget(null);
-      return;
-    }
-    console.log(`[Employees] deleted id=${deleteTarget.id} (${deleted.length} row)`);
-    onDelete(deleteTarget.id);
-    showToast('Сотрудник удалён');
-    setDeleteTarget(null);
+    await runModalSuccessFlow({
+      setSaving: setDeleteSaving,
+      action: async () => {
+        const { data: deleted, error } = await supabase
+          .from('employees')
+          .delete()
+          .eq('id', deleteTarget.id)
+          .eq('organization_id', organizationId)
+          .select('id');
+        if (error) throw error;
+        if (!deleted || deleted.length === 0) {
+          throw new Error('Удаление заблокировано (0 строк затронуто). Нужна RLS-политика для DELETE в таблице employees.');
+        }
+        console.log(`[Employees] deleted id=${deleteTarget.id} (${deleted.length} row)`);
+        return deleteTarget.id;
+      },
+      reset: (employeeId) => onDelete(employeeId),
+      toast: () => showToast('Сотрудник удалён'),
+      close: () => setDeleteTarget(null),
+      onError: (error) => {
+        console.error(`[Employees] delete error for id=${deleteTarget.id}:`, error);
+        setDeleteError(error.message ? `Ошибка удаления: ${error.message}` : 'Ошибка удаления.');
+      },
+    });
   };
 
   const employeeGroups = employees.reduce((groups, employee) => {
@@ -689,6 +699,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
             employee={deleteTarget}
             onCancel={() => setDeleteTarget(null)}
             onConfirm={confirmDelete}
+            saving={deleteSaving}
           />
         )}
       </AnimatePresence>
@@ -1043,30 +1054,38 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
 
   const handleCellChange = async (employee, dateKey, nextStatus) => {
     const cellKey = `${employee.id}:${dateKey}`;
-    setSavingCell(cellKey);
     setError(null);
 
     if (nextStatus === 'unset') {
-      const { error: deleteError } = await supabase
-        .from('employee_schedule')
-        .delete()
-        .eq('organization_id', organizationId)
-        .eq('employee_id', employee.id)
-        .eq('work_date', dateKey);
-
-      setSavingCell(null);
-      setSelector(null);
-      if (deleteError) {
-        console.error('[EmployeeSchedule] delete error:', deleteError);
-        setError('Не удалось очистить день.');
-        return;
-      }
-      setSchedule((prev) => {
-        const next = { ...prev };
-        delete next[cellKey];
-        return next;
+      await runModalSuccessFlow({
+        setSaving: (active) => setSavingCell(active ? cellKey : null),
+        action: async () => {
+          const { error: deleteError } = await supabase
+            .from('employee_schedule')
+            .delete()
+            .eq('organization_id', organizationId)
+            .eq('employee_id', employee.id)
+            .eq('work_date', dateKey);
+          if (deleteError) throw deleteError;
+          return null;
+        },
+        reset: () => {
+          setSelector(null);
+          setSchedule((prev) => {
+            const next = { ...prev };
+            delete next[cellKey];
+            return next;
+          });
+          onScheduleChange?.({ employeeId: employee.id, dateKey, status: null });
+        },
+        toast: () => showToast('График обновлён'),
+        close: onClose,
+        onError: (error) => {
+          console.error('[EmployeeSchedule] delete error:', error);
+          setSelector(null);
+          setError('Не удалось очистить день.');
+        },
       });
-      onScheduleChange?.({ employeeId: employee.id, dateKey, status: null });
       return;
     }
 
@@ -1078,23 +1097,30 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error: upsertError } = await supabase
-      .from('employee_schedule')
-      .upsert(payload, { onConflict: 'employee_id,work_date' })
-      .select('id, employee_id, work_date, status')
-      .single();
-
-    setSavingCell(null);
-    setSelector(null);
-    if (upsertError) {
-      console.error('[EmployeeSchedule] upsert error:', upsertError);
-      setError('Не удалось сохранить день.');
-      return;
-    }
-
-    setSchedule((prev) => ({ ...prev, [cellKey]: data.status }));
-    onScheduleChange?.({ employeeId: employee.id, dateKey, status: data.status });
-    showToast('График обновлён');
+    await runModalSuccessFlow({
+      setSaving: (active) => setSavingCell(active ? cellKey : null),
+      action: async () => {
+        const { data, error: upsertError } = await supabase
+          .from('employee_schedule')
+          .upsert(payload, { onConflict: 'employee_id,work_date' })
+          .select('id, employee_id, work_date, status')
+          .single();
+        if (upsertError) throw upsertError;
+        return data;
+      },
+      reset: (data) => {
+        setSelector(null);
+        setSchedule((prev) => ({ ...prev, [cellKey]: data.status }));
+        onScheduleChange?.({ employeeId: employee.id, dateKey, status: data.status });
+      },
+      toast: () => showToast('График обновлён'),
+      close: onClose,
+      onError: (error) => {
+        console.error('[EmployeeSchedule] upsert error:', error);
+        setSelector(null);
+        setError('Не удалось сохранить день.');
+      },
+    });
   };
 
   return (

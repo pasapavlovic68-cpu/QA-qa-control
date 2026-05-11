@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BadgeDollarSign, Plus, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
+import { runModalSuccessFlow } from '../lib/modalSuccess.js';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from './modal.jsx';
+import { useToast } from './Toast.jsx';
 import { Avatar, Metric, PremiumCard, Evidence, ChatSnippet } from './shared.jsx';
 import { PremiumDropdown, RuleToggle } from './display.jsx';
 
@@ -84,7 +86,7 @@ export function EmployeeFormModal({ form, setForm, saving, error, onClose, onSub
   );
 }
 
-export function DeleteEmployeeModal({ employee, onCancel, onConfirm }) {
+export function DeleteEmployeeModal({ employee, onCancel, onConfirm, saving = false }) {
   useModalScrollLock();
 
   return (
@@ -108,8 +110,8 @@ export function DeleteEmployeeModal({ employee, onCancel, onConfirm }) {
             <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onCancel}>
               Отмена
             </motion.button>
-            <motion.button className="soft-danger-button" type="button" whileTap={{ scale: 0.97 }} onClick={onConfirm}>
-              Удалить
+            <motion.button className="soft-danger-button" type="button" whileTap={{ scale: saving ? 1 : 0.97 }} onClick={onConfirm} disabled={saving}>
+              {saving ? 'Удаляем…' : 'Удалить'}
             </motion.button>
           </motion.div>
         </motion.div>
@@ -440,7 +442,7 @@ export function RuleModal({ mode, rule, setRule, onClose, onSubmit, saving = fal
   );
 }
 
-export function DeleteRuleModal({ rule, onCancel, onConfirm }) {
+export function DeleteRuleModal({ rule, onCancel, onConfirm, saving = false }) {
   useModalScrollLock();
 
   return (
@@ -464,8 +466,8 @@ export function DeleteRuleModal({ rule, onCancel, onConfirm }) {
             <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onCancel}>
               Отмена
             </motion.button>
-            <motion.button className="soft-danger-button" type="button" whileTap={{ scale: 0.97 }} onClick={onConfirm}>
-              Удалить
+            <motion.button className="soft-danger-button" type="button" whileTap={{ scale: saving ? 1 : 0.97 }} onClick={onConfirm} disabled={saving}>
+              {saving ? 'Удаляем…' : 'Удалить'}
             </motion.button>
           </motion.div>
         </motion.div>
@@ -735,6 +737,7 @@ const INPUT_STYLE = {
 
 export function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
   useModalScrollLock();
+  const showToast = useToast();
   const [empId, setEmpId] = useState(employees[0]?.id ?? '');
   const [recordDate, setRecordDate] = useState(new Date().toISOString().slice(0, 10));
   const [depositsCount, setDepositsCount] = useState('');
@@ -747,24 +750,36 @@ export function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
     if (saving) return;
     if (!empId) { setError('Выберите сотрудника.'); return; }
     if (!recordDate) { setError('Укажите дату.'); return; }
-    setSaving(true);
     setError(null);
-    const { error: err } = await supabase.from('employee_sales').insert({
+    const payload = {
       organization_id: organizationId,
       employee_id: empId,
       record_date: recordDate,
       deposits_count: Math.max(0, parseInt(depositsCount, 10) || 0),
       cash_amount: Math.max(0, parseFloat(cashAmount) || 0),
       note: note.trim() || null,
+    };
+    await runModalSuccessFlow({
+      setSaving,
+      action: async () => {
+        const { error: err } = await supabase.from('employee_sales').insert(payload);
+        if (err) throw err;
+      },
+      reload: () => onSaved?.(),
+      reset: () => {
+        setEmpId(employees[0]?.id ?? '');
+        setRecordDate(new Date().toISOString().slice(0, 10));
+        setDepositsCount('');
+        setCashAmount('');
+        setNote('');
+      },
+      toast: () => showToast?.('Показатели сохранены'),
+      close: onClose,
+      onError: (err) => {
+        console.error('[AddSalesModal] insert error:', err);
+        setError('Ошибка при сохранении. Проверьте соединение.');
+      },
     });
-    setSaving(false);
-    if (err) {
-      console.error('[AddSalesModal] insert error:', err);
-      setError('Ошибка при сохранении. Проверьте соединение.');
-      return;
-    }
-    onSaved?.();
-    onClose();
   };
 
   if (employees.length === 0) {
@@ -864,6 +879,7 @@ export function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
 // ── StatusManagementModal ─────────────────────────────────────────────────────
 export function StatusManagementModal({ statuses, organizationId, onClose, onAdd, onDelete }) {
   useModalScrollLock();
+  const showToast = useToast();
   const [name, setName] = useState('');
   const [color, setColor] = useState(STATUS_PRESETS[0]);
   const [adding, setAdding] = useState(false);
@@ -878,36 +894,50 @@ export function StatusManagementModal({ statuses, organizationId, onClose, onAdd
       setAddError('Статус с таким названием уже существует.');
       return;
     }
-    setAdding(true);
     setAddError(null);
-    const { data, error } = await supabase
-      .from('employee_statuses')
-      .insert({ name: trimmed, color, organization_id: organizationId })
-      .select()
-      .single();
-    setAdding(false);
-    if (error) {
-      console.error('[StatusManagementModal] insert error:', error);
-      setAddError('Ошибка при сохранении. Проверьте соединение.');
-      return;
-    }
-    onAdd(data);
-    setName('');
+    await runModalSuccessFlow({
+      setSaving: setAdding,
+      action: async () => {
+        const { data, error } = await supabase
+          .from('employee_statuses')
+          .insert({ name: trimmed, color, organization_id: organizationId })
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      },
+      reset: (data) => {
+        onAdd(data);
+        setName('');
+      },
+      toast: () => showToast?.('Статус создан'),
+      close: onClose,
+      onError: (error) => {
+        console.error('[StatusManagementModal] insert error:', error);
+        setAddError('Ошибка при сохранении. Проверьте соединение.');
+      },
+    });
   };
 
   const handleDelete = async (statusId) => {
-    setDeletingId(statusId);
-    const { error } = await supabase
-      .from('employee_statuses')
-      .delete()
-      .eq('id', statusId)
-      .eq('organization_id', organizationId);
-    setDeletingId(null);
-    if (error) {
-      console.error('[StatusManagementModal] delete error:', error);
-    } else {
-      onDelete(statusId);
-    }
+    await runModalSuccessFlow({
+      setSaving: (active) => setDeletingId(active ? statusId : null),
+      action: async () => {
+        const { error } = await supabase
+          .from('employee_statuses')
+          .delete()
+          .eq('id', statusId)
+          .eq('organization_id', organizationId);
+        if (error) throw error;
+        return statusId;
+      },
+      reset: (deletedId) => onDelete(deletedId),
+      toast: () => showToast?.('Статус удалён'),
+      close: onClose,
+      onError: (error) => {
+        console.error('[StatusManagementModal] delete error:', error);
+      },
+    });
   };
 
   return (
@@ -1043,6 +1073,7 @@ export function StatusManagementModal({ statuses, organizationId, onClose, onAdd
 // ── ChannelManagementModal ────────────────────────────────────────────────────
 export function ChannelManagementModal({ channels, organizationId, onClose, onAdd, onDelete }) {
   useModalScrollLock();
+  const showToast = useToast();
   const [name, setName] = useState('');
   const [color, setColor] = useState(STATUS_PRESETS[0]);
   const [adding, setAdding] = useState(false);
@@ -1057,48 +1088,57 @@ export function ChannelManagementModal({ channels, organizationId, onClose, onAd
       setAddError('Канал с таким названием уже существует.');
       return;
     }
-    setAdding(true);
     setAddError(null);
-    const { data, error } = await supabase
-      .from('employee_channels')
-      .insert({ name: trimmed, color, organization_id: organizationId })
-      .select()
-      .single();
-    setAdding(false);
-    if (error) {
-      console.error('[ChannelManagementModal] insert error:', error);
-      setAddError('Ошибка при сохранении. Проверьте соединение.');
-      return;
-    }
-    onAdd(data);
-    setName('');
+    await runModalSuccessFlow({
+      setSaving: setAdding,
+      action: async () => {
+        const { data, error } = await supabase
+          .from('employee_channels')
+          .insert({ name: trimmed, color, organization_id: organizationId })
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      },
+      reset: (data) => {
+        onAdd(data);
+        setName('');
+      },
+      toast: () => showToast?.('Канал создан'),
+      close: onClose,
+      onError: (error) => {
+        console.error('[ChannelManagementModal] insert error:', error);
+        setAddError('Ошибка при сохранении. Проверьте соединение.');
+      },
+    });
   };
 
   const handleDelete = async (channel) => {
-    setDeletingId(channel.id);
-    const { error: clearError } = await supabase
-      .from('employees')
-      .update({ channel: null })
-      .eq('organization_id', organizationId)
-      .eq('channel', channel.name);
+    await runModalSuccessFlow({
+      setSaving: (active) => setDeletingId(active ? channel.id : null),
+      action: async () => {
+        const { error: clearError } = await supabase
+          .from('employees')
+          .update({ channel: null })
+          .eq('organization_id', organizationId)
+          .eq('channel', channel.name);
+        if (clearError) throw clearError;
 
-    if (clearError) {
-      console.error('[ChannelManagementModal] clear channel assignments error:', clearError);
-      setDeletingId(null);
-      return;
-    }
-
-    const { error } = await supabase
-      .from('employee_channels')
-      .delete()
-      .eq('id', channel.id)
-      .eq('organization_id', organizationId);
-    setDeletingId(null);
-    if (error) {
-      console.error('[ChannelManagementModal] delete error:', error);
-    } else {
-      onDelete(channel.id, channel.name);
-    }
+        const { error } = await supabase
+          .from('employee_channels')
+          .delete()
+          .eq('id', channel.id)
+          .eq('organization_id', organizationId);
+        if (error) throw error;
+        return channel;
+      },
+      reset: (deletedChannel) => onDelete(deletedChannel.id, deletedChannel.name),
+      toast: () => showToast?.('Канал удалён'),
+      close: onClose,
+      onError: (error) => {
+        console.error('[ChannelManagementModal] delete error:', error);
+      },
+    });
   };
 
   return (

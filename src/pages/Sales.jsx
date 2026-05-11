@@ -6,6 +6,7 @@ import { PremiumCard } from '../components/shared.jsx';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
 import { aggregateSales, formatCash, getWeekStart, getMonthStart } from '../lib/salesMetrics.js';
 import { useToast } from '../components/Toast.jsx';
+import { runModalSuccessFlow } from '../lib/modalSuccess.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -96,7 +97,7 @@ const SALES_ROW_SELECT = 'id, organization_id, employee_id, deposits_count, cash
 
 function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
   useModalScrollLock();
-  const { showToast } = useToast();
+  const showToast = useToast();
   const [form, setForm] = useState({
     employee_id: employees[0]?.id ?? '',
     deposits_count: '',
@@ -111,7 +112,6 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canSubmit || saving) return;
-    setSaving(true);
     setError(null);
     const rowId = crypto.randomUUID();
     const payload = {
@@ -122,31 +122,39 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
       cash_amount: form.cash_amount !== '' ? parseFloat(form.cash_amount) : 0,
       record_date: form.record_date,
     };
-    console.log('[SalesAdd] submit start', payload);
-    const { error: err } = await supabase.from('employee_sales').insert(payload);
-    if (err) {
-      setSaving(false);
-      console.error('[SalesAdd] insert error', err);
-      setError(`Ошибка: ${err.message}`);
-      return;
-    }
-    console.log('[SalesAdd] insert success');
-    const reloadOk = await onSaved(payload);
-    if (reloadOk) {
-      console.log('[SalesAdd] reload success');
-    } else {
-      console.warn('[SalesAdd] reload failed; local state was updated');
-    }
-    setSaving(false);
-    setForm({
-      employee_id: employees[0]?.id ?? '',
-      deposits_count: '',
-      cash_amount: '',
-      record_date: new Date().toISOString().slice(0, 10),
+    await runModalSuccessFlow({
+      setSaving,
+      action: async () => {
+        console.log('[SalesAdd] submit start', payload);
+        const { error: err } = await supabase.from('employee_sales').insert(payload);
+        if (err) throw err;
+        console.log('[SalesAdd] insert success');
+        return payload;
+      },
+      reload: async () => {
+        const reloadOk = await onSaved(payload);
+        if (reloadOk) {
+          console.log('[SalesAdd] reload success');
+        } else {
+          console.warn('[SalesAdd] reload failed; local state was updated');
+        }
+      },
+      reset: () => setForm({
+        employee_id: employees[0]?.id ?? '',
+        deposits_count: '',
+        cash_amount: '',
+        record_date: new Date().toISOString().slice(0, 10),
+      }),
+      toast: () => showToast('Показатели добавлены', 'success'),
+      close: () => {
+        console.log('[SalesAdd] closing modal');
+        onClose();
+      },
+      onError: (err) => {
+        console.error('[SalesAdd] insert error', err);
+        setError(`Ошибка: ${err.message}`);
+      },
     });
-    showToast('Показатели добавлены', 'success');
-    console.log('[SalesAdd] closing modal');
-    onClose();
   };
 
   return (
@@ -313,7 +321,7 @@ function SalesMiniBars({ rows }) {
 
 function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId, onClose, onUpdateRow, onDeleteRow }) {
   useModalScrollLock();
-  const { showToast } = useToast();
+  const showToast = useToast();
   const [dynamicsMode, setDynamicsMode] = useState('days');
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ record_date: '', deposits_count: '', cash_amount: '' });
@@ -357,55 +365,67 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
 
   const saveEdit = async (row) => {
     if (savingRow) return;
-    setSavingRow(true);
     setRowError(null);
     const payload = {
       record_date: editForm.record_date,
       deposits_count: Math.max(0, parseInt(editForm.deposits_count, 10) || 0),
       cash_amount: Math.max(0, parseFloat(editForm.cash_amount) || 0),
     };
-    const { data, error } = await supabase
-      .from('employee_sales')
-      .update(payload)
-      .eq('id', row.id)
-      .select(SALES_ROW_SELECT);
-    if (error || !data?.[0]) {
-      setSavingRow(false);
-      console.error('[Sales] update row error:', error);
-      setRowError(error ? 'Не удалось обновить запись.' : 'Запись не обновлена. Проверьте права доступа.');
-      return;
-    }
-    await onUpdateRow(data[0]);
-    setSavingRow(false);
-    setEditingId(null);
-    showToast('Продажа обновлена', 'success');
+    await runModalSuccessFlow({
+      setSaving: setSavingRow,
+      action: async () => {
+        const { data, error } = await supabase
+          .from('employee_sales')
+          .update(payload)
+          .eq('id', row.id)
+          .select(SALES_ROW_SELECT);
+        if (error) throw error;
+        if (!data?.[0]) throw new Error('Запись не обновлена. Проверьте права доступа.');
+        return data[0];
+      },
+      reload: (updatedRow) => onUpdateRow(updatedRow),
+      reset: () => setEditingId(null),
+      toast: () => showToast('Продажа обновлена', 'success'),
+      close: onClose,
+      onError: (error) => {
+        console.error('[Sales] update row error:', error);
+        setRowError(error?.message || 'Не удалось обновить запись.');
+      },
+    });
   };
 
   const deleteRow = async (row) => {
     if (savingRow) return;
-    setSavingRow(true);
     setRowError(null);
-    console.log('[SalesDelete] deleting row', row.id);
-    const { data, error } = await supabase
-      .from('employee_sales')
-      .delete()
-      .eq('id', row.id)
-      .select('id');
-    if (error || !data?.[0]) {
-      setSavingRow(false);
-      console.error('[SalesDelete] delete error', error, { data });
-      setRowError(error ? 'Не удалось удалить запись.' : 'Запись не удалена. Проверьте права доступа.');
-      return;
-    }
-    console.log('[SalesDelete] delete success', data[0]);
-    const reloadOk = await onDeleteRow(row.id);
-    if (reloadOk) {
-      console.log('[SalesDelete] reload success');
-    } else {
-      console.warn('[SalesDelete] reload failed; local state was updated');
-    }
-    setSavingRow(false);
-    showToast('Продажа удалена', 'success');
+    await runModalSuccessFlow({
+      setSaving: setSavingRow,
+      action: async () => {
+        console.log('[SalesDelete] deleting row', row.id);
+        const { data, error } = await supabase
+          .from('employee_sales')
+          .delete()
+          .eq('id', row.id)
+          .select('id');
+        if (error) throw error;
+        if (!data?.[0]) throw new Error('Запись не удалена. Проверьте права доступа.');
+        console.log('[SalesDelete] delete success', data[0]);
+        return row.id;
+      },
+      reload: async (rowId) => {
+        const reloadOk = await onDeleteRow(rowId);
+        if (reloadOk) {
+          console.log('[SalesDelete] reload success');
+        } else {
+          console.warn('[SalesDelete] reload failed; local state was updated');
+        }
+      },
+      toast: () => showToast('Продажа удалена', 'success'),
+      close: onClose,
+      onError: (error) => {
+        console.error('[SalesDelete] delete error', error);
+        setRowError(error?.message || 'Не удалось удалить запись.');
+      },
+    });
   };
 
   return (

@@ -5,6 +5,7 @@ import { supabase, fetchWithTimeout } from '../lib/supabase.js';
 import { RuleToggle } from '../components/display.jsx';
 import { RuleModal, DeleteRuleModal } from '../components/modals.jsx';
 import { useToast } from '../components/Toast.jsx';
+import { runModalSuccessFlow } from '../lib/modalSuccess.js';
 
 function toRule(row) {
   const [category, weight] = (row.category || 'Процесс').split(' · ');
@@ -34,6 +35,7 @@ export function Rules({ organizationId }) {
   const [ruleForm, setRuleForm] = useState(emptyRule);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [deleteSaving, setDeleteSaving] = useState(false);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -69,58 +71,65 @@ export function Rules({ organizationId }) {
       console.error('[Rules] organizationId missing, aborting save');
       return;
     }
-    setSaving(true);
     const title = ruleForm.title.trim();
     const description = ruleForm.description.trim();
     const categoryWithWeight = `${ruleForm.category} · ${ruleForm.weight}`;
 
-    if (modalMode === 'edit') {
-      const { data, error } = await supabase
-        .from('qa_rules')
-        .update({
+    await runModalSuccessFlow({
+      setSaving,
+      action: async () => {
+        if (modalMode === 'edit') {
+          const { data, error } = await supabase
+            .from('qa_rules')
+            .update({
+              title,
+              description,
+              category: categoryWithWeight,
+              enabled: ruleForm.active
+            })
+            .eq('id', ruleForm.id)
+            .eq('organization_id', organizationId)
+            .select()
+            .single();
+          if (error) throw error;
+          return { mode: 'edit', data };
+        }
+
+        const insertPayload = {
           title,
           description,
           category: categoryWithWeight,
-          enabled: ruleForm.active
-        })
-        .eq('id', ruleForm.id)
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+          enabled: ruleForm.active,
+          organization_id: organizationId
+        };
 
-      setSaving(false);
-      if (error) { console.error('[Rules] update error:', error); return; }
+        console.log('[Rules] organizationId', organizationId);
+        console.log('[Rules] insert payload', insertPayload);
 
-      setRules((current) => current.map((rule) => rule.id === data.id ? toRule(data) : rule));
-      showToast('Правило обновлено');
-    } else {
-      const insertPayload = {
-        title,
-        description,
-        category: categoryWithWeight,
-        enabled: ruleForm.active,
-        organization_id: organizationId
-      };
+        const { data, error } = await supabase
+          .from('qa_rules')
+          .insert(insertPayload)
+          .select('*')
+          .single();
 
-      console.log('[Rules] organizationId', organizationId);
-      console.log('[Rules] insert payload', insertPayload);
-
-      const { data, error } = await supabase
-        .from('qa_rules')
-        .insert(insertPayload)
-        .select('*')
-        .single();
-
-      setSaving(false);
-      console.log('[Rules] insert data', data);
-      console.error('[Rules] insert error', error);
-      if (error) return;
-
-      setRules((current) => [toRule(data), ...current]);
-      showToast('Правило добавлено');
-    }
-
-    closeModal();
+        console.log('[Rules] insert data', data);
+        console.error('[Rules] insert error', error);
+        if (error) throw error;
+        return { mode: 'add', data };
+      },
+      reset: ({ mode, data }) => {
+        if (mode === 'edit') {
+          setRules((current) => current.map((rule) => rule.id === data.id ? toRule(data) : rule));
+        } else {
+          setRules((current) => [toRule(data), ...current]);
+        }
+      },
+      toast: ({ mode }) => showToast(mode === 'edit' ? 'Правило обновлено' : 'Правило добавлено'),
+      close: closeModal,
+      onError: (error) => {
+        console.error(modalMode === 'edit' ? '[Rules] update error:' : '[Rules] insert error:', error);
+      },
+    });
   };
 
   const toggleRule = async (ruleId) => {
@@ -147,28 +156,31 @@ export function Rules({ organizationId }) {
   };
 
   const confirmDeleteRule = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || deleteSaving) return;
     if (!organizationId) {
       console.error('[Rules] organizationId missing, aborting delete');
       setDeleteTarget(null);
       return;
     }
 
-    const { error } = await supabase
-      .from('qa_rules')
-      .delete()
-      .eq('id', deleteTarget.id)
-      .eq('organization_id', organizationId);
-
-    if (error) {
-      console.error('[Rules] delete error:', error);
-      setDeleteTarget(null);
-      return;
-    }
-
-    setRules((current) => current.filter((rule) => rule.id !== deleteTarget.id));
-    showToast('Правило удалено');
-    setDeleteTarget(null);
+    await runModalSuccessFlow({
+      setSaving: setDeleteSaving,
+      action: async () => {
+        const { error } = await supabase
+          .from('qa_rules')
+          .delete()
+          .eq('id', deleteTarget.id)
+          .eq('organization_id', organizationId);
+        if (error) throw error;
+        return deleteTarget.id;
+      },
+      reset: (ruleId) => setRules((current) => current.filter((rule) => rule.id !== ruleId)),
+      toast: () => showToast('Правило удалено'),
+      close: () => setDeleteTarget(null),
+      onError: (error) => {
+        console.error('[Rules] delete error:', error);
+      },
+    });
   };
 
   return (
@@ -254,6 +266,7 @@ export function Rules({ organizationId }) {
             rule={deleteTarget}
             onCancel={() => setDeleteTarget(null)}
             onConfirm={confirmDeleteRule}
+            saving={deleteSaving}
           />
         )}
       </AnimatePresence>
