@@ -90,6 +90,8 @@ const salesSharedTransition = {
   scale: { duration: 0.18 },
 };
 
+const SALES_ROW_SELECT = 'id, organization_id, employee_id, deposits_count, cash_amount, record_date';
+
 // ─── Add Sales Modal ─────────────────────────────────────────────────────────
 
 function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
@@ -120,15 +122,21 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
       cash_amount: form.cash_amount !== '' ? parseFloat(form.cash_amount) : 0,
       record_date: form.record_date,
     };
-    console.log('[SalesSave] payload', payload);
+    console.log('[SalesAdd] submit start', payload);
     const { error: err } = await supabase.from('employee_sales').insert(payload);
-    console.log('[SalesSave] result', { error: err });
     if (err) {
       setSaving(false);
+      console.error('[SalesAdd] insert error', err);
       setError(`Ошибка: ${err.message}`);
       return;
     }
-    await onSaved(payload);
+    console.log('[SalesAdd] insert success');
+    const reloadOk = await onSaved(payload);
+    if (reloadOk) {
+      console.log('[SalesAdd] reload success');
+    } else {
+      console.warn('[SalesAdd] reload failed; local state was updated');
+    }
     setSaving(false);
     setForm({
       employee_id: employees[0]?.id ?? '',
@@ -137,6 +145,7 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
       record_date: new Date().toISOString().slice(0, 10),
     });
     showToast('Показатели добавлены', 'success');
+    console.log('[SalesAdd] closing modal');
     onClose();
   };
 
@@ -355,14 +364,18 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
       deposits_count: Math.max(0, parseInt(editForm.deposits_count, 10) || 0),
       cash_amount: Math.max(0, parseFloat(editForm.cash_amount) || 0),
     };
-    const { error } = await supabase.from('employee_sales').update(payload).eq('id', row.id);
-    if (error) {
+    const { data, error } = await supabase
+      .from('employee_sales')
+      .update(payload)
+      .eq('id', row.id)
+      .select(SALES_ROW_SELECT);
+    if (error || !data?.[0]) {
       setSavingRow(false);
       console.error('[Sales] update row error:', error);
-      setRowError('Не удалось обновить запись.');
+      setRowError(error ? 'Не удалось обновить запись.' : 'Запись не обновлена. Проверьте права доступа.');
       return;
     }
-    await onUpdateRow({ ...row, ...payload });
+    await onUpdateRow(data[0]);
     setSavingRow(false);
     setEditingId(null);
     showToast('Продажа обновлена', 'success');
@@ -372,14 +385,25 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
     if (savingRow) return;
     setSavingRow(true);
     setRowError(null);
-    const { error } = await supabase.from('employee_sales').delete().eq('id', row.id);
-    if (error) {
+    console.log('[SalesDelete] deleting row', row.id);
+    const { data, error } = await supabase
+      .from('employee_sales')
+      .delete()
+      .eq('id', row.id)
+      .select('id');
+    if (error || !data?.[0]) {
       setSavingRow(false);
-      console.error('[Sales] delete row error:', error);
-      setRowError('Не удалось удалить запись.');
+      console.error('[SalesDelete] delete error', error, { data });
+      setRowError(error ? 'Не удалось удалить запись.' : 'Запись не удалена. Проверьте права доступа.');
       return;
     }
-    await onDeleteRow(row.id);
+    console.log('[SalesDelete] delete success', data[0]);
+    const reloadOk = await onDeleteRow(row.id);
+    if (reloadOk) {
+      console.log('[SalesDelete] reload success');
+    } else {
+      console.warn('[SalesDelete] reload failed; local state was updated');
+    }
     setSavingRow(false);
     showToast('Продажа удалена', 'success');
   };
@@ -682,36 +706,41 @@ export function Sales({ employees, employeesLoading, organizationId }) {
   const loadSalesRows = useCallback(async ({ silent = false } = {}) => {
     if (!organizationId) return false;
     if (!silent) setSalesLoading(true);
-    const [weekResult, monthResult] = await Promise.all([
-      supabase
-        .from('employee_sales')
-        .select('id, employee_id, deposits_count, cash_amount, record_date')
-        .eq('organization_id', organizationId)
-        .gte('record_date', getWeekStart())
-        .order('record_date', { ascending: false }),
-      supabase
-        .from('employee_sales')
-        .select('id, employee_id, deposits_count, cash_amount, record_date')
-        .eq('organization_id', organizationId)
-        .gte('record_date', getMonthStart())
-        .order('record_date', { ascending: false }),
-    ]);
+    try {
+      const [weekResult, monthResult] = await Promise.all([
+        supabase
+          .from('employee_sales')
+          .select(SALES_ROW_SELECT)
+          .eq('organization_id', organizationId)
+          .gte('record_date', getWeekStart())
+          .order('record_date', { ascending: false }),
+        supabase
+          .from('employee_sales')
+          .select(SALES_ROW_SELECT)
+          .eq('organization_id', organizationId)
+          .gte('record_date', getMonthStart())
+          .order('record_date', { ascending: false }),
+      ]);
 
-    if (weekResult.error || monthResult.error) {
-      if (weekResult.error) console.error('[Sales] fetch error:', weekResult.error);
-      if (monthResult.error) console.error('[Sales] month fetch error:', monthResult.error);
-      setSalesLoading(false);
+      if (weekResult.error || monthResult.error) {
+        if (weekResult.error) console.error('[Sales] fetch error:', weekResult.error);
+        if (monthResult.error) console.error('[Sales] month fetch error:', monthResult.error);
+        return false;
+      }
+
+      setSalesRows(weekResult.data ?? []);
+      setMonthRows(monthResult.data ?? []);
+      console.log('[SalesSave] refetch complete', {
+        weekRows: weekResult.data?.length ?? 0,
+        monthRows: monthResult.data?.length ?? 0,
+      });
+      return true;
+    } catch (err) {
+      console.error('[Sales] fetch rejected:', err);
       return false;
+    } finally {
+      setSalesLoading(false);
     }
-
-    setSalesRows(weekResult.data ?? []);
-    setMonthRows(monthResult.data ?? []);
-    setSalesLoading(false);
-    console.log('[SalesSave] refetch complete', {
-      weekRows: weekResult.data?.length ?? 0,
-      monthRows: monthResult.data?.length ?? 0,
-    });
-    return true;
   }, [organizationId]);
 
   useEffect(() => {
@@ -796,17 +825,17 @@ export function Sales({ employees, employeesLoading, organizationId }) {
 
   const handleSalesSaved = async (row) => {
     syncLocalSalesRow(row);
-    await loadSalesRows({ silent: true });
+    return loadSalesRows({ silent: true });
   };
 
   const handleSalesUpdated = async (row) => {
     syncLocalSalesRow(row);
-    await loadSalesRows({ silent: true });
+    return loadSalesRows({ silent: true });
   };
 
   const handleSalesDeleted = async (rowId) => {
     removeLocalSalesRow(rowId);
-    await loadSalesRows({ silent: true });
+    return loadSalesRows({ silent: true });
   };
 
   return (
