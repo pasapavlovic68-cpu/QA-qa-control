@@ -20,6 +20,12 @@ function initials(name) {
   return (name ?? '').split(' ').map((p) => p[0] ?? '').join('').slice(0, 2).toUpperCase();
 }
 
+const salesSharedTransition = {
+  layout: { type: 'spring', damping: 34, stiffness: 360 },
+  opacity: { duration: 0.18 },
+  scale: { duration: 0.18 },
+};
+
 // ─── Add Sales Modal ─────────────────────────────────────────────────────────
 
 function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
@@ -179,7 +185,7 @@ function SalesDayChart({ rows }) {
 
 // ─── Employee Detail Modal ───────────────────────────────────────────────────
 
-function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, onClose }) {
+function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId, onClose }) {
   useModalScrollLock();
 
   const filtered = useMemo(() => {
@@ -210,14 +216,12 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, onClose }
     <ModalPortal>
       <motion.div className="modal-backdrop report-detail-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
         <motion.aside
+          layoutId={layoutId}
           onClick={(e) => e.stopPropagation()}
           className="modal-shell modal-shell--large report-detail"
           role="dialog"
           aria-modal="true"
-          initial={modalMotion.initial}
-          animate={modalMotion.animate}
-          exit={modalMotion.exit}
-          transition={modalMotion.transition}
+          transition={salesSharedTransition}
         >
           <motion.div className="report-detail-content" variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
 
@@ -302,7 +306,7 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, onClose }
 
 // ─── Employee Sales Card ─────────────────────────────────────────────────────
 
-function EmployeeSalesCard({ employee, rows, period, onClick }) {
+function EmployeeSalesCard({ employee, rows, period, layoutId, onClick }) {
   const { weekDeposits, weekCash, monthDeposits, monthCash } = useMemo(() => aggregateSales(rows), [rows]);
 
   const deposits = period === 'week' ? weekDeposits : monthDeposits;
@@ -314,9 +318,12 @@ function EmployeeSalesCard({ employee, rows, period, onClick }) {
 
   return (
     <motion.div
+      layout
+      layoutId={layoutId}
       className="sales-emp-card"
       whileHover={{ y: -3, boxShadow: '0 18px 52px rgba(119,101,227,0.15)' }}
       whileTap={{ scale: 0.985 }}
+      transition={salesSharedTransition}
       onClick={onClick}
       style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
     >
@@ -538,6 +545,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
                 employee={emp}
                 rows={rowsByEmployee[emp.id] ?? []}
                 period={period}
+                layoutId={`sales-employee-${emp.id}`}
                 onClick={() => openDetail(emp)}
               />
             </motion.div>
@@ -566,6 +574,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
             rows={allRows.filter((r) => r.employee_id === detailEmployee.id)}
             period={detailPeriod}
             setPeriod={setDetailPeriod}
+            layoutId={`sales-employee-${detailEmployee.id}`}
             onClose={() => setDetailEmployee(null)}
           />
         )}
