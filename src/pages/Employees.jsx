@@ -55,8 +55,13 @@ const SCHEDULE_STATUSES = {
   sick: { label: 'Больничный', short: 'Б', color: '#be3c44' },
 };
 
+const UNSET_SCHEDULE_STATUS = { label: 'Не назначено', short: '—', color: '#8a8fa8' };
+
 function formatDateKey(date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function getScheduleDates(period) {
@@ -118,6 +123,24 @@ function ChannelBadge({ name, color }) {
   );
 }
 
+function TodayScheduleBadge({ status }) {
+  const schedule = SCHEDULE_STATUSES[status] ?? UNSET_SCHEDULE_STATUS;
+
+  return (
+    <span
+      className={`today-schedule-badge ${status ? 'filled' : 'unset'}`}
+      style={{
+        '--today-schedule-color': schedule.color,
+        '--today-schedule-bg': hexToRgba(schedule.color, status ? 0.12 : 0.08),
+        '--today-schedule-border': hexToRgba(schedule.color, status ? 0.3 : 0.18),
+      }}
+    >
+      <span className="today-schedule-dot" />
+      Сегодня: {schedule.label}
+    </span>
+  );
+}
+
 export function Employees({ setDetailOpen, setSelectedEmployee, employees, employeesLoading, onAdd, onDelete, organizationId }) {
   const showToast = useToast();
 
@@ -145,6 +168,8 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   const [channelTarget, setChannelTarget] = useState(null);
   const [channelOverrides, setChannelOverrides] = useState({}); // {employeeId: channelName}
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [todaySchedule, setTodaySchedule] = useState({});
+  const todayDateKey = formatDateKey(new Date());
 
   useEffect(() => {
     if (!organizationId) return;
@@ -177,6 +202,29 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         setChannels(data ?? []);
       });
   }, [organizationId]);
+
+  useEffect(() => {
+    if (!organizationId) {
+      setTodaySchedule({});
+      return;
+    }
+    supabase
+      .from('employee_schedule')
+      .select('employee_id, status')
+      .eq('organization_id', organizationId)
+      .eq('work_date', todayDateKey)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[Employees] today schedule fetch error:', error);
+          return;
+        }
+        const nextSchedule = {};
+        (data ?? []).forEach((record) => {
+          nextSchedule[record.employee_id] = record.status;
+        });
+        setTodaySchedule(nextSchedule);
+      });
+  }, [organizationId, todayDateKey]);
 
   const getDisplayStatus = (employee) => statusOverrides[employee.id] ?? employee.status;
   const getDisplayChannel = (employee) => channelOverrides[employee.id] ?? employee.channel ?? '';
@@ -281,6 +329,19 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         return next;
       });
     }
+  };
+
+  const handleScheduleChange = ({ employeeId, dateKey, status }) => {
+    if (dateKey !== todayDateKey) return;
+    setTodaySchedule((prev) => {
+      const next = { ...prev };
+      if (!status) {
+        delete next[employeeId];
+      } else {
+        next[employeeId] = status;
+      }
+      return next;
+    });
   };
 
   const resetForm = () => setForm({ name: '' });
@@ -551,6 +612,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
                         </div>
                         <div className="employee-badge-row">
                           <ChannelBadge name={displayChannel} color={channelColor} />
+                          <TodayScheduleBadge status={todaySchedule[employee.id]} />
                         </div>
                         <div className="employee-assignment-actions">
                           <motion.button
@@ -693,6 +755,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
             channels={channels}
             organizationId={organizationId}
             getDisplayChannel={getDisplayChannel}
+            onScheduleChange={handleScheduleChange}
             onClose={() => setScheduleOpen(false)}
           />
         )}
@@ -889,7 +952,7 @@ function EmployeeChannelAssignModal({ employee, channels, saving, error, onClose
   );
 }
 
-function EmployeeScheduleModal({ employees, channels, organizationId, getDisplayChannel, onClose }) {
+function EmployeeScheduleModal({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, onClose }) {
   const showToast = useToast();
   const [period, setPeriod] = useState('two_weeks');
   const [schedule, setSchedule] = useState({});
@@ -992,6 +1055,7 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
         delete next[cellKey];
         return next;
       });
+      onScheduleChange?.({ employeeId: employee.id, dateKey, status: null });
       return;
     }
 
@@ -1018,6 +1082,7 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
     }
 
     setSchedule((prev) => ({ ...prev, [cellKey]: data.status }));
+    onScheduleChange?.({ employeeId: employee.id, dateKey, status: data.status });
     showToast('График обновлён');
   };
 

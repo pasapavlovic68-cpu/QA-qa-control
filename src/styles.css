@@ -3301,11 +3301,14 @@ select {
 
 .employee-badge-row {
   display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
   min-height: 24px;
   margin: 10px 0 8px;
 }
 
-.channel-badge {
+.channel-badge,
+.today-schedule-badge {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -3315,6 +3318,26 @@ select {
   font-size: 12px;
   font-weight: 750;
   line-height: 1;
+}
+
+.today-schedule-badge {
+  border: 1px solid var(--today-schedule-border);
+  background: var(--today-schedule-bg);
+  color: var(--today-schedule-color);
+}
+
+.today-schedule-badge.unset {
+  color: var(--muted);
+}
+
+.today-schedule-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--today-schedule-color);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.65);
 }
 
 .employee-assignment-actions {
