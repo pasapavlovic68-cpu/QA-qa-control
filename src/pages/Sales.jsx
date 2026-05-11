@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart2, CalendarDays, Pencil, Plus, Save, Trash2, Trophy, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
@@ -111,6 +111,7 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('[SalesModalClose] submit clicked');
     if (!canSubmit || saving) return;
     setError(null);
     const rowId = crypto.randomUUID();
@@ -122,13 +123,14 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
       cash_amount: form.cash_amount !== '' ? parseFloat(form.cash_amount) : 0,
       record_date: form.record_date,
     };
-    await runModalSuccessFlow({
+    const result = await runModalSuccessFlow({
       setSaving,
       action: async () => {
         console.log('[SalesAdd] submit start', payload);
         const { error: err } = await supabase.from('employee_sales').insert(payload);
         if (err) throw err;
         console.log('[SalesAdd] insert success');
+        console.log('[SalesModalClose] action success');
         return payload;
       },
       reload: async () => {
@@ -145,16 +147,17 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
         cash_amount: '',
         record_date: new Date().toISOString().slice(0, 10),
       }),
-      toast: () => showToast('Показатели добавлены', 'success'),
-      close: () => {
-        console.log('[SalesAdd] closing modal');
-        onClose();
-      },
+      toast: () => showToast?.('Показатели добавлены', 'success'),
       onError: (err) => {
         console.error('[SalesAdd] insert error', err);
         setError(`Ошибка: ${err.message}`);
       },
     });
+    if (result.ok) {
+      console.log('[SalesModalClose] before onClose');
+      onClose();
+      console.log('[SalesModalClose] after onClose');
+    }
   };
 
   return (
@@ -710,6 +713,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
   const [salesLoading, setSalesLoading] = useState(true);
   const [period, setPeriod] = useState('week');
   const [addOpen, setAddOpen] = useState(false);
+  const addOpenRef = useRef(addOpen);
   const [detailEmployee, setDetailEmployee] = useState(null);
   const [detailPeriod, setDetailPeriod] = useState('week');
   const [dateTick, setDateTick] = useState(() => new Date().toDateString());
@@ -720,6 +724,11 @@ export function Sales({ employees, employeesLoading, organizationId }) {
     }, 60000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    addOpenRef.current = addOpen;
+    console.log('[SalesModalClose] addOpen value after close', addOpen);
+  }, [addOpen]);
 
   const [monthRows, setMonthRows] = useState([]);
 
@@ -828,6 +837,11 @@ export function Sales({ employees, employeesLoading, organizationId }) {
     setDetailEmployee(emp);
     setDetailPeriod(period); // sync period from page
   };
+
+  const closeAddModal = useCallback(() => {
+    console.log('[SalesModalClose] addOpen value before close', addOpenRef.current);
+    setAddOpen(false);
+  }, []);
 
   const syncLocalSalesRow = (row) => {
     const upsert = (list, include) => {
@@ -963,7 +977,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
           <AddSalesModal
             employees={employees}
             organizationId={organizationId}
-            onClose={() => setAddOpen(false)}
+            onClose={closeAddModal}
             onSaved={handleSalesSaved}
           />
         )}
