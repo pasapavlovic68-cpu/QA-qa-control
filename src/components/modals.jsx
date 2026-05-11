@@ -475,7 +475,7 @@ export function DeleteRuleModal({ rule, onCancel, onConfirm }) {
   );
 }
 
-export function ReviewReportModal({ report, onClose }) {
+export function ReviewReportModal({ report, onClose, layoutId }) {
   useModalScrollLock();
 
   if (!report) {
@@ -526,6 +526,14 @@ export function ReviewReportModal({ report, onClose }) {
   const minorMistakes = allMistakes.filter((m) => !['critical', 'high', 'medium'].includes(m.severity));
 
   const hasContent = summaryText || (report.recommendations ?? []).length > 0 || allMistakes.length > 0;
+  const shellMotionProps = layoutId
+    ? { layoutId, transition: reportCardTransition }
+    : {
+        initial: modalMotion.initial,
+        animate: modalMotion.animate,
+        exit: modalMotion.exit,
+        transition: modalMotion.transition,
+      };
 
   return (
     <ModalPortal>
@@ -541,10 +549,7 @@ export function ReviewReportModal({ report, onClose }) {
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
-          initial={modalMotion.initial}
-          animate={modalMotion.animate}
-          exit={modalMotion.exit}
-          transition={modalMotion.transition}
+          {...shellMotionProps}
         >
           <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
 

@@ -113,6 +113,8 @@ export function Report({ organizationId }) {
         <motion.div className="reports-grid" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}>
           {filteredReports.map((report) => (
             <motion.button
+              layout
+              layoutId={`report-${report.id}`}
               className="report-card"
               key={report.id}
               variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } }}
@@ -148,7 +150,11 @@ export function Report({ organizationId }) {
 
       <AnimatePresence>
         {selectedReport && (
-          <ReviewReportModal report={selectedReport} onClose={() => setSelectedReport(null)} />
+          <ReviewReportModal
+            report={selectedReport}
+            layoutId={`report-${selectedReport.id}`}
+            onClose={() => setSelectedReport(null)}
+          />
         )}
       </AnimatePresence>
     </>
