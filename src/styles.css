@@ -3651,9 +3651,9 @@ select {
 }
 
 .sales-empty-state--sales-data {
-  margin-top: 26px;
-  min-height: 280px;
-  padding: 48px 18px;
+  margin-top: 42px;
+  min-height: 360px;
+  padding: 72px 18px;
 }
 
 .sales-empty-state p {
