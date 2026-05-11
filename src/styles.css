@@ -567,9 +567,10 @@ h1 {
 }
 
 .employee-card {
-  display: flex;
-  flex-direction: column;
-  min-height: 262px;
+  display: grid;
+  grid-template-rows: 66px 54px 32px 92px 20px;
+  gap: 12px;
+  min-height: 320px;
   padding: 22px;
   border-radius: var(--radius);
   color: var(--text);
@@ -589,7 +590,8 @@ h1 {
   align-items: flex-start;
   gap: 14px;
   min-height: 66px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  overflow: hidden;
 }
 
 .employee-identity {
@@ -610,6 +612,8 @@ h1 {
   align-items: center;
   gap: 7px;
   min-width: 0;
+  flex: 0 0 auto;
+  max-width: 46%;
 }
 
 .employee-delete {
@@ -643,7 +647,7 @@ h1 {
 .employee-status-button {
   align-self: flex-start;
   min-height: 32px;
-  margin-bottom: 14px;
+  margin-bottom: 0;
   padding: 0 11px;
   border: 1px solid rgba(119, 101, 227, 0.14);
   border-radius: 11px;
@@ -708,6 +712,9 @@ h1 {
 .status-badge-btn {
   display: inline-flex;
   align-items: center;
+  max-width: 138px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
@@ -975,7 +982,8 @@ h1 {
   grid-template-columns: 64px 1fr;
   gap: 14px;
   align-items: center;
-  margin: auto 0 16px;
+  min-height: 92px;
+  margin: 0;
   padding: 15px;
   border: 1px solid rgba(119, 101, 227, 0.12);
   border-radius: 18px;
@@ -3302,9 +3310,12 @@ select {
 .employee-badge-row {
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
   gap: 7px;
-  min-height: 24px;
-  margin: 10px 0 8px;
+  min-height: 54px;
+  max-height: 54px;
+  margin: 0;
+  overflow: hidden;
 }
 
 .channel-badge,
@@ -3313,6 +3324,9 @@ select {
   align-items: center;
   gap: 7px;
   max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 5px 10px;
   border-radius: 999px;
   font-size: 12px;
@@ -3343,8 +3357,10 @@ select {
 .employee-assignment-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  align-self: stretch;
+  min-height: 32px;
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 0;
 }
 
 .employee-assignment-actions .employee-status-button {
@@ -3590,8 +3606,14 @@ select {
 }
 
 @media (max-width: 640px) {
+  .employee-card {
+    grid-template-rows: 66px 54px 72px 92px 20px;
+    min-height: 360px;
+  }
+
   .employee-assignment-actions {
     grid-template-columns: 1fr;
+    min-height: 72px;
   }
 
   .employee-schedule-modal {
