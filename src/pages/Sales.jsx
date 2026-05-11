@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart2, CalendarDays, Pencil, Plus, Save, Trash2, Trophy, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
@@ -120,17 +120,23 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
       cash_amount: form.cash_amount !== '' ? parseFloat(form.cash_amount) : 0,
       record_date: form.record_date,
     };
+    console.log('[SalesSave] payload', payload);
     const { error: err } = await supabase.from('employee_sales').insert(payload);
+    console.log('[SalesSave] result', { error: err });
+    if (err) {
+      setSaving(false);
+      setError(`Ошибка: ${err.message}`);
+      return;
+    }
+    await onSaved(payload);
     setSaving(false);
-    if (err) { setError(`Ошибка: ${err.message}`); return; }
-    showToast('Показатели добавлены', 'success');
     setForm({
       employee_id: employees[0]?.id ?? '',
       deposits_count: '',
       cash_amount: '',
       record_date: new Date().toISOString().slice(0, 10),
     });
-    onSaved(payload);
+    showToast('Показатели добавлены', 'success');
     onClose();
   };
 
@@ -350,13 +356,14 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
       cash_amount: Math.max(0, parseFloat(editForm.cash_amount) || 0),
     };
     const { error } = await supabase.from('employee_sales').update(payload).eq('id', row.id);
-    setSavingRow(false);
     if (error) {
+      setSavingRow(false);
       console.error('[Sales] update row error:', error);
       setRowError('Не удалось обновить запись.');
       return;
     }
-    onUpdateRow({ ...row, ...payload });
+    await onUpdateRow({ ...row, ...payload });
+    setSavingRow(false);
     setEditingId(null);
     showToast('Продажа обновлена', 'success');
   };
@@ -366,13 +373,14 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
     setSavingRow(true);
     setRowError(null);
     const { error } = await supabase.from('employee_sales').delete().eq('id', row.id);
-    setSavingRow(false);
     if (error) {
+      setSavingRow(false);
       console.error('[Sales] delete row error:', error);
       setRowError('Не удалось удалить запись.');
       return;
     }
-    onDeleteRow(row.id);
+    await onDeleteRow(row.id);
+    setSavingRow(false);
     showToast('Продажа удалена', 'success');
   };
 
@@ -669,37 +677,46 @@ export function Sales({ employees, employeesLoading, organizationId }) {
     return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    if (!organizationId) return;
-    // Fetch everything from week start (which is always <= month start)
-    supabase
-      .from('employee_sales')
-      .select('id, employee_id, deposits_count, cash_amount, record_date')
-      .eq('organization_id', organizationId)
-      .gte('record_date', getWeekStart())
-      .order('record_date', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error) setSalesRows(data ?? []);
-        else console.error('[Sales] fetch error:', error);
-        setSalesLoading(false);
-      });
-  }, [organizationId, dateTick]);
-
-  // Also fetch month rows separately (month start may be before week start at start of month)
   const [monthRows, setMonthRows] = useState([]);
+
+  const loadSalesRows = useCallback(async ({ silent = false } = {}) => {
+    if (!organizationId) return false;
+    if (!silent) setSalesLoading(true);
+    const [weekResult, monthResult] = await Promise.all([
+      supabase
+        .from('employee_sales')
+        .select('id, employee_id, deposits_count, cash_amount, record_date')
+        .eq('organization_id', organizationId)
+        .gte('record_date', getWeekStart())
+        .order('record_date', { ascending: false }),
+      supabase
+        .from('employee_sales')
+        .select('id, employee_id, deposits_count, cash_amount, record_date')
+        .eq('organization_id', organizationId)
+        .gte('record_date', getMonthStart())
+        .order('record_date', { ascending: false }),
+    ]);
+
+    if (weekResult.error || monthResult.error) {
+      if (weekResult.error) console.error('[Sales] fetch error:', weekResult.error);
+      if (monthResult.error) console.error('[Sales] month fetch error:', monthResult.error);
+      setSalesLoading(false);
+      return false;
+    }
+
+    setSalesRows(weekResult.data ?? []);
+    setMonthRows(monthResult.data ?? []);
+    setSalesLoading(false);
+    console.log('[SalesSave] refetch complete', {
+      weekRows: weekResult.data?.length ?? 0,
+      monthRows: monthResult.data?.length ?? 0,
+    });
+    return true;
+  }, [organizationId]);
+
   useEffect(() => {
-    if (!organizationId) return;
-    supabase
-      .from('employee_sales')
-      .select('id, employee_id, deposits_count, cash_amount, record_date')
-      .eq('organization_id', organizationId)
-      .gte('record_date', getMonthStart())
-      .order('record_date', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error) setMonthRows(data ?? []);
-        else console.error('[Sales] month fetch error:', error);
-      });
-  }, [organizationId, dateTick]);
+    loadSalesRows();
+  }, [loadSalesRows, dateTick]);
 
   // All rows for the full month window (month rows are superset when month > week)
   const allRows = useMemo(() => {
@@ -775,6 +792,21 @@ export function Sales({ employees, employeesLoading, organizationId }) {
   const removeLocalSalesRow = (rowId) => {
     setSalesRows((prev) => prev.filter((item) => item.id !== rowId));
     setMonthRows((prev) => prev.filter((item) => item.id !== rowId));
+  };
+
+  const handleSalesSaved = async (row) => {
+    syncLocalSalesRow(row);
+    await loadSalesRows({ silent: true });
+  };
+
+  const handleSalesUpdated = async (row) => {
+    syncLocalSalesRow(row);
+    await loadSalesRows({ silent: true });
+  };
+
+  const handleSalesDeleted = async (rowId) => {
+    removeLocalSalesRow(rowId);
+    await loadSalesRows({ silent: true });
   };
 
   return (
@@ -883,7 +915,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
             employees={employees}
             organizationId={organizationId}
             onClose={() => setAddOpen(false)}
-            onSaved={syncLocalSalesRow}
+            onSaved={handleSalesSaved}
           />
         )}
       </AnimatePresence>
@@ -895,8 +927,8 @@ export function Sales({ employees, employeesLoading, organizationId }) {
             period={detailPeriod}
             setPeriod={setDetailPeriod}
             layoutId={`sales-employee-${detailEmployee.id}`}
-            onUpdateRow={syncLocalSalesRow}
-            onDeleteRow={removeLocalSalesRow}
+            onUpdateRow={handleSalesUpdated}
+            onDeleteRow={handleSalesDeleted}
             onClose={() => setDetailEmployee(null)}
           />
         )}
