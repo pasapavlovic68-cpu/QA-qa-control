@@ -10,11 +10,17 @@ import {
 import { supabase } from '../lib/supabase.js';
 import { PremiumCard, RevealCard, Stagger, Avatar } from '../components/shared.jsx';
 import { KpiCard } from '../components/display.jsx';
-import { ModalPortal, modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
+import { ModalPortal, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
 
 const emptyCardText = (text) => (
   <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.875rem', padding: '24px 0' }}>{text}</p>
 );
+
+const dashboardSharedTransition = {
+  layout: { type: 'spring', damping: 34, stiffness: 360 },
+  opacity: { duration: 0.18 },
+  scale: { duration: 0.18 },
+};
 
 function scoreColor(score) {
   if (score >= 85) return 'var(--success)';
@@ -30,7 +36,7 @@ function controlReason(empId, latestScoreByEmployee, criticalByEmployee, mistake
   return 'Есть замечания';
 }
 
-function EmployeesControlModal({ employees, criticalByEmployee, latestScoreByEmployee, mistakesByEmployee, onClose }) {
+function EmployeesControlModal({ employees, criticalByEmployee, latestScoreByEmployee, mistakesByEmployee, layoutId, onClose }) {
   useModalScrollLock();
   return (
     <ModalPortal>
@@ -42,14 +48,12 @@ function EmployeesControlModal({ employees, criticalByEmployee, latestScoreByEmp
         onClick={onClose}
       >
         <motion.div
+          layoutId={layoutId}
           className="modal-shell modal-shell--medium"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
-          initial={modalMotion.initial}
-          animate={modalMotion.animate}
-          exit={modalMotion.exit}
-          transition={modalMotion.transition}
+          transition={dashboardSharedTransition}
         >
           <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
             <motion.div className="modal-title" variants={modalSectionVariants}>
@@ -114,6 +118,121 @@ function EmployeesControlModal({ employees, criticalByEmployee, latestScoreByEmp
                 })}
               </motion.div>
             )}
+
+            <motion.div className="modal-actions" variants={modalSectionVariants} style={{ marginTop: 20 }}>
+              <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>
+                Закрыть
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </ModalPortal>
+  );
+}
+
+function DashboardEmployeeDetailModal({
+  employee,
+  latestScore,
+  checksCount,
+  dialoguesCount,
+  criticalInfo,
+  mistakesCount,
+  latestReport,
+  layoutId,
+  onClose,
+}) {
+  useModalScrollLock();
+  const mistakes = Array.isArray(latestReport?.mistakes) ? latestReport.mistakes : [];
+  const issueItems = mistakes.slice(0, 4);
+  const recommendations = mistakes
+    .map((m) => m.recommendation || m.recommendation_text || m.fix || null)
+    .filter(Boolean)
+    .slice(0, 3);
+
+  return (
+    <ModalPortal>
+      <motion.div
+        className="modal-backdrop employee-modal-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          layoutId={layoutId}
+          className="modal-shell modal-shell--medium"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          transition={dashboardSharedTransition}
+        >
+          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+            <motion.div className="modal-title" variants={modalSectionVariants}>
+              <div>
+                <span className="eyebrow">Топ сотрудников</span>
+                <h2 style={{ margin: '2px 0 0', fontSize: 20 }}>{employee.name}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
+            </motion.div>
+
+            <motion.div variants={modalSectionVariants} style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+              <Avatar name={employee.name} large />
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: '1rem' }}>{employee.name}</p>
+                <p style={{ margin: '3px 0 0', color: 'var(--muted)', fontSize: '0.85rem' }}>{employee.role}</p>
+              </div>
+              <strong style={{ marginLeft: 'auto', color: scoreColor(latestScore ?? employee.score), fontSize: '1.5rem', lineHeight: 1 }}>
+                {latestScore ?? employee.score}
+              </strong>
+            </motion.div>
+
+            <motion.div className="mini-metrics" variants={modalSectionVariants}>
+              <div className="metric"><span>Проверок</span><strong>{checksCount}</strong></div>
+              <div className="metric"><span>Диалогов</span><strong>{dialoguesCount}</strong></div>
+              <div className="metric"><span>Ошибок</span><strong>{mistakesCount}</strong></div>
+            </motion.div>
+
+            <motion.div variants={modalSectionVariants} style={{ marginTop: 18 }}>
+              <p style={{ margin: '0 0 8px', fontWeight: 800, fontSize: '0.9rem' }}>Критичные замечания</p>
+              {criticalInfo?.count > 0 ? (
+                <div style={{ padding: '12px 14px', borderRadius: 14, background: 'rgba(190,60,68,0.08)', border: '1px solid rgba(190,60,68,0.14)', color: 'var(--danger)', fontSize: '0.84rem', lineHeight: 1.5 }}>
+                  {criticalInfo.count} критич. · {criticalInfo.latest || 'Есть критичные или важные ошибки'}
+                </div>
+              ) : (
+                <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.84rem' }}>Критичных замечаний не найдено.</p>
+              )}
+            </motion.div>
+
+            <motion.div variants={modalSectionVariants} style={{ marginTop: 18 }}>
+              <p style={{ margin: '0 0 8px', fontWeight: 800, fontSize: '0.9rem' }}>Ошибки</p>
+              {issueItems.length > 0 ? (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {issueItems.map((item, index) => (
+                    <div key={`${item.title || item.description || 'mistake'}-${index}`} style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.62)', border: '1px solid var(--line)', fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.45 }}>
+                      {item.title || item.description || 'Ошибка'}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.84rem' }}>Ошибок в последнем отчёте не найдено.</p>
+              )}
+            </motion.div>
+
+            <motion.div variants={modalSectionVariants} style={{ marginTop: 18 }}>
+              <p style={{ margin: '0 0 8px', fontWeight: 800, fontSize: '0.9rem' }}>Рекомендации</p>
+              {recommendations.length > 0 ? (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {recommendations.map((item, index) => (
+                    <div key={`${item}-${index}`} style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(119,101,227,0.08)', border: '1px solid rgba(119,101,227,0.14)', fontSize: '0.82rem', lineHeight: 1.45 }}>
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.84rem' }}>Рекомендации появятся в отчётах после анализа.</p>
+              )}
+            </motion.div>
 
             <motion.div className="modal-actions" variants={modalSectionVariants} style={{ marginTop: 20 }}>
               <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>
@@ -242,6 +361,7 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
   const [reports, setReports] = useState([]);
   const [dashLoading, setDashLoading] = useState(true);
   const [employeesModalOpen, setEmployeesModalOpen] = useState(false);
+  const [dashboardEmployeeDetail, setDashboardEmployeeDetail] = useState(null);
   const [trendEmployeeId, setTrendEmployeeId] = useState(null);
   const [trendPeriod, setTrendPeriod] = useState(7);
 
@@ -315,6 +435,14 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
     return map;
   }, [reports]);
 
+  const latestReportByEmployee = useMemo(() => {
+    const map = {};
+    reports.forEach((r) => {
+      if (!map[r.employee_id]) map[r.employee_id] = r;
+    });
+    return map;
+  }, [reports]);
+
   // Total mistake count (any severity) per employee across all reports
   const mistakesByEmployee = useMemo(() => {
     const map = {};
@@ -324,6 +452,16 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
     });
     return map;
   }, [reports]);
+
+  const checksByEmployee = useMemo(() => {
+    const map = {};
+    completedChecks.forEach((c) => {
+      if (!map[c.employee_id]) map[c.employee_id] = { checks: 0, dialogues: 0 };
+      map[c.employee_id].checks += 1;
+      map[c.employee_id].dialogues += c.dialogues_count || 0;
+    });
+    return map;
+  }, [completedChecks]);
 
   // Employees actually "under control": must have at least one report AND a real issue
   const employeesUnderControl = useMemo(() => {
@@ -459,12 +597,48 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
             criticalByEmployee={criticalByEmployee}
             latestScoreByEmployee={latestScoreByEmployee}
             mistakesByEmployee={mistakesByEmployee}
+            layoutId="dashboard-controlled-employees"
             onClose={() => setEmployeesModalOpen(false)}
           />
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {dashboardEmployeeDetail && (
+          <DashboardEmployeeDetailModal
+            employee={dashboardEmployeeDetail}
+            latestScore={latestScoreByEmployee[dashboardEmployeeDetail.id]}
+            checksCount={checksByEmployee[dashboardEmployeeDetail.id]?.checks ?? 0}
+            dialoguesCount={checksByEmployee[dashboardEmployeeDetail.id]?.dialogues ?? dashboardEmployeeDetail.dialogs ?? 0}
+            criticalInfo={criticalByEmployee[dashboardEmployeeDetail.id] ?? { count: 0, latest: null }}
+            mistakesCount={mistakesByEmployee[dashboardEmployeeDetail.id] ?? 0}
+            latestReport={latestReportByEmployee[dashboardEmployeeDetail.id]}
+            layoutId={`dashboard-top-employee-${dashboardEmployeeDetail.id}`}
+            onClose={() => setDashboardEmployeeDetail(null)}
+          />
+        )}
+      </AnimatePresence>
       <Stagger className="kpi-grid">
-        {kpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
+        {kpis.map((kpi) => {
+          if (kpi.label !== 'Сотрудников на контроле') return <KpiCard key={kpi.label} {...kpi} />;
+          const Icon = kpi.icon;
+          return (
+            <motion.div
+              key={kpi.label}
+              layout
+              layoutId="dashboard-controlled-employees"
+              className="kpi-card"
+              whileHover={{ y: -5, boxShadow: '0 22px 60px rgba(92, 82, 143, 0.13)' }}
+              onClick={kpi.onClick}
+              transition={dashboardSharedTransition}
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="kpi-icon"><Icon size={20} /></div>
+              <span>{kpi.label}</span>
+              <strong>{kpi.value}</strong>
+              <small>{kpi.delta}</small>
+            </motion.div>
+          );
+        })}
       </Stagger>
       <div className="dashboard-grid">
         <PremiumCard className="chart-card wide" title="Динамика качества" action={`Последние ${trendPeriod} дней`}>
@@ -520,11 +694,11 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
                     <motion.button
                       className="rank-row"
                       key={employee.id}
+                      layout
+                      layoutId={`dashboard-top-employee-${employee.id}`}
                       whileHover={{ x: 4 }}
-                      onClick={() => {
-                        setSelectedEmployee(employee);
-                        setDetailOpen(true);
-                      }}
+                      transition={dashboardSharedTransition}
+                      onClick={() => setDashboardEmployeeDetail(employee)}
                     >
                       <span className="rank">{index + 1}</span>
                       <span>
