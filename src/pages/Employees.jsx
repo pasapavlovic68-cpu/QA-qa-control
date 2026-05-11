@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Check, Plus, Radio, Tag, Trash2, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Check, Plus, Radio, Tag, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { Avatar, AnimatedProgress } from '../components/shared.jsx';
 import { employeeCardTransition, EmployeeFormModal, DeleteEmployeeModal, StatusManagementModal, ChannelManagementModal } from '../components/modals.jsx';
@@ -46,6 +46,36 @@ function getStatusColor(name, statuses) {
 function getChannelColor(name, channels) {
   const found = channels.find((channel) => channel.name === name);
   return found?.color ?? null;
+}
+
+const SCHEDULE_STATUSES = {
+  work: { label: 'Работает', short: 'Р', color: '#198a62' },
+  off: { label: 'Выходной', short: 'В', color: '#8a8fa8' },
+  vacation: { label: 'Отпуск', short: 'О', color: '#d4920a' },
+  sick: { label: 'Больничный', short: 'Б', color: '#be3c44' },
+};
+
+function formatDateKey(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getScheduleDates(period) {
+  const count = period === 'month' ? 30 : 14;
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return date;
+  });
+}
+
+function formatScheduleDay(date) {
+  return date.toLocaleDateString('ru-RU', { day: '2-digit' });
+}
+
+function formatScheduleWeekday(date) {
+  return date.toLocaleDateString('ru-RU', { weekday: 'short' }).replace('.', '');
 }
 
 function StatusBadge({ name, statusTone, color }) {
@@ -114,6 +144,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   const [channelMgmtOpen, setChannelMgmtOpen] = useState(false);
   const [channelTarget, setChannelTarget] = useState(null);
   const [channelOverrides, setChannelOverrides] = useState({}); // {employeeId: channelName}
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -392,6 +423,15 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
             Каналы
           </motion.button>
           <motion.button
+            className="ghost-button"
+            whileTap={{ scale: 0.97 }}
+            whileHover={{ y: -2 }}
+            onClick={() => setScheduleOpen(true)}
+          >
+            <CalendarDays size={15} />
+            График
+          </motion.button>
+          <motion.button
             className="primary-button"
             whileTap={{ scale: 0.97 }}
             whileHover={{ y: -2 }}
@@ -645,6 +685,18 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
           />
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {scheduleOpen && (
+          <EmployeeScheduleModal
+            employees={employees}
+            channels={channels}
+            organizationId={organizationId}
+            getDisplayChannel={getDisplayChannel}
+            onClose={() => setScheduleOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -832,6 +884,263 @@ function EmployeeChannelAssignModal({ employee, channels, saving, error, onClose
           <motion.p className="status-save-hint" variants={modalSectionVariants}>Изменение сохранится сразу</motion.p>
         </motion.div>
       </motion.div>
+      </motion.div>
+    </ModalPortal>
+  );
+}
+
+function EmployeeScheduleModal({ employees, channels, organizationId, getDisplayChannel, onClose }) {
+  const showToast = useToast();
+  const [period, setPeriod] = useState('two_weeks');
+  const [schedule, setSchedule] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [savingCell, setSavingCell] = useState(null);
+  const [selector, setSelector] = useState(null);
+  const [error, setError] = useState(null);
+  const dates = getScheduleDates(period);
+
+  useModalScrollLock();
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!organizationId || employees.length === 0) {
+      setSchedule({});
+      setLoading(false);
+      return;
+    }
+
+    const loadSchedule = async () => {
+      setLoading(true);
+      setError(null);
+      const employeeIds = employees.map((employee) => employee.id);
+      const from = formatDateKey(dates[0]);
+      const to = formatDateKey(dates[dates.length - 1]);
+      const { data, error: fetchError } = await supabase
+        .from('employee_schedule')
+        .select('id, employee_id, work_date, status')
+        .eq('organization_id', organizationId)
+        .in('employee_id', employeeIds)
+        .gte('work_date', from)
+        .lte('work_date', to);
+
+      setLoading(false);
+      if (fetchError) {
+        console.error('[EmployeeSchedule] fetch error:', fetchError);
+        setError('Не удалось загрузить график.');
+        return;
+      }
+
+      const map = {};
+      (data ?? []).forEach((row) => {
+        map[`${row.employee_id}:${row.work_date}`] = row.status;
+      });
+      setSchedule(map);
+    };
+
+    loadSchedule();
+  }, [organizationId, employees, period]);
+
+  const groupedEmployees = employees.reduce((groups, employee) => {
+    const displayChannel = getDisplayChannel(employee);
+    const groupName = displayChannel || 'Без канала';
+    if (!groups[groupName]) {
+      groups[groupName] = {
+        name: groupName,
+        color: displayChannel ? getChannelColor(displayChannel, channels) : '#8a8fa8',
+        employees: [],
+      };
+    }
+    groups[groupName].employees.push(employee);
+    return groups;
+  }, {});
+
+  const groups = Object.values(groupedEmployees).sort((a, b) => {
+    if (a.name === 'Без канала') return 1;
+    if (b.name === 'Без канала') return -1;
+    return a.name.localeCompare(b.name, 'ru');
+  });
+
+  const handleCellChange = async (employee, dateKey, nextStatus) => {
+    const cellKey = `${employee.id}:${dateKey}`;
+    setSavingCell(cellKey);
+    setError(null);
+
+    if (nextStatus === 'unset') {
+      const { error: deleteError } = await supabase
+        .from('employee_schedule')
+        .delete()
+        .eq('organization_id', organizationId)
+        .eq('employee_id', employee.id)
+        .eq('work_date', dateKey);
+
+      setSavingCell(null);
+      setSelector(null);
+      if (deleteError) {
+        console.error('[EmployeeSchedule] delete error:', deleteError);
+        setError('Не удалось очистить день.');
+        return;
+      }
+      setSchedule((prev) => {
+        const next = { ...prev };
+        delete next[cellKey];
+        return next;
+      });
+      return;
+    }
+
+    const payload = {
+      organization_id: organizationId,
+      employee_id: employee.id,
+      work_date: dateKey,
+      status: nextStatus,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error: upsertError } = await supabase
+      .from('employee_schedule')
+      .upsert(payload, { onConflict: 'employee_id,work_date' })
+      .select('id, employee_id, work_date, status')
+      .single();
+
+    setSavingCell(null);
+    setSelector(null);
+    if (upsertError) {
+      console.error('[EmployeeSchedule] upsert error:', upsertError);
+      setError('Не удалось сохранить день.');
+      return;
+    }
+
+    setSchedule((prev) => ({ ...prev, [cellKey]: data.status }));
+    showToast('График обновлён');
+  };
+
+  return (
+    <ModalPortal>
+      <motion.div className="modal-backdrop employee-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+        <motion.div
+          className="modal-shell modal-shell--large employee-schedule-modal"
+          onClick={(event) => event.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          initial={modalMotion.initial}
+          animate={modalMotion.animate}
+          exit={modalMotion.exit}
+          transition={modalMotion.transition}
+        >
+          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+            <motion.div className="modal-title employee-schedule-title" variants={modalSectionVariants}>
+              <div>
+                <span className="eyebrow">Команда / смены</span>
+                <h2>График сотрудников</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
+            </motion.div>
+
+            <motion.div className="employee-schedule-toolbar" variants={modalSectionVariants}>
+              <div className="employee-schedule-period">
+                <button className={period === 'two_weeks' ? 'active' : ''} type="button" onClick={() => setPeriod('two_weeks')}>2 недели</button>
+                <button className={period === 'month' ? 'active' : ''} type="button" onClick={() => setPeriod('month')}>Месяц</button>
+              </div>
+              <div className="employee-schedule-legend">
+                {Object.entries(SCHEDULE_STATUSES).map(([key, item]) => (
+                  <span key={key}><i style={{ background: item.color }}>{item.short}</i> — {item.label}</span>
+                ))}
+              </div>
+            </motion.div>
+
+            {error && <motion.p className="status-error" variants={modalSectionVariants}>{error}</motion.p>}
+
+            <motion.div className="employee-schedule-table-wrap" variants={modalSectionVariants}>
+              {loading ? (
+                <div className="employee-schedule-empty">Загружаем график...</div>
+              ) : employees.length === 0 ? (
+                <div className="employee-schedule-empty">Сначала добавьте сотрудников.</div>
+              ) : (
+                <div className="employee-schedule-table" style={{ '--schedule-days': dates.length }}>
+                  <div className="employee-schedule-header-row">
+                    <div className="employee-schedule-name-cell sticky">Сотрудник</div>
+                    {dates.map((date) => (
+                      <div key={formatDateKey(date)} className="employee-schedule-date-cell">
+                        <strong>{formatScheduleDay(date)}</strong>
+                        <span>{formatScheduleWeekday(date)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {groups.map((group) => (
+                    <div className="employee-schedule-group" key={group.name}>
+                      <div className="employee-schedule-group-row">
+                        <span className="employee-channel-dot" style={{ background: group.color }} />
+                        {group.name}
+                      </div>
+                      {group.employees.map((employee) => (
+                        <div className="employee-schedule-row" key={employee.id}>
+                          <div className="employee-schedule-name-cell sticky">
+                            <Avatar name={employee.name} />
+                            <span>{employee.name}</span>
+                          </div>
+                          {dates.map((date) => {
+                            const dateKey = formatDateKey(date);
+                            const cellKey = `${employee.id}:${dateKey}`;
+                            const statusKey = schedule[cellKey];
+                            const statusMeta = SCHEDULE_STATUSES[statusKey];
+                            const selectorOpen = selector?.cellKey === cellKey;
+                            return (
+                              <div key={cellKey} className="employee-schedule-cell-wrap">
+                                <button
+                                  type="button"
+                                  className={`employee-schedule-cell ${statusKey ? 'filled' : 'unset'}`}
+                                  style={statusMeta ? {
+                                    color: statusMeta.color,
+                                    background: hexToRgba(statusMeta.color, 0.12),
+                                    borderColor: hexToRgba(statusMeta.color, 0.28),
+                                  } : undefined}
+                                  disabled={savingCell === cellKey}
+                                  onClick={() => setSelector(selectorOpen ? null : { cellKey, employee, dateKey })}
+                                >
+                                  {savingCell === cellKey ? '...' : statusMeta?.short || '—'}
+                                </button>
+                                <AnimatePresence>
+                                  {selectorOpen && (
+                                    <motion.div
+                                      className="employee-schedule-selector"
+                                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                                      exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                                      transition={{ duration: 0.18 }}
+                                    >
+                                      {Object.entries(SCHEDULE_STATUSES).map(([key, item]) => (
+                                        <button key={key} type="button" onClick={() => handleCellChange(employee, dateKey, key)}>
+                                          <i style={{ background: item.color }}>{item.short}</i>
+                                          {item.label}
+                                        </button>
+                                      ))}
+                                      <button type="button" onClick={() => handleCellChange(employee, dateKey, 'unset')}>
+                                        <i>—</i>
+                                        Очистить
+                                      </button>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        </motion.div>
       </motion.div>
     </ModalPortal>
   );
