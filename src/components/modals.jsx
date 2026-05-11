@@ -370,7 +370,7 @@ export function ReportDetailModal({ report, onClose }) {
   );
 }
 
-export function RuleModal({ mode, rule, setRule, onClose, onSubmit }) {
+export function RuleModal({ mode, rule, setRule, onClose, onSubmit, saving = false }) {
   useModalScrollLock();
 
   const updateField = (field) => (value) => {
@@ -406,7 +406,7 @@ export function RuleModal({ mode, rule, setRule, onClose, onSubmit }) {
           <motion.div className="rule-form-grid" variants={modalSectionVariants}>
             <label>
               <span>Название правила</span>
-              <input value={rule.title} onChange={updateInput('title')} placeholder="Например, Финальное резюме обращения" />
+              <input value={rule.title} onChange={updateInput('title')} placeholder="Например, Финальное резюме обращения" required />
             </label>
             <label>
               <span>Категория</span>
@@ -414,7 +414,7 @@ export function RuleModal({ mode, rule, setRule, onClose, onSubmit }) {
             </label>
             <label className="rule-form-wide">
               <span>Описание</span>
-              <textarea value={rule.description} onChange={updateInput('description')} placeholder="Коротко опишите, что должно проверяться в диалоге" />
+              <textarea value={rule.description} onChange={updateInput('description')} placeholder="Коротко опишите, что должно проверяться в диалоге" required />
             </label>
             <label>
               <span>Вес ошибки / важность</span>
@@ -429,8 +429,8 @@ export function RuleModal({ mode, rule, setRule, onClose, onSubmit }) {
             <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>
               Отмена
             </motion.button>
-            <motion.button className="primary-button" type="submit" whileTap={{ scale: 0.97 }}>
-              {mode === 'edit' ? 'Сохранить правило' : 'Добавить правило'}
+            <motion.button className="primary-button" type="submit" whileTap={{ scale: saving ? 1 : 0.97 }} disabled={saving}>
+              {saving ? 'Сохраняем…' : mode === 'edit' ? 'Сохранить правило' : 'Добавить правило'}
             </motion.button>
           </motion.div>
         </motion.div>

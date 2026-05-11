@@ -7,12 +7,13 @@ import { RuleModal, DeleteRuleModal } from '../components/modals.jsx';
 import { useToast } from '../components/Toast.jsx';
 
 function toRule(row) {
+  const [category, weight] = (row.category || 'Процесс').split(' · ');
   return {
     id: row.id,
     title: row.title,
     description: row.description || '',
-    category: row.category || 'Процесс',
-    weight: 'Средняя',
+    category: category || 'Процесс',
+    weight: weight || 'Средняя',
     active: row.enabled ?? true
   };
 }
@@ -69,14 +70,17 @@ export function Rules({ organizationId }) {
       return;
     }
     setSaving(true);
+    const title = ruleForm.title.trim();
+    const description = ruleForm.description.trim();
+    const categoryWithWeight = `${ruleForm.category} · ${ruleForm.weight}`;
 
     if (modalMode === 'edit') {
       const { data, error } = await supabase
         .from('qa_rules')
         .update({
-          title: ruleForm.title.trim() || 'Новое правило',
-          description: ruleForm.description.trim(),
-          category: ruleForm.category,
+          title,
+          description,
+          category: categoryWithWeight,
           enabled: ruleForm.active
         })
         .eq('id', ruleForm.id)
@@ -93,9 +97,9 @@ export function Rules({ organizationId }) {
       const { data, error } = await supabase
         .from('qa_rules')
         .insert({
-          title: ruleForm.title.trim() || 'Новое правило',
-          description: ruleForm.description.trim() || 'Описание правила пока не заполнено.',
-          category: ruleForm.category,
+          title,
+          description,
+          category: categoryWithWeight,
           enabled: ruleForm.active,
           organization_id: organizationId
         })
@@ -232,6 +236,7 @@ export function Rules({ organizationId }) {
             setRule={setRuleForm}
             onClose={closeModal}
             onSubmit={saveRule}
+            saving={saving}
           />
         )}
       </AnimatePresence>
