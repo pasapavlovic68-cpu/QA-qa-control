@@ -21,8 +21,8 @@ import { Sales } from './pages/Sales.jsx';
 import { Settings } from './pages/Settings.jsx';
 import { EmployeeDrawer } from './components/modals.jsx';
 
-function LoginScreen() {
-  const [mode, setMode] = useState('login');
+function LoginScreen({ embedded = false, initialMode = 'login', onClose }) {
+  const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,6 +32,14 @@ function LoginScreen() {
 
   const redirectTo = window.location.origin + import.meta.env.BASE_URL;
   const isRegister = mode === 'register';
+
+  useEffect(() => {
+    setMode(initialMode);
+    setError(null);
+    setMessage(null);
+    setPassword('');
+    setConfirmPassword('');
+  }, [initialMode]);
 
   const switchMode = (nextMode) => {
     setMode(nextMode);
@@ -109,13 +117,14 @@ function LoginScreen() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: embedded ? 'auto' : '100vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '32px 16px',
+      padding: embedded ? 0 : '32px 16px',
     }}>
       <div style={{
+        position: 'relative',
         width: '100%',
         maxWidth: 400,
         padding: '38px 36px',
@@ -124,6 +133,27 @@ function LoginScreen() {
         border: '1px solid rgba(255,255,255,0.82)',
         boxShadow: '0 34px 96px rgba(35,31,58,0.18)',
       }}>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Закрыть"
+            style={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              width: 34,
+              height: 34,
+              borderRadius: 12,
+              background: 'rgba(246,244,255,0.78)',
+              color: 'var(--muted)',
+              fontSize: 22,
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        )}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{
             display: 'inline-grid',
@@ -304,6 +334,174 @@ function LoginScreen() {
   );
 }
 
+function LandingPage() {
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
+
+  const openAuth = (mode) => {
+    setAuthMode(mode);
+    setAuthOpen(true);
+  };
+
+  useEffect(() => {
+    if (!authOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setAuthOpen(false);
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [authOpen]);
+
+  const previewCards = [
+    ['AI анализ диалогов', 'Скоринг, ошибки и рекомендации после каждой проверки'],
+    ['Контроль сотрудников', 'Статусы, динамика и фокусные зоны по каждому участнику'],
+    ['Продажи и динамика', 'Сигналы по качеству сделок и изменению команды'],
+    ['Отчёты и рекомендации', 'Понятные выводы для руководителя без ручной сводки'],
+  ];
+
+  const features = [
+    'AI scoring',
+    'mistakes detection',
+    'team analytics',
+    'sales tracking',
+    'organization access',
+  ];
+
+  return (
+    <div className="public-landing">
+      <div className="landing-ambient" aria-hidden="true" />
+      <header className="landing-nav">
+        <div className="landing-brand">
+          <span className="landing-brand-mark">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 12l2 2 4-4" />
+              <rect x="3" y="3" width="18" height="18" rx="4" />
+            </svg>
+          </span>
+          <strong>LeadProof</strong>
+        </div>
+        <button className="landing-login" onClick={() => openAuth('login')}>Войти</button>
+      </header>
+
+      <main>
+        <section className="landing-hero">
+          <motion.div
+            className="landing-hero-copy"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <span className="landing-eyebrow">LeadProof AI Quality Control</span>
+            <h1>AI-контроль качества продаж</h1>
+            <p>
+              Проверяйте диалоги, находите ошибки сотрудников и отслеживайте динамику команды в одном пространстве.
+            </p>
+            <div className="landing-actions">
+              <button className="landing-primary" onClick={() => openAuth('register')}>
+                Начать пробный период 14 дней
+              </button>
+              <button className="landing-secondary" onClick={() => openAuth('login')}>
+                Войти
+              </button>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="landing-preview"
+            initial={{ opacity: 0, y: 24, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ delay: 0.1, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="preview-topline">
+              <span>Quality score</span>
+              <strong>92%</strong>
+            </div>
+            <div className="preview-chart">
+              {[62, 78, 70, 86, 82, 94].map((height, index) => (
+                <span key={index} style={{ height: `${height}%` }} />
+              ))}
+            </div>
+            <div className="preview-insight">
+              <b>AI рекомендация</b>
+              <p>Усилить вопросы выявления потребности и контроль финального шага сделки.</p>
+            </div>
+          </motion.div>
+        </section>
+
+        <section className="landing-preview-grid" aria-label="Возможности LeadProof">
+          {previewCards.map(([title, text], index) => (
+            <motion.article
+              className="landing-glass-card"
+              key={title}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ delay: index * 0.05, duration: 0.42 }}
+            >
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </motion.article>
+          ))}
+        </section>
+
+        <section className="landing-features">
+          {features.map((feature) => (
+            <div className="landing-feature-pill" key={feature}>{feature}</div>
+          ))}
+        </section>
+
+        <section className="landing-cta">
+          <div>
+            <span className="landing-eyebrow">14 дней на запуск</span>
+            <h2>Создайте пространство для своей команды</h2>
+          </div>
+          <div className="landing-actions">
+            <button className="landing-primary" onClick={() => openAuth('register')}>
+              Попробовать бесплатно
+            </button>
+            <button className="landing-secondary" onClick={() => openAuth('login')}>
+              Войти
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <AnimatePresence>
+        {authOpen && (
+          <motion.div
+            className="public-auth-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={() => setAuthOpen(false)}
+          >
+            <motion.div
+              className="public-auth-modal"
+              initial={{ opacity: 0, y: 18, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.97 }}
+              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <LoginScreen embedded initialMode={authMode} onClose={() => setAuthOpen(false)} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function Root() {
   const [session, setSession] = useState(undefined);
 
@@ -338,7 +536,7 @@ function Root() {
   }, [session?.user?.id]);
 
   if (session === undefined) return null;
-  if (!session) return <LoginScreen />;
+  if (!session) return <LandingPage />;
   return <App session={session} />;
 }
 
