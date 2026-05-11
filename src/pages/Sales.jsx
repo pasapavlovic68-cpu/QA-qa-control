@@ -235,7 +235,13 @@ function SalesDynamicsChart({ rows, mode }) {
   const maxVal = Math.max(...groups.map(([, v]) => v), 1);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: CHART_H + 22, paddingTop: 6 }}>
+    <motion.div
+      key={mode}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: CHART_H + 22, paddingTop: 6 }}
+    >
       {groups.map(([key, val], i) => {
         const fillH = Math.max(4, Math.round((val / maxVal) * CHART_H));
         return (
@@ -257,7 +263,7 @@ function SalesDynamicsChart({ rows, mode }) {
           </div>
         );
       })}
-    </div>
+    </motion.div>
   );
 }
 
@@ -384,7 +390,7 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
           <motion.div className="report-detail-content" variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
 
             {/* Header */}
-            <motion.div className="report-detail-header" variants={modalSectionVariants}>
+            <motion.div className="report-detail-header sales-detail-header" variants={modalSectionVariants}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
                 <div className="sales-emp-avatar" style={{ width: 42, height: 42, borderRadius: 14, fontSize: 14, flexShrink: 0 }}>
                   {initials(employee.name)}
@@ -399,7 +405,7 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
             </motion.div>
 
             {/* Period toggle */}
-            <motion.div variants={modalSectionVariants} style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+            <motion.div className="sales-modal-switch" variants={modalSectionVariants}>
               {[['week', 'Неделя'], ['month', 'Месяц']].map(([p, label]) => (
                 <button key={p} type="button" className={`qtc-pill${period === p ? ' active' : ''}`} onClick={() => setPeriod(p)}>
                   {label}
@@ -408,7 +414,7 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
             </motion.div>
 
             {/* KPI row */}
-            <motion.div variants={modalSectionVariants} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+            <motion.div className="sales-detail-kpi-grid" variants={modalSectionVariants}>
               <div className="sales-detail-kpi">
                 <span className="sales-detail-kpi-label">Депозиты</span>
                 <strong className="sales-detail-kpi-value">{isEmpty ? '—' : deposits}</strong>
@@ -422,7 +428,7 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
             {/* Chart */}
             <motion.div variants={modalSectionVariants}>
               <PremiumCard compact title="Динамика кассы">
-                <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                <div className="sales-modal-switch compact">
                   {[
                     ['days', 'По дням'],
                     ['weeks', 'По неделям'],
@@ -539,15 +545,15 @@ function EmployeeSalesCard({ employee, rows, periodLabel, layoutId, onClick }) {
       whileTap={{ scale: 0.985 }}
       transition={salesSharedTransition}
       onClick={onClick}
-      style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+      style={{ cursor: 'pointer', display: 'grid' }}
     >
-      <div className="sales-emp-header">
+      <div className="sales-emp-header sales-card-zone-head">
         <div className="sales-emp-avatar">{initials(employee.name)}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div className="sales-emp-name">
             {employee.name}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+          <div className="sales-emp-role">
             {employee.role}
           </div>
         </div>
@@ -568,7 +574,7 @@ function EmployeeSalesCard({ employee, rows, periodLabel, layoutId, onClick }) {
 
       <SalesMiniBars rows={rows} />
 
-      <div className="sales-emp-progress" style={{ marginTop: 'auto' }}>
+      <div className="sales-emp-progress">
         <div className="sales-emp-progress-track">
           <motion.div
             className="sales-emp-progress-fill"
@@ -594,7 +600,15 @@ function SalesKpiCard({ label, value, range, icon: Icon, accent = false }) {
         <div className="sales-kpi-icon">{Icon ? <Icon size={16} /> : <BarChart2 size={16} />}</div>
         <div className="sales-kpi-label">{label}</div>
       </div>
-      <div className="sales-kpi-value">{value}</div>
+      <motion.div
+        key={value}
+        className="sales-kpi-value"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {value}
+      </motion.div>
       <div className="sales-kpi-range">{range}</div>
     </div>
   );
@@ -611,17 +625,18 @@ function SalesTopRanking({ ranking }) {
         </div>
         <Trophy size={18} />
       </div>
-      <div className="sales-ranking-list">
+      <motion.div className="sales-ranking-list" layout>
         {ranking.map((item, index) => (
           <motion.div
             key={item.employee.id}
+            layout
             className={`sales-rank-card sales-rank-card--${index + 1}`}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: index * 0.05 }}
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={salesSharedTransition}
           >
             <div className="sales-rank-medal">{index + 1}</div>
-            <div>
+            <div className="sales-rank-person">
               <strong>{item.employee.name}</strong>
               <span>{item.employee.role}</span>
             </div>
@@ -631,7 +646,7 @@ function SalesTopRanking({ ranking }) {
             </div>
           </motion.div>
         ))}
-      </div>
+      </motion.div>
     </section>
   );
 }
