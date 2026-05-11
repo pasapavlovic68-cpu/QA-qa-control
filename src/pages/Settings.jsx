@@ -94,24 +94,51 @@ function SettingEditModal({ fieldKey, meta, initialValue, layoutId, onClose, onS
   const handleSave = async () => {
     if (saving) return;
     setError(null);
+    const payload = { key: fieldKey, value: draft ?? '', organization_id: organizationId };
+    console.log('[SettingsSave] organizationId', organizationId);
+    console.log('[SettingsSave] payload', payload);
     await runModalSuccessFlow({
       setSaving,
       action: async () => {
-        const { error: err } = await supabase
+        const existingResponse = await supabase
           .from('team_settings')
-          .upsert(
-            { key: fieldKey, value: draft ?? '', organization_id: organizationId },
-            { onConflict: 'organization_id,key' }
-          );
-        if (err) throw err;
+          .select('id')
+          .eq('organization_id', organizationId)
+          .eq('key', fieldKey)
+          .maybeSingle();
+
+        console.log('[SettingsSave] response', existingResponse);
+        console.log('[SettingsSave] error', existingResponse.error);
+
+        if (existingResponse.error) throw existingResponse.error;
+
+        const saveResponse = existingResponse.data?.id
+          ? await supabase
+              .from('team_settings')
+              .update({ value: payload.value })
+              .eq('id', existingResponse.data.id)
+              .eq('organization_id', organizationId)
+              .select('id, key, value, organization_id')
+              .maybeSingle()
+          : await supabase
+              .from('team_settings')
+              .insert(payload)
+              .select('id, key, value, organization_id')
+              .maybeSingle();
+
+        console.log('[SettingsSave] response', saveResponse);
+        console.log('[SettingsSave] error', saveResponse.error);
+
+        if (saveResponse.error) throw saveResponse.error;
+        if (!saveResponse.data) throw new Error('Настройка не сохранена: Supabase вернул пустой ответ.');
         return draft;
       },
       reset: (value) => onSaved.fn(fieldKey, value),
       toast: () => showToast('Настройки сохранены'),
       close: onClose,
       onError: (err) => {
-        console.error('[Settings] save error:', err);
-        setError('Ошибка при сохранении. Проверьте соединение.');
+        console.error('[SettingsSave] error', err);
+        setError(err?.message || 'Ошибка при сохранении.');
       },
     });
   };
