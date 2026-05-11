@@ -64,6 +64,17 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+function getMoscowDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Moscow',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const getPart = (type) => parts.find((part) => part.type === type)?.value;
+  return `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+}
+
 function getScheduleDates(period) {
   const count = period === 'month' ? 30 : 14;
   const start = new Date();
@@ -136,7 +147,7 @@ function TodayScheduleBadge({ status }) {
       }}
     >
       <span className="today-schedule-dot" />
-      Сегодня: {schedule.label}
+      <span className="today-schedule-label">{schedule.label}</span>
     </span>
   );
 }
@@ -169,7 +180,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   const [channelOverrides, setChannelOverrides] = useState({}); // {employeeId: channelName}
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [todaySchedule, setTodaySchedule] = useState({});
-  const todayDateKey = formatDateKey(new Date());
+  const todayDateKey = getMoscowDateKey();
 
   useEffect(() => {
     if (!organizationId) return;

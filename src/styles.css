@@ -3311,6 +3311,7 @@ select {
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
+  align-items: flex-start;
   gap: 7px;
   min-height: 54px;
   max-height: 54px;
@@ -3335,13 +3336,27 @@ select {
 }
 
 .today-schedule-badge {
+  flex: 0 0 128px;
+  width: 128px;
+  min-width: 128px;
+  height: 26px;
+  justify-content: flex-start;
   border: 1px solid var(--today-schedule-border);
   background: var(--today-schedule-bg);
   color: var(--today-schedule-color);
+  contain: layout paint;
 }
 
 .today-schedule-badge.unset {
   color: var(--muted);
+}
+
+.today-schedule-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .today-schedule-dot {
