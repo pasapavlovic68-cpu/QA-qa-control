@@ -16,8 +16,51 @@ function fmtDate(iso) {
   return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]}`;
 }
 
+function fmtShortDate(iso) {
+  if (!iso) return '';
+  const [, m, d] = iso.split('-');
+  return `${d}.${m}`;
+}
+
 function initials(name) {
   return (name ?? '').split(' ').map((p) => p[0] ?? '').join('').slice(0, 2).toUpperCase();
+}
+
+function addDaysIso(iso, days) {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function getPeriodStart(period) {
+  return period === 'week' ? getWeekStart() : getMonthStart();
+}
+
+function getWeekRangeLabel() {
+  const start = getWeekStart();
+  const end = addDaysIso(start, 6);
+  return `Неделя: ${fmtShortDate(start)}–${fmtShortDate(end)}`;
+}
+
+function getMonthLabel() {
+  return new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+}
+
+function weekKeyFromIso(iso) {
+  const d = new Date(`${iso}T00:00:00`);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function dynamicsLabel(key, mode) {
+  if (mode === 'weeks') return `${fmtShortDate(key)}–${fmtShortDate(addDaysIso(key, 6))}`;
+  if (mode === 'months') {
+    const [y, m] = key.split('-');
+    return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('ru-RU', { month: 'short' });
+  }
+  return fmtShortDate(key);
 }
 
 const salesSharedTransition = {
@@ -47,18 +90,26 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
     if (!canSubmit || saving) return;
     setSaving(true);
     setError(null);
+    const rowId = crypto.randomUUID();
     const payload = {
+      id: rowId,
       employee_id: form.employee_id,
       organization_id: organizationId,
       deposits_count: form.deposits_count !== '' ? parseInt(form.deposits_count, 10) : 0,
       cash_amount: form.cash_amount !== '' ? parseFloat(form.cash_amount) : 0,
       record_date: form.record_date,
     };
-    const { data, error: err } = await supabase.from('employee_sales').insert(payload).select().single();
+    const { error: err } = await supabase.from('employee_sales').insert(payload);
     setSaving(false);
     if (err) { setError(`Ошибка: ${err.message}`); return; }
     showToast('Показатели добавлены', 'success');
-    onSaved(data);
+    setForm({
+      employee_id: employees[0]?.id ?? '',
+      deposits_count: '',
+      cash_amount: '',
+      record_date: new Date().toISOString().slice(0, 10),
+    });
+    onSaved(payload);
     onClose();
   };
 
@@ -136,17 +187,23 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
 
 const CHART_H = 72;
 
-function SalesDayChart({ rows }) {
-  const days = useMemo(() => {
+function SalesDynamicsChart({ rows, mode }) {
+  const groups = useMemo(() => {
     const map = {};
     rows.forEach((r) => {
       if (!r.record_date) return;
-      map[r.record_date] = (map[r.record_date] || 0) + Number(r.cash_amount ?? 0);
+      const key =
+        mode === 'weeks'
+          ? weekKeyFromIso(r.record_date)
+          : mode === 'months'
+          ? r.record_date.slice(0, 7)
+          : r.record_date;
+      map[key] = (map[key] || 0) + Number(r.cash_amount ?? 0);
     });
     return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).slice(-14);
-  }, [rows]);
+  }, [rows, mode]);
 
-  if (days.length === 0) {
+  if (groups.length === 0) {
     return (
       <p style={{ textAlign: 'center', opacity: 0.38, fontSize: '0.85rem', padding: '24px 0' }}>
         Нет данных за период
@@ -154,14 +211,14 @@ function SalesDayChart({ rows }) {
     );
   }
 
-  const maxVal = Math.max(...days.map(([, v]) => v), 1);
+  const maxVal = Math.max(...groups.map(([, v]) => v), 1);
 
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: CHART_H + 22, paddingTop: 6 }}>
-      {days.map(([date, val], i) => {
+      {groups.map(([key, val], i) => {
         const fillH = Math.max(4, Math.round((val / maxVal) * CHART_H));
         return (
-          <div key={date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0, gap: 4 }}>
+          <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0, gap: 4 }}>
             <motion.div
               initial={{ height: 0 }}
               animate={{ height: fillH }}
@@ -174,7 +231,7 @@ function SalesDayChart({ rows }) {
               }}
             />
             <span style={{ fontSize: 8, color: 'var(--muted)', whiteSpace: 'nowrap', letterSpacing: 0.2 }}>
-              {date.slice(5)}
+              {dynamicsLabel(key, mode)}
             </span>
           </div>
         );
@@ -187,9 +244,10 @@ function SalesDayChart({ rows }) {
 
 function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId, onClose }) {
   useModalScrollLock();
+  const [dynamicsMode, setDynamicsMode] = useState('days');
 
   const filtered = useMemo(() => {
-    const cutoff = period === 'week' ? getWeekStart() : getMonthStart();
+    const cutoff = getPeriodStart(period);
     return rows.filter((r) => r.record_date >= cutoff);
   }, [rows, period]);
 
@@ -232,7 +290,7 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
                   {initials(employee.name)}
                 </div>
                 <div>
-                  <span className="eyebrow">Продажи · {period === 'week' ? 'Эта неделя' : 'Этот месяц'}</span>
+                  <span className="eyebrow">Продажи · {period === 'week' ? getWeekRangeLabel() : getMonthLabel()}</span>
                   <h2 style={{ margin: '1px 0 0' }}>{employee.name}</h2>
                   <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--muted)' }}>{employee.role}</p>
                 </div>
@@ -263,8 +321,24 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
 
             {/* Chart */}
             <motion.div variants={modalSectionVariants}>
-              <PremiumCard compact title="Динамика кассы по дням">
-                <SalesDayChart rows={filtered} />
+              <PremiumCard compact title="Динамика кассы">
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                  {[
+                    ['days', 'По дням'],
+                    ['weeks', 'По неделям'],
+                    ['months', 'По месяцам'],
+                  ].map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={`qtc-pill${dynamicsMode === mode ? ' active' : ''}`}
+                      onClick={() => setDynamicsMode(mode)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <SalesDynamicsChart rows={filtered} mode={dynamicsMode} />
               </PremiumCard>
             </motion.div>
 
@@ -398,6 +472,14 @@ export function Sales({ employees, employeesLoading, organizationId }) {
   const [addOpen, setAddOpen] = useState(false);
   const [detailEmployee, setDetailEmployee] = useState(null);
   const [detailPeriod, setDetailPeriod] = useState('week');
+  const [dateTick, setDateTick] = useState(() => new Date().toDateString());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setDateTick(new Date().toDateString());
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -413,7 +495,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
         else console.error('[Sales] fetch error:', error);
         setSalesLoading(false);
       });
-  }, [organizationId]);
+  }, [organizationId, dateTick]);
 
   // Also fetch month rows separately (month start may be before week start at start of month)
   const [monthRows, setMonthRows] = useState([]);
@@ -429,7 +511,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
         if (!error) setMonthRows(data ?? []);
         else console.error('[Sales] month fetch error:', error);
       });
-  }, [organizationId]);
+  }, [organizationId, dateTick]);
 
   // All rows for the full month window (month rows are superset when month > week)
   const allRows = useMemo(() => {
@@ -454,13 +536,31 @@ export function Sales({ employees, employeesLoading, organizationId }) {
     return map;
   }, [allRows]);
 
+  const selectedPeriodRowsByEmployee = useMemo(() => {
+    const cutoff = getPeriodStart(period);
+    const map = {};
+    allRows.forEach((r) => {
+      if (!r.record_date || r.record_date < cutoff) return;
+      if (!map[r.employee_id]) map[r.employee_id] = [];
+      map[r.employee_id].push(r);
+    });
+    return map;
+  }, [allRows, period, dateTick]);
+
+  const visibleEmployees = useMemo(
+    () => employees.filter((emp) => (selectedPeriodRowsByEmployee[emp.id] ?? []).length > 0),
+    [employees, selectedPeriodRowsByEmployee]
+  );
+
+  const periodLabel = period === 'week' ? getWeekRangeLabel() : `Месяц: ${getMonthLabel()}`;
+
   const { weekDeposits, weekCash, monthDeposits, monthCash } = useMemo(
     () => aggregateSales(allRows),
     [allRows]
   );
 
   const loading = salesLoading || employeesLoading;
-  const noSalesData = !loading && allRows.length === 0;
+  const noSalesData = !loading && visibleEmployees.length === 0;
 
   const openDetail = (emp) => {
     setDetailEmployee(emp);
@@ -497,7 +597,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
 
       {/* ── Period switch + employee grid ────────────────────────────── */}
       <div className="sales-period-bar">
-        <span className="sales-section-label">По сотрудникам</span>
+        <span className="sales-section-label">{periodLabel}</span>
         <div style={{ display: 'flex', gap: 6 }}>
           {[['week', 'Неделя'], ['month', 'Месяц']].map(([p, label]) => (
             <button key={p} type="button" className={`qtc-pill${period === p ? ' active' : ''}`} onClick={() => setPeriod(p)}>
@@ -535,7 +635,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
           animate="show"
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.055 } } }}
         >
-          {employees.map((emp) => (
+          {visibleEmployees.map((emp) => (
             <motion.div
               key={emp.id}
               variants={{ hidden: { opacity: 0, y: 14, scale: 0.97 }, show: { opacity: 1, y: 0, scale: 1 } }}
@@ -543,7 +643,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
             >
               <EmployeeSalesCard
                 employee={emp}
-                rows={rowsByEmployee[emp.id] ?? []}
+                rows={selectedPeriodRowsByEmployee[emp.id] ?? []}
                 period={period}
                 layoutId={`sales-employee-${emp.id}`}
                 onClick={() => openDetail(emp)}
