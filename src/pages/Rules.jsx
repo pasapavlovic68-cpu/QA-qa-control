@@ -94,20 +94,27 @@ export function Rules({ organizationId }) {
       setRules((current) => current.map((rule) => rule.id === data.id ? toRule(data) : rule));
       showToast('Правило обновлено');
     } else {
+      const insertPayload = {
+        title,
+        description,
+        category: categoryWithWeight,
+        enabled: ruleForm.active,
+        organization_id: organizationId
+      };
+
+      console.log('[Rules] organizationId', organizationId);
+      console.log('[Rules] insert payload', insertPayload);
+
       const { data, error } = await supabase
         .from('qa_rules')
-        .insert({
-          title,
-          description,
-          category: categoryWithWeight,
-          enabled: ruleForm.active,
-          organization_id: organizationId
-        })
-        .select()
+        .insert(insertPayload)
+        .select('*')
         .single();
 
       setSaving(false);
-      if (error) { console.error('[Rules] insert error:', error); return; }
+      console.log('[Rules] insert data', data);
+      console.error('[Rules] insert error', error);
+      if (error) return;
 
       setRules((current) => [toRule(data), ...current]);
       showToast('Правило добавлено');
