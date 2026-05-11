@@ -928,7 +928,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
           </p>
         </div>
       ) : noSalesData ? (
-        <div className="sales-empty-state">
+        <div className="sales-empty-state sales-empty-state--sales-data">
           <BarChart2 size={36} style={{ opacity: 0.18, marginBottom: 10 }} />
           <p style={{ fontWeight: 600, opacity: 0.6, marginBottom: 4 }}>Пока нет данных</p>
           <p style={{ opacity: 0.38, fontSize: '0.875rem', maxWidth: 320, margin: 0 }}>

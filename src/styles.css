@@ -3650,6 +3650,12 @@ select {
   padding: 32px 16px;
 }
 
+.sales-empty-state--sales-data {
+  margin-top: 26px;
+  min-height: 280px;
+  padding: 48px 18px;
+}
+
 .sales-empty-state p {
   margin: 0;
 }
