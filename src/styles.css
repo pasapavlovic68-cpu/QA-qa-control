@@ -1014,44 +1014,53 @@ h1 {
 }
 
 .modal-backdrop {
+  --modal-backdrop-tint: rgba(34, 31, 45, 0.36);
+  --modal-backdrop-blur: 24px;
   position: fixed;
   inset: 0;
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px;
-  background: rgba(34, 31, 45, 0.44);
-  backdrop-filter: blur(24px) saturate(0.9);
-  -webkit-backdrop-filter: blur(24px) saturate(0.9);
+  padding: clamp(18px, 4vw, 32px);
+  background:
+    radial-gradient(circle at 50% 40%, rgba(119, 101, 227, 0.18), rgba(119, 101, 227, 0) 42%),
+    var(--modal-backdrop-tint);
+  backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(1.08);
+  -webkit-backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(1.08);
   overflow: hidden;
+  isolation: isolate;
+  overscroll-behavior: contain;
 }
 
 .status-popover-backdrop {
   z-index: 1003;
-  padding: 28px;
-  background:
-    radial-gradient(circle at 50% 38%, rgba(119, 101, 227, 0.2), rgba(119, 101, 227, 0) 38%),
-    rgba(34, 31, 45, 0.34);
-  backdrop-filter: blur(24px) saturate(1.08);
-  -webkit-backdrop-filter: blur(24px) saturate(1.08);
+  --modal-backdrop-tint: rgba(34, 31, 45, 0.34);
 }
 
 .status-popover {
   position: relative;
   width: min(100%, 520px);
-  padding: 30px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 34px;
+  max-height: calc(100vh - 64px);
+  padding: clamp(26px, 4vw, 34px);
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 36px;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(246, 243, 255, 0.9)),
-    rgba(252, 252, 253, 0.94);
+    rgba(252, 252, 253, 0.96);
   box-shadow:
-    0 38px 110px rgba(35, 31, 58, 0.27),
-    0 18px 46px rgba(119, 101, 227, 0.12),
+    0 34px 96px rgba(35, 31, 58, 0.28),
+    0 16px 42px rgba(119, 101, 227, 0.12),
     0 0 0 1px rgba(119, 101, 227, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior: contain;
+}
+
+.status-popover::-webkit-scrollbar {
+  display: none;
 }
 
 .status-popover::before {
@@ -1328,32 +1337,42 @@ h1 {
   position: relative;
   width: min(100%, 1080px);
   max-height: calc(100vh - 64px);
-  overflow-y: auto;
-  border-radius: 40px;
-  background: rgba(252, 252, 253, 0.96);
-  box-shadow: 0 34px 96px rgba(35, 31, 58, 0.3);
-  padding: 38px;
+  overflow: auto;
+  border-radius: 36px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(246, 243, 255, 0.9)),
+    rgba(252, 252, 253, 0.96);
+  box-shadow:
+    0 34px 96px rgba(35, 31, 58, 0.28),
+    0 16px 42px rgba(119, 101, 227, 0.12),
+    0 0 0 1px rgba(119, 101, 227, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  padding: clamp(28px, 4vw, 38px);
   border: 1px solid rgba(255, 255, 255, 0.82);
   scrollbar-width: none;
   -ms-overflow-style: none;
   overscroll-behavior: contain;
+  transform-origin: center;
 }
 
 .modal-shell::-webkit-scrollbar {
   display: none;
 }
 
-.modal-shell--small {
+.modal-shell--small,
+.modal-shell-sm {
   max-width: 520px;
 }
 
-.modal-shell--medium {
+.modal-shell--medium,
+.modal-shell-md {
   max-width: 720px;
 }
 
-.modal-shell--large {
+.modal-shell--large,
+.modal-shell-lg {
   max-width: 1080px;
-  padding: 44px;
+  padding: clamp(32px, 4vw, 44px);
 }
 
 .delete-modal {
@@ -1415,6 +1434,12 @@ h1 {
   margin-top: 24px;
 }
 
+.modal-actions .primary-button,
+.modal-actions .ghost-button,
+.modal-actions .soft-danger-button {
+  min-width: 132px;
+}
+
 .modal-actions button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
@@ -1422,19 +1447,8 @@ h1 {
   box-shadow: none;
 }
 
-.org-modal-backdrop {
-  background: rgba(34, 31, 45, 0.38);
-  backdrop-filter: blur(24px) saturate(1.04);
-  -webkit-backdrop-filter: blur(24px) saturate(1.04);
-}
-
 .org-modal {
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(246, 243, 255, 0.9)),
-    rgba(252, 252, 253, 0.96);
-  box-shadow:
-    0 34px 96px rgba(35, 31, 58, 0.28),
-    0 16px 42px rgba(119, 101, 227, 0.12);
+  max-width: 520px;
 }
 
 .org-modal-field {
@@ -2570,6 +2584,27 @@ select {
 
   .rule-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .modal-backdrop {
+    padding: 14px;
+  }
+
+  .modal-shell,
+  .status-popover {
+    max-height: calc(100vh - 28px);
+    border-radius: 28px;
+    padding: 24px;
+  }
+
+  .modal-actions {
+    justify-content: stretch;
+  }
+
+  .modal-actions .primary-button,
+  .modal-actions .ghost-button,
+  .modal-actions .soft-danger-button {
+    flex: 1 1 140px;
   }
 }
 

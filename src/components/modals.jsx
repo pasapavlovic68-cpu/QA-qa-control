@@ -545,7 +545,6 @@ export function ReviewReportModal({ report, onClose }) {
           animate={modalMotion.animate}
           exit={modalMotion.exit}
           transition={modalMotion.transition}
-          style={{ overflowY: 'auto', maxHeight: '86vh' }}
         >
           <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
 
@@ -798,7 +797,6 @@ export function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
           animate={modalMotion.animate}
           exit={modalMotion.exit}
           transition={modalMotion.transition}
-          style={{ overflowY: 'auto', maxHeight: '90vh' }}
         >
           <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
             <motion.div className="modal-title" variants={modalSectionVariants}>
@@ -925,7 +923,6 @@ export function StatusManagementModal({ statuses, organizationId, onClose, onAdd
           animate={modalMotion.animate}
           exit={modalMotion.exit}
           transition={modalMotion.transition}
-          style={{ overflowY: 'auto', maxHeight: '88vh' }}
         >
           <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
 
@@ -1117,7 +1114,6 @@ export function ChannelManagementModal({ channels, organizationId, onClose, onAd
           animate={modalMotion.animate}
           exit={modalMotion.exit}
           transition={modalMotion.transition}
-          style={{ overflowY: 'auto', maxHeight: '88vh' }}
         >
           <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
             <motion.div className="modal-title" variants={modalSectionVariants}>

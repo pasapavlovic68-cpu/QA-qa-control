@@ -121,7 +121,6 @@ function SettingEditModal({ fieldKey, meta, initialValue, onClose, onSaved }) {
           animate={modalMotion.animate}
           exit={modalMotion.exit}
           transition={modalMotion.transition}
-          style={{ overflowY: 'auto', maxHeight: '90vh' }}
         >
           <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
 
