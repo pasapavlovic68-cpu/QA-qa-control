@@ -3133,11 +3133,15 @@ select {
 }
 
 .sales-kpi-card {
-  background: rgba(252,252,253,0.96);
-  border: 1px solid rgba(255,255,255,0.82);
-  border-radius: 20px;
-  padding: 20px 22px;
-  box-shadow: 0 4px 20px rgba(35,31,58,0.07);
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 90% 12%, rgba(119,101,227,0.14), transparent 32%),
+    linear-gradient(145deg, rgba(255,255,255,0.96), rgba(248,247,255,0.86));
+  border: 1px solid rgba(255,255,255,0.86);
+  border-radius: 22px;
+  padding: 18px 20px;
+  box-shadow: 0 14px 38px rgba(35,31,58,0.08);
 }
 
 .sales-emp-grid {
@@ -3147,11 +3151,13 @@ select {
 }
 
 .sales-emp-card {
-  background: rgba(252,252,253,0.96);
+  min-height: 238px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.96), rgba(249,248,255,0.88));
   border: 1px solid rgba(255,255,255,0.82);
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 4px 20px rgba(35,31,58,0.07);
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: 0 14px 42px rgba(35,31,58,0.08);
   transition: box-shadow 0.22s ease;
 }
 
@@ -3181,7 +3187,7 @@ select {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 14px;
+  margin: 12px 0 14px;
 }
 
 .sales-emp-progress {
@@ -3214,10 +3220,11 @@ select {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: rgba(119,101,227,0.04);
-  border: 1px solid rgba(119,101,227,0.08);
+  min-height: 44px;
+  padding: 8px 10px 8px 12px;
+  border-radius: 13px;
+  background: rgba(255,255,255,0.62);
+  border: 1px solid rgba(119,101,227,0.1);
 }
 
 .sales-history-date {
@@ -3233,6 +3240,216 @@ select {
   color: var(--accent);
 }
 
+.sales-kpi-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 10px;
+}
+
+.sales-kpi-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(119,101,227,0.1);
+  color: var(--accent);
+}
+
+.sales-kpi-range {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sales-ranking {
+  margin: 0 0 20px;
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(119,101,227,0.16), transparent 34%),
+    linear-gradient(145deg, rgba(255,255,255,0.9), rgba(247,245,255,0.78));
+  border: 1px solid rgba(255,255,255,0.84);
+  box-shadow: 0 18px 54px rgba(35,31,58,0.08);
+}
+
+.sales-ranking-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  color: var(--accent);
+}
+
+.sales-ranking-head h3 {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.sales-ranking-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.sales-rank-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(119,101,227,0.1);
+}
+
+.sales-rank-medal {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #7765e3, #a895ff);
+  box-shadow: 0 10px 22px rgba(119,101,227,0.22);
+}
+
+.sales-rank-card--1 .sales-rank-medal {
+  background: linear-gradient(135deg, #d9a441, #ffd37b);
+}
+
+.sales-rank-card--2 .sales-rank-medal {
+  background: linear-gradient(135deg, #8b93a7, #cdd3df);
+}
+
+.sales-rank-card--3 .sales-rank-medal {
+  background: linear-gradient(135deg, #b97a4e, #e0a172);
+}
+
+.sales-rank-card strong,
+.sales-rank-card span,
+.sales-rank-values b,
+.sales-rank-values small {
+  display: block;
+}
+
+.sales-rank-card strong,
+.sales-rank-values b {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.sales-rank-card span,
+.sales-rank-values small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.sales-rank-values {
+  text-align: right;
+}
+
+.sales-period-range {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.92rem;
+}
+
+.sales-card-period {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(119,101,227,0.08);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sales-emp-number {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1.1;
+}
+
+.sales-emp-caption {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sales-mini-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 44px;
+  margin: 0 0 14px;
+  padding: 5px 0 0;
+}
+
+.sales-mini-bars span {
+  flex: 1;
+  min-width: 4px;
+  border-radius: 999px 999px 4px 4px;
+  background: linear-gradient(180deg, var(--accent), rgba(119,101,227,0.34));
+}
+
+.sales-mini-bars.empty {
+  opacity: 0.2;
+}
+
+.sales-row-action {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(119,101,227,0.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.72);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.sales-row-action:hover {
+  background: rgba(119,101,227,0.1);
+}
+
+.sales-row-action.danger {
+  color: var(--danger);
+  border-color: rgba(190,60,68,0.16);
+}
+
+.sales-history-input {
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.86);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.sales-history-input.short {
+  width: 74px;
+}
+
+.sales-history-input.cash {
+  width: 106px;
+  margin-left: auto;
+}
+
 @media (max-width: 900px) {
   .sales-kpi-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -3240,12 +3457,21 @@ select {
   .sales-emp-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  .sales-ranking-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 600px) {
   .sales-kpi-grid,
   .sales-emp-grid {
     grid-template-columns: 1fr;
+  }
+  .sales-history-row {
+    flex-wrap: wrap;
+  }
+  .sales-history-input.cash {
+    margin-left: 0;
   }
 }
 

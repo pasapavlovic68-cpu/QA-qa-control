@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart2, Plus, X } from 'lucide-react';
+import { BarChart2, CalendarDays, Pencil, Plus, Save, Trash2, Trophy, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { PremiumCard } from '../components/shared.jsx';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
@@ -61,6 +61,27 @@ function dynamicsLabel(key, mode) {
     return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('ru-RU', { month: 'short' });
   }
   return fmtShortDate(key);
+}
+
+function summarizeRows(rows = []) {
+  return rows.reduce(
+    (acc, row) => ({
+      deposits: acc.deposits + (row.deposits_count ?? 0),
+      cash: acc.cash + Number(row.cash_amount ?? 0),
+    }),
+    { deposits: 0, cash: 0 }
+  );
+}
+
+function getPeriodRange(period) {
+  if (period === 'week') {
+    const start = getWeekStart();
+    return `${fmtShortDate(start)}–${fmtShortDate(addDaysIso(start, 6))}`;
+  }
+  const start = getMonthStart();
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+  return `${fmtShortDate(start)}–${fmtShortDate(end)}`;
 }
 
 const salesSharedTransition = {
@@ -240,11 +261,43 @@ function SalesDynamicsChart({ rows, mode }) {
   );
 }
 
+function SalesMiniBars({ rows }) {
+  const groups = useMemo(() => {
+    const map = {};
+    rows.forEach((r) => {
+      if (!r.record_date) return;
+      map[r.record_date] = (map[r.record_date] || 0) + Number(r.cash_amount ?? 0);
+    });
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).slice(-8);
+  }, [rows]);
+
+  if (groups.length === 0) return <div className="sales-mini-bars empty" />;
+  const maxVal = Math.max(...groups.map(([, v]) => v), 1);
+
+  return (
+    <div className="sales-mini-bars" aria-hidden="true">
+      {groups.map(([date, value], index) => (
+        <motion.span
+          key={date}
+          initial={{ height: 4 }}
+          animate={{ height: Math.max(8, Math.round((value / maxVal) * 38)) }}
+          transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1], delay: index * 0.025 }}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── Employee Detail Modal ───────────────────────────────────────────────────
 
-function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId, onClose }) {
+function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId, onClose, onUpdateRow, onDeleteRow }) {
   useModalScrollLock();
+  const { showToast } = useToast();
   const [dynamicsMode, setDynamicsMode] = useState('days');
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ record_date: '', deposits_count: '', cash_amount: '' });
+  const [savingRow, setSavingRow] = useState(false);
+  const [rowError, setRowError] = useState(null);
 
   const filtered = useMemo(() => {
     const cutoff = getPeriodStart(period);
@@ -257,18 +310,65 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
   }), [filtered]);
 
   const history = useMemo(() => {
-    const map = {};
-    filtered.forEach((r) => {
-      const d = r.record_date;
-      if (!d) return;
-      if (!map[d]) map[d] = { deposits: 0, cash: 0 };
-      map[d].deposits += r.deposits_count ?? 0;
-      map[d].cash += Number(r.cash_amount ?? 0);
+    return [...filtered].sort((a, b) => {
+      const dateCompare = (b.record_date ?? '').localeCompare(a.record_date ?? '');
+      if (dateCompare !== 0) return dateCompare;
+      return String(b.id).localeCompare(String(a.id));
     });
-    return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
 
   const isEmpty = filtered.length === 0;
+
+  const startEdit = (row) => {
+    setEditingId(row.id);
+    setRowError(null);
+    setEditForm({
+      record_date: row.record_date ?? new Date().toISOString().slice(0, 10),
+      deposits_count: String(row.deposits_count ?? 0),
+      cash_amount: String(row.cash_amount ?? 0),
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setRowError(null);
+  };
+
+  const saveEdit = async (row) => {
+    if (savingRow) return;
+    setSavingRow(true);
+    setRowError(null);
+    const payload = {
+      record_date: editForm.record_date,
+      deposits_count: Math.max(0, parseInt(editForm.deposits_count, 10) || 0),
+      cash_amount: Math.max(0, parseFloat(editForm.cash_amount) || 0),
+    };
+    const { error } = await supabase.from('employee_sales').update(payload).eq('id', row.id);
+    setSavingRow(false);
+    if (error) {
+      console.error('[Sales] update row error:', error);
+      setRowError('Не удалось обновить запись.');
+      return;
+    }
+    onUpdateRow({ ...row, ...payload });
+    setEditingId(null);
+    showToast('Продажа обновлена', 'success');
+  };
+
+  const deleteRow = async (row) => {
+    if (savingRow) return;
+    setSavingRow(true);
+    setRowError(null);
+    const { error } = await supabase.from('employee_sales').delete().eq('id', row.id);
+    setSavingRow(false);
+    if (error) {
+      console.error('[Sales] delete row error:', error);
+      setRowError('Не удалось удалить запись.');
+      return;
+    }
+    onDeleteRow(row.id);
+    showToast('Продажа удалена', 'success');
+  };
 
   return (
     <ModalPortal>
@@ -345,17 +445,60 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
             {/* History */}
             <motion.div variants={modalSectionVariants} style={{ marginTop: 18 }}>
               <p className="sales-section-label">История</p>
+              {rowError && (
+                <p style={{ margin: '0 0 10px', color: 'var(--danger)', fontSize: '0.82rem' }}>{rowError}</p>
+              )}
               {history.length === 0 ? (
                 <p style={{ opacity: 0.38, fontSize: '0.875rem', textAlign: 'center', padding: '20px 0' }}>
                   Нет данных за выбранный период
                 </p>
               ) : (
                 <div className="sales-history-table">
-                  {history.map(([date, { deposits: d, cash: c }]) => (
-                    <div key={date} className="sales-history-row">
-                      <span className="sales-history-date">{fmtDate(date)}</span>
-                      <span style={{ fontSize: 13, color: 'var(--muted)' }}>{d}&thinsp;деп.</span>
-                      <span className="sales-history-cash">{formatCash(c)}</span>
+                  {history.map((row) => (
+                    <div key={row.id} className="sales-history-row">
+                      {editingId === row.id ? (
+                        <>
+                          <input
+                            className="sales-history-input"
+                            type="date"
+                            value={editForm.record_date}
+                            onChange={(e) => setEditForm((f) => ({ ...f, record_date: e.target.value }))}
+                          />
+                          <input
+                            className="sales-history-input short"
+                            type="number"
+                            min="0"
+                            value={editForm.deposits_count}
+                            onChange={(e) => setEditForm((f) => ({ ...f, deposits_count: e.target.value }))}
+                          />
+                          <input
+                            className="sales-history-input cash"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={editForm.cash_amount}
+                            onChange={(e) => setEditForm((f) => ({ ...f, cash_amount: e.target.value }))}
+                          />
+                          <button className="sales-row-action" type="button" disabled={savingRow} onClick={() => saveEdit(row)} aria-label="Сохранить">
+                            <Save size={14} />
+                          </button>
+                          <button className="sales-row-action" type="button" disabled={savingRow} onClick={cancelEdit} aria-label="Отмена">
+                            <X size={14} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="sales-history-date">{fmtDate(row.record_date)}</span>
+                          <span style={{ fontSize: 13, color: 'var(--muted)' }}>{row.deposits_count ?? 0}&thinsp;деп.</span>
+                          <span className="sales-history-cash">{formatCash(row.cash_amount)}</span>
+                          <button className="sales-row-action" type="button" onClick={() => startEdit(row)} aria-label="Редактировать">
+                            <Pencil size={14} />
+                          </button>
+                          <button className="sales-row-action danger" type="button" disabled={savingRow} onClick={() => deleteRow(row)} aria-label="Удалить">
+                            <Trash2 size={14} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -380,15 +523,12 @@ function EmployeeSalesDetailModal({ employee, rows, period, setPeriod, layoutId,
 
 // ─── Employee Sales Card ─────────────────────────────────────────────────────
 
-function EmployeeSalesCard({ employee, rows, period, layoutId, onClick }) {
-  const { weekDeposits, weekCash, monthDeposits, monthCash } = useMemo(() => aggregateSales(rows), [rows]);
-
-  const deposits = period === 'week' ? weekDeposits : monthDeposits;
-  const cash = period === 'week' ? weekCash : monthCash;
-  const hasData = deposits > 0 || cash > 0;
+function EmployeeSalesCard({ employee, rows, periodLabel, layoutId, onClick }) {
+  const { deposits, cash } = useMemo(() => summarizeRows(rows), [rows]);
 
   const MAX_DEPOSITS = 30;
   const progress = Math.min(deposits / MAX_DEPOSITS, 1);
+  const progressPercent = Math.round(progress * 100);
 
   return (
     <motion.div
@@ -401,7 +541,6 @@ function EmployeeSalesCard({ employee, rows, period, layoutId, onClick }) {
       onClick={onClick}
       style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
     >
-      {/* Employee identity */}
       <div className="sales-emp-header">
         <div className="sales-emp-avatar">{initials(employee.name)}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -414,52 +553,86 @@ function EmployeeSalesCard({ employee, rows, period, layoutId, onClick }) {
         </div>
       </div>
 
-      {/* Metrics */}
-      {hasData ? (
-        <>
-          <div className="sales-emp-metrics">
-            <div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', lineHeight: 1.1 }}>{deposits}</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>депозиты</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', lineHeight: 1.1 }}>{formatCash(cash)}</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>касса</div>
-            </div>
-          </div>
+      <div className="sales-card-period">{periodLabel}</div>
 
-          {/* Progress bar */}
-          <div className="sales-emp-progress" style={{ marginTop: 'auto' }}>
-            <div className="sales-emp-progress-track">
-              <motion.div
-                className="sales-emp-progress-fill"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress * 100}%` }}
-                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              />
-            </div>
-            <span style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              {deposits} / {MAX_DEPOSITS}
-            </span>
-          </div>
-        </>
-      ) : (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '14px 0 10px' }}>
-          <p style={{ opacity: 0.35, fontSize: '0.82rem', textAlign: 'center', margin: 0 }}>Нет данных за период</p>
+      <div className="sales-emp-metrics">
+        <div>
+          <div className="sales-emp-number">{deposits}</div>
+          <div className="sales-emp-caption">депозиты</div>
         </div>
-      )}
+        <div style={{ textAlign: 'right' }}>
+          <div className="sales-emp-number">{formatCash(cash)}</div>
+          <div className="sales-emp-caption">касса</div>
+        </div>
+      </div>
+
+      <SalesMiniBars rows={rows} />
+
+      <div className="sales-emp-progress" style={{ marginTop: 'auto' }}>
+        <div className="sales-emp-progress-track">
+          <motion.div
+            className="sales-emp-progress-fill"
+            initial={{ width: 0 }}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </div>
+        <span style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          {progressPercent}%
+        </span>
+      </div>
     </motion.div>
   );
 }
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 
-function SalesKpiCard({ label, value, accent = false }) {
+function SalesKpiCard({ label, value, range, icon: Icon, accent = false }) {
   return (
     <div className={`sales-kpi-card${accent ? ' sales-kpi-card--accent' : ''}`}>
-      <div className="sales-kpi-label">{label}</div>
+      <div className="sales-kpi-head">
+        <div className="sales-kpi-icon">{Icon ? <Icon size={16} /> : <BarChart2 size={16} />}</div>
+        <div className="sales-kpi-label">{label}</div>
+      </div>
       <div className="sales-kpi-value">{value}</div>
+      <div className="sales-kpi-range">{range}</div>
     </div>
+  );
+}
+
+function SalesTopRanking({ ranking }) {
+  if (ranking.length === 0) return null;
+  return (
+    <section className="sales-ranking">
+      <div className="sales-ranking-head">
+        <div>
+          <span className="eyebrow">Live ranking</span>
+          <h3>Топ-3 сотрудников</h3>
+        </div>
+        <Trophy size={18} />
+      </div>
+      <div className="sales-ranking-list">
+        {ranking.map((item, index) => (
+          <motion.div
+            key={item.employee.id}
+            className={`sales-rank-card sales-rank-card--${index + 1}`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: index * 0.05 }}
+          >
+            <div className="sales-rank-medal">{index + 1}</div>
+            <div>
+              <strong>{item.employee.name}</strong>
+              <span>{item.employee.role}</span>
+            </div>
+            <div className="sales-rank-values">
+              <b>{formatCash(item.cash)}</b>
+              <small>{item.deposits} деп.</small>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -527,15 +700,6 @@ export function Sales({ employees, employeesLoading, organizationId }) {
     return merged;
   }, [monthRows, salesRows]);
 
-  const rowsByEmployee = useMemo(() => {
-    const map = {};
-    allRows.forEach((r) => {
-      if (!map[r.employee_id]) map[r.employee_id] = [];
-      map[r.employee_id].push(r);
-    });
-    return map;
-  }, [allRows]);
-
   const selectedPeriodRowsByEmployee = useMemo(() => {
     const cutoff = getPeriodStart(period);
     const map = {};
@@ -553,6 +717,23 @@ export function Sales({ employees, employeesLoading, organizationId }) {
   );
 
   const periodLabel = period === 'week' ? getWeekRangeLabel() : `Месяц: ${getMonthLabel()}`;
+  const periodRange = getPeriodRange(period);
+  const weekRange = getPeriodRange('week');
+  const monthRange = getPeriodRange('month');
+
+  const topRanking = useMemo(() => {
+    return visibleEmployees
+      .map((employee) => {
+        const totals = summarizeRows(selectedPeriodRowsByEmployee[employee.id] ?? []);
+        return { employee, ...totals };
+      })
+      .sort((a, b) => {
+        const cashDelta = b.cash - a.cash;
+        if (cashDelta !== 0) return cashDelta;
+        return b.deposits - a.deposits;
+      })
+      .slice(0, 3);
+  }, [visibleEmployees, selectedPeriodRowsByEmployee]);
 
   const { weekDeposits, weekCash, monthDeposits, monthCash } = useMemo(
     () => aggregateSales(allRows),
@@ -565,6 +746,20 @@ export function Sales({ employees, employeesLoading, organizationId }) {
   const openDetail = (emp) => {
     setDetailEmployee(emp);
     setDetailPeriod(period); // sync period from page
+  };
+
+  const syncLocalSalesRow = (row) => {
+    const upsert = (list, include) => {
+      const without = list.filter((item) => item.id !== row.id);
+      return include ? [row, ...without] : without;
+    };
+    setSalesRows((prev) => upsert(prev, row.record_date >= getWeekStart()));
+    setMonthRows((prev) => upsert(prev, row.record_date >= getMonthStart()));
+  };
+
+  const removeLocalSalesRow = (rowId) => {
+    setSalesRows((prev) => prev.filter((item) => item.id !== rowId));
+    setMonthRows((prev) => prev.filter((item) => item.id !== rowId));
   };
 
   return (
@@ -587,17 +782,18 @@ export function Sales({ employees, employeesLoading, organizationId }) {
         </motion.button>
       </div>
 
-      {/* ── KPI Grid (always shows week + month, not period-dependent) ── */}
       <div className="sales-kpi-grid">
-        <SalesKpiCard label="Депозиты за неделю" value={loading ? '…' : String(weekDeposits)} />
-        <SalesKpiCard label="Касса за неделю" value={loading ? '…' : formatCash(weekCash)} accent />
-        <SalesKpiCard label="Депозиты за месяц" value={loading ? '…' : String(monthDeposits)} />
-        <SalesKpiCard label="Касса за месяц" value={loading ? '…' : formatCash(monthCash)} accent />
+        <SalesKpiCard label="Депозиты за неделю" value={loading ? '…' : String(weekDeposits)} range={weekRange} icon={CalendarDays} />
+        <SalesKpiCard label="Касса за неделю" value={loading ? '…' : formatCash(weekCash)} range={weekRange} icon={BarChart2} accent />
+        <SalesKpiCard label="Депозиты за месяц" value={loading ? '…' : String(monthDeposits)} range={monthRange} icon={CalendarDays} />
+        <SalesKpiCard label="Касса за месяц" value={loading ? '…' : formatCash(monthCash)} range={monthRange} icon={BarChart2} accent />
       </div>
 
-      {/* ── Period switch + employee grid ────────────────────────────── */}
       <div className="sales-period-bar">
-        <span className="sales-section-label">{periodLabel}</span>
+        <div>
+          <span className="sales-section-label">Период</span>
+          <strong className="sales-period-range">{periodLabel}</strong>
+        </div>
         <div style={{ display: 'flex', gap: 6 }}>
           {[['week', 'Неделя'], ['month', 'Месяц']].map(([p, label]) => (
             <button key={p} type="button" className={`qtc-pill${period === p ? ' active' : ''}`} onClick={() => setPeriod(p)}>
@@ -607,7 +803,8 @@ export function Sales({ employees, employeesLoading, organizationId }) {
         </div>
       </div>
 
-      {/* ── Body ────────────────────────────────────────────────────── */}
+      {!loading && <SalesTopRanking ranking={topRanking} />}
+
       {loading ? (
         <div className="sales-empty-state">
           <p style={{ opacity: 0.45 }}>Загружаем данные…</p>
@@ -627,6 +824,17 @@ export function Sales({ employees, employeesLoading, organizationId }) {
           <p style={{ opacity: 0.38, fontSize: '0.875rem', maxWidth: 320, margin: 0 }}>
             Показатели продаж появятся после добавления данных.
           </p>
+          <motion.button
+            className="primary-button"
+            type="button"
+            whileTap={{ scale: 0.97 }}
+            whileHover={{ y: -2 }}
+            onClick={() => setAddOpen(true)}
+            style={{ marginTop: 14 }}
+          >
+            <Plus size={17} />
+            Добавить продажу
+          </motion.button>
         </div>
       ) : (
         <motion.div
@@ -644,7 +852,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
               <EmployeeSalesCard
                 employee={emp}
                 rows={selectedPeriodRowsByEmployee[emp.id] ?? []}
-                period={period}
+                periodLabel={periodLabel}
                 layoutId={`sales-employee-${emp.id}`}
                 onClick={() => openDetail(emp)}
               />
@@ -660,10 +868,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
             employees={employees}
             organizationId={organizationId}
             onClose={() => setAddOpen(false)}
-            onSaved={(row) => {
-              setSalesRows((prev) => [row, ...prev]);
-              setMonthRows((prev) => [row, ...prev]);
-            }}
+            onSaved={syncLocalSalesRow}
           />
         )}
       </AnimatePresence>
@@ -675,6 +880,8 @@ export function Sales({ employees, employeesLoading, organizationId }) {
             period={detailPeriod}
             setPeriod={setDetailPeriod}
             layoutId={`sales-employee-${detailEmployee.id}`}
+            onUpdateRow={syncLocalSalesRow}
+            onDeleteRow={removeLocalSalesRow}
             onClose={() => setDetailEmployee(null)}
           />
         )}
