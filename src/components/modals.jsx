@@ -1037,3 +1037,192 @@ export function StatusManagementModal({ statuses, organizationId, onClose, onAdd
     </ModalPortal>
   );
 }
+
+// ── ChannelManagementModal ────────────────────────────────────────────────────
+export function ChannelManagementModal({ channels, organizationId, onClose, onAdd, onDelete }) {
+  useModalScrollLock();
+  const [name, setName] = useState('');
+  const [color, setColor] = useState(STATUS_PRESETS[0]);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed || adding) return;
+    if (channels.some((channel) => channel.name === trimmed)) {
+      setAddError('Канал с таким названием уже существует.');
+      return;
+    }
+    setAdding(true);
+    setAddError(null);
+    const { data, error } = await supabase
+      .from('employee_channels')
+      .insert({ name: trimmed, color, organization_id: organizationId })
+      .select()
+      .single();
+    setAdding(false);
+    if (error) {
+      console.error('[ChannelManagementModal] insert error:', error);
+      setAddError('Ошибка при сохранении. Проверьте соединение.');
+      return;
+    }
+    onAdd(data);
+    setName('');
+  };
+
+  const handleDelete = async (channel) => {
+    setDeletingId(channel.id);
+    const { error: clearError } = await supabase
+      .from('employees')
+      .update({ channel: null })
+      .eq('organization_id', organizationId)
+      .eq('channel', channel.name);
+
+    if (clearError) {
+      console.error('[ChannelManagementModal] clear channel assignments error:', clearError);
+      setDeletingId(null);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('employee_channels')
+      .delete()
+      .eq('id', channel.id)
+      .eq('organization_id', organizationId);
+    setDeletingId(null);
+    if (error) {
+      console.error('[ChannelManagementModal] delete error:', error);
+    } else {
+      onDelete(channel.id, channel.name);
+    }
+  };
+
+  return (
+    <ModalPortal>
+      <motion.div
+        className="modal-backdrop employee-modal-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="modal-shell modal-shell--small"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          initial={modalMotion.initial}
+          animate={modalMotion.animate}
+          exit={modalMotion.exit}
+          transition={modalMotion.transition}
+          style={{ overflowY: 'auto', maxHeight: '88vh' }}
+        >
+          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+            <motion.div className="modal-title" variants={modalSectionVariants}>
+              <div>
+                <span className="eyebrow">Настройки команды</span>
+                <h2>Каналы сотрудников</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={onClose}>
+                <X size={18} />
+              </button>
+            </motion.div>
+
+            <motion.div variants={modalSectionVariants} style={{ marginBottom: 20 }}>
+              <div className="status-mgmt-section-label">Текущие каналы</div>
+              {channels.length === 0 ? (
+                <p className="status-mgmt-empty">Пока нет каналов. Создайте первый ниже.</p>
+              ) : (
+                <div className="status-mgmt-list">
+                  {channels.map((channel) => (
+                    <div key={channel.id} className="status-mgmt-row">
+                      <span className="status-mgmt-dot" style={{ background: channel.color }} />
+                      <span className="status-mgmt-name">{channel.name}</span>
+                      <motion.button
+                        className="status-mgmt-delete"
+                        type="button"
+                        whileTap={{ scale: 0.88 }}
+                        disabled={deletingId === channel.id}
+                        onClick={() => handleDelete(channel)}
+                        aria-label={`Удалить канал ${channel.name}`}
+                      >
+                        <Trash2 size={13} />
+                      </motion.button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+
+            <motion.form variants={modalSectionVariants} onSubmit={handleAdd}>
+              <div className="status-mgmt-section-label">Новый канал</div>
+              <input
+                value={name}
+                onChange={(e) => { setName(e.target.value); setAddError(null); }}
+                placeholder="Например, Telegram"
+                className="status-mgmt-input"
+              />
+              <div className="status-mgmt-section-label" style={{ marginTop: 12 }}>Цвет</div>
+              <div className="status-color-grid">
+                {STATUS_PRESETS.map((presetColor) => (
+                  <button
+                    key={presetColor}
+                    type="button"
+                    className={`status-color-swatch${color === presetColor ? ' selected' : ''}`}
+                    style={{ background: presetColor }}
+                    onClick={() => setColor(presetColor)}
+                    aria-label={`Цвет ${presetColor}`}
+                  />
+                ))}
+              </div>
+
+              {name.trim() && (
+                <div style={{ margin: '12px 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>Превью:</span>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '4px 10px',
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      background: `${color}1e`,
+                      border: `1px solid ${color}4d`,
+                      color: color,
+                    }}
+                  >
+                    <span className="status-mgmt-dot" style={{ background: color }} />
+                    {name.trim()}
+                  </span>
+                </div>
+              )}
+
+              {addError && (
+                <p style={{ fontSize: '0.82rem', color: 'var(--danger)', margin: '8px 0 0' }}>{addError}</p>
+              )}
+
+              <div className="modal-actions" style={{ marginTop: 16 }}>
+                <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>
+                  Закрыть
+                </motion.button>
+                <motion.button
+                  className="primary-button"
+                  type="submit"
+                  whileTap={{ scale: name.trim() && !adding ? 0.97 : 1 }}
+                  disabled={!name.trim() || adding}
+                >
+                  <Plus size={15} />
+                  {adding ? 'Создаём…' : 'Создать канал'}
+                </motion.button>
+              </div>
+            </motion.form>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </ModalPortal>
+  );
+}
