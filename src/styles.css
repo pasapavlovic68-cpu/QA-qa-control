@@ -2071,12 +2071,33 @@ select {
 
 .report-summary {
   flex: 1;
-  margin: 18px 0 16px;
+  margin: 16px 0 12px;
   line-height: 1.5;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+.report-card-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 55px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(119, 101, 227, 0.08);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.report-card-recent-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .report-metrics {
@@ -2107,6 +2128,158 @@ select {
 
 .report-detail {
   width: min(100%, 1080px);
+}
+
+.employee-report-modal {
+  width: min(100%, 940px);
+}
+
+.employee-report-title {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+
+.employee-report-title h2 {
+  margin: 2px 0 0;
+  font-size: 22px;
+}
+
+.employee-report-title p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.employee-report-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.employee-report-summary-grid div {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(119, 101, 227, 0.055);
+  border: 1px solid rgba(119, 101, 227, 0.1);
+}
+
+.employee-report-summary-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.employee-report-summary-grid strong {
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.employee-report-section {
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+
+.employee-report-section-label {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.employee-report-section p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.employee-report-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.employee-report-chip-list span {
+  max-width: 100%;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(119, 101, 227, 0.07);
+  border: 1px solid rgba(119, 101, 227, 0.12);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employee-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.employee-report-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(119, 101, 227, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.64);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.employee-report-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(119, 101, 227, 0.2);
+  box-shadow: 0 12px 26px rgba(119, 101, 227, 0.1);
+}
+
+.employee-report-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.employee-report-row strong,
+.employee-report-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employee-report-row strong {
+  font-size: 14px;
+}
+
+.employee-report-row small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.employee-report-row b {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 18px;
 }
 
 .report-detail-header {
