@@ -1026,6 +1026,7 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
   const showToast = useToast();
   const [period, setPeriod] = useState('two_weeks');
   const [schedule, setSchedule] = useState({});
+  const [employeeShiftDefaults, setEmployeeShiftDefaults] = useState({});
   const [loading, setLoading] = useState(true);
   const [savingCell, setSavingCell] = useState(null);
   const [selector, setSelector] = useState(null);
@@ -1045,6 +1046,7 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
   useEffect(() => {
     if (!organizationId || employees.length === 0) {
       setSchedule({});
+      setEmployeeShiftDefaults({});
       setLoading(false);
       return;
     }
@@ -1094,10 +1096,26 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
       }
 
       const map = {};
-      (data ?? []).forEach((row) => {
+      const defaults = {};
+      const rows = data ?? [];
+      rows.forEach((row) => {
         map[`${row.employee_id}:${row.work_date}`] = createScheduleEntry(row);
       });
+      rows
+        .filter((row) => (
+          row.status === 'work'
+          && normalizeScheduleTime(row.start_time)
+          && normalizeScheduleTime(row.end_time)
+        ))
+        .sort((a, b) => String(a.work_date).localeCompare(String(b.work_date)))
+        .forEach((row) => {
+          defaults[row.employee_id] = {
+            start_time: normalizeScheduleTime(row.start_time),
+            end_time: normalizeScheduleTime(row.end_time),
+          };
+        });
       setSchedule(map);
+      setEmployeeShiftDefaults((prev) => ({ ...defaults, ...prev }));
     };
 
     loadSchedule();
@@ -1184,6 +1202,15 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
         setSelector(null);
         const entry = createScheduleEntry(data);
         setSchedule((prev) => ({ ...prev, [cellKey]: entry }));
+        if (entry?.status === 'work' && entry.start_time && entry.end_time) {
+          setEmployeeShiftDefaults((prev) => ({
+            ...prev,
+            [employee.id]: {
+              start_time: entry.start_time,
+              end_time: entry.end_time,
+            },
+          }));
+        }
         onScheduleChange?.({ employeeId: employee.id, dateKey, ...entry });
       },
       toast: () => showToast('График обновлён'),
@@ -1196,8 +1223,13 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
   };
 
   const openScheduleSelector = (cellKey, employee, dateKey, entry) => {
-    const currentStart = normalizeScheduleTime(entry?.start_time) || DEFAULT_SHIFT_START;
-    const currentEnd = normalizeScheduleTime(entry?.end_time) || DEFAULT_SHIFT_END;
+    const employeeDefault = employeeShiftDefaults[employee.id] ?? {};
+    const currentStart = normalizeScheduleTime(entry?.start_time)
+      || normalizeScheduleTime(employeeDefault.start_time)
+      || DEFAULT_SHIFT_START;
+    const currentEnd = normalizeScheduleTime(entry?.end_time)
+      || normalizeScheduleTime(employeeDefault.end_time)
+      || DEFAULT_SHIFT_END;
     setSelector({
       cellKey,
       employee,
