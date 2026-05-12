@@ -253,10 +253,12 @@ export function Report({ organizationId }) {
   const [deleteError, setDeleteError] = useState(null);
   const [query, setQuery] = useState('');
 
-  useEffect(() => {
+  const loadReports = async ({ showLoader = false } = {}) => {
     if (!organizationId) return;
+    if (showLoader) setLoading(true);
+
     console.log('[PostAnalysisDataFlow] Report: fetching reports, employees, qa_checks');
-    Promise.all([
+    const [reportsResult, employeesResult, checksResult] = await Promise.all([
       fetchWithTimeout(
         supabase
           .from('reports')
@@ -273,21 +275,29 @@ export function Report({ organizationId }) {
         supabase.from('qa_checks').select('id, dialogues_count').eq('organization_id', organizationId),
         'Report:checks'
       )
-    ]).then(([reportsResult, employeesResult, checksResult]) => {
-      const employeeMap = {};
-      (employeesResult.data ?? []).forEach((e) => { employeeMap[e.id] = e.name; });
+    ]);
 
-      // Map check id → dialogues_count so toReport can fill the dialogs field
-      const checkMap = {};
-      (checksResult.data ?? []).forEach((c) => { checkMap[c.id] = c.dialogues_count ?? 0; });
-      console.log(`[PostAnalysisDataFlow] Report: checkMap has ${Object.keys(checkMap).length} entries`);
+    const employeeMap = {};
+    (employeesResult.data ?? []).forEach((e) => { employeeMap[e.id] = e.name; });
 
-      if (reportsResult.error) {
-        console.error('[Report] reports fetch error:', reportsResult.error);
-        setLoading(false);
-        return;
-      }
-      setReports((reportsResult.data ?? []).map((row) => toReport(row, employeeMap, checkMap)));
+    // Map check id → dialogues_count so toReport can fill the dialogs field
+    const checkMap = {};
+    (checksResult.data ?? []).forEach((c) => { checkMap[c.id] = c.dialogues_count ?? 0; });
+    console.log(`[PostAnalysisDataFlow] Report: checkMap has ${Object.keys(checkMap).length} entries`);
+
+    if (reportsResult.error) {
+      console.error('[Report] reports fetch error:', reportsResult.error);
+      setLoading(false);
+      return;
+    }
+
+    setReports((reportsResult.data ?? []).map((row) => toReport(row, employeeMap, checkMap)));
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadReports({ showLoader: true }).catch((error) => {
+      console.error('[Report] load error:', error);
       setLoading(false);
     });
   }, [organizationId]);
@@ -313,6 +323,7 @@ export function Report({ organizationId }) {
     const checkIds = [...new Set(deleteTarget.reports.map((report) => report.checkId).filter(Boolean))];
     const remainingReports = reports.filter((report) => !reportIds.includes(report.id));
     const remainingEmployeeReports = remainingReports.filter((report) => report.employeeId === deleteTarget.employeeId);
+    const remainingDialogsCount = remainingEmployeeReports.reduce((sum, report) => sum + (report.dialogs || 0), 0);
     const remainingAvgScore = remainingEmployeeReports.length
       ? Math.round(remainingEmployeeReports.reduce((sum, report) => sum + (report.score || 0), 0) / remainingEmployeeReports.length)
       : 0;
@@ -332,30 +343,47 @@ export function Report({ organizationId }) {
       }
 
       if (reportIds.length > 0) {
-        const { error: reportsError } = await supabase
+        const { data: deletedReports, error: reportsError } = await supabase
           .from('reports')
           .delete()
           .eq('organization_id', organizationId)
-          .in('id', reportIds);
+          .in('id', reportIds)
+          .select('id');
 
         if (reportsError) throw reportsError;
+        if ((deletedReports ?? []).length !== reportIds.length) {
+          console.error('[ReportDelete] reports delete affected rows mismatch:', {
+            expected: reportIds.length,
+            deleted: deletedReports?.length ?? 0,
+            reportIds
+          });
+          throw new Error('Отчёт не удалён в базе. Вероятно, DELETE заблокирован RLS-политикой для reports.');
+        }
       }
 
       if (checkIds.length > 0) {
-        const { error: checksError } = await supabase
+        const { data: deletedChecks, error: checksError } = await supabase
           .from('qa_checks')
           .delete()
           .eq('organization_id', organizationId)
-          .in('id', checkIds);
+          .in('id', checkIds)
+          .select('id');
 
         if (checksError) throw checksError;
+        if ((deletedChecks ?? []).length !== checkIds.length) {
+          console.warn('[ReportDelete] qa_checks delete affected rows mismatch:', {
+            expected: checkIds.length,
+            deleted: deletedChecks?.length ?? 0,
+            checkIds
+          });
+        }
       }
 
       if (deleteTarget.employeeId) {
         const { error: employeeError } = await supabase
           .from('employees')
           .update({
-            checks_count: remainingEmployeeReports.length,
+            checks_count: remainingDialogsCount,
             score: remainingAvgScore
           })
           .eq('organization_id', organizationId)
@@ -364,7 +392,7 @@ export function Report({ organizationId }) {
         if (employeeError) throw employeeError;
       }
 
-      setReports(remainingReports);
+      await loadReports();
       setSelectedEmployeeReport(null);
       setSelectedReport(null);
       setDeleteTarget(null);
