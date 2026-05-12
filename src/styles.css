@@ -4265,9 +4265,8 @@ select {
 
 .employee-schedule-selector {
   position: absolute;
-  top: 48px;
   left: 50%;
-  z-index: 20;
+  z-index: 80;
   display: grid;
   gap: 4px;
   min-width: 224px;
@@ -4276,7 +4275,16 @@ select {
   border-radius: 18px;
   background: rgba(252,252,253,0.96);
   box-shadow: 0 20px 54px rgba(35,31,58,0.18);
-  transform: translateX(-50%);
+}
+
+.employee-schedule-selector--bottom {
+  top: 48px;
+  transform-origin: top center;
+}
+
+.employee-schedule-selector--top {
+  bottom: 48px;
+  transform-origin: bottom center;
 }
 
 .employee-schedule-selector button {

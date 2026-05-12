@@ -59,6 +59,7 @@ const SCHEDULE_STATUSES = {
 const UNSET_SCHEDULE_STATUS = { label: 'Не назначено', short: '—', color: '#8a8fa8' };
 const DEFAULT_SHIFT_START = '10:00';
 const DEFAULT_SHIFT_END = '19:00';
+const SCHEDULE_SELECTOR_HEIGHT = 330;
 
 function formatDateKey(date) {
   const year = date.getFullYear();
@@ -1222,7 +1223,7 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
     });
   };
 
-  const openScheduleSelector = (cellKey, employee, dateKey, entry) => {
+  const openScheduleSelector = (cellKey, employee, dateKey, entry, triggerElement) => {
     const employeeDefault = employeeShiftDefaults[employee.id] ?? {};
     const currentStart = normalizeScheduleTime(entry?.start_time)
       || normalizeScheduleTime(employeeDefault.start_time)
@@ -1230,12 +1231,19 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
     const currentEnd = normalizeScheduleTime(entry?.end_time)
       || normalizeScheduleTime(employeeDefault.end_time)
       || DEFAULT_SHIFT_END;
+    const triggerRect = triggerElement?.getBoundingClientRect();
+    const scrollFrame = triggerElement?.closest('.employee-schedule-table-wrap');
+    const frameRect = scrollFrame?.getBoundingClientRect();
+    const spaceBelow = triggerRect && frameRect ? frameRect.bottom - triggerRect.bottom : Infinity;
+    const spaceAbove = triggerRect && frameRect ? triggerRect.top - frameRect.top : 0;
+    const placement = spaceBelow < SCHEDULE_SELECTOR_HEIGHT && spaceAbove > spaceBelow ? 'top' : 'bottom';
     setSelector({
       cellKey,
       employee,
       dateKey,
       startTime: currentStart,
       endTime: currentEnd,
+      placement,
     });
   };
 
@@ -1326,17 +1334,27 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
                                     borderColor: hexToRgba(statusMeta.color, 0.28),
                                   } : undefined}
                                   disabled={savingCell === cellKey}
-                                  onClick={() => selectorOpen ? setSelector(null) : openScheduleSelector(cellKey, employee, dateKey, scheduleEntry)}
+                                  onClick={(event) => selectorOpen ? setSelector(null) : openScheduleSelector(cellKey, employee, dateKey, scheduleEntry, event.currentTarget)}
                                 >
                                   {savingCell === cellKey ? '...' : statusMeta?.short || '—'}
                                 </button>
                                 <AnimatePresence>
                                   {selectorOpen && (
                                     <motion.div
-                                      className="employee-schedule-selector"
-                                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                                      exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                                      className={`employee-schedule-selector employee-schedule-selector--${selector.placement || 'bottom'}`}
+                                      initial={{
+                                        opacity: 0,
+                                        x: '-50%',
+                                        y: selector.placement === 'top' ? -8 : 8,
+                                        scale: 0.96,
+                                      }}
+                                      animate={{ opacity: 1, x: '-50%', y: 0, scale: 1 }}
+                                      exit={{
+                                        opacity: 0,
+                                        x: '-50%',
+                                        y: selector.placement === 'top' ? -6 : 6,
+                                        scale: 0.97,
+                                      }}
                                       transition={{ duration: 0.18 }}
                                     >
                                       <div className="employee-schedule-shift-editor">
