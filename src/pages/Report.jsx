@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X } from 'lucide-react';
+import { Search, Trash2, X } from 'lucide-react';
 import { supabase, fetchWithTimeout } from '../lib/supabase.js';
+import { useToast } from '../components/Toast.jsx';
 import { AnimatedProgress, Avatar } from '../components/shared.jsx';
 import { reportCardTransition, ReviewReportModal } from '../components/modals.jsx';
-import { ModalPortal, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
+import { ModalPortal, modalContentVariants, modalMotion, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
 
 function toReport(row, employeeMap, checkMap) {
   const mistakes = Array.isArray(row.mistakes) ? row.mistakes : [];
@@ -193,11 +194,63 @@ function EmployeeReportModal({ group, onClose, onOpenReport }) {
   );
 }
 
+function DeleteReportGroupModal({ group, saving, error, onCancel, onConfirm }) {
+  useModalScrollLock();
+
+  if (!group) return null;
+
+  return (
+    <ModalPortal>
+      <motion.div
+        className="modal-backdrop employee-modal-backdrop subtle"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onCancel}
+      >
+        <motion.div
+          className="modal-shell modal-shell--small delete-modal"
+          role="dialog"
+          aria-modal="true"
+          initial={modalMotion.initial}
+          animate={modalMotion.animate}
+          exit={modalMotion.exit}
+          transition={modalMotion.transition}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+            <motion.div className="delete-icon" variants={modalSectionVariants}><Trash2 size={18} /></motion.div>
+            <motion.h2 variants={modalSectionVariants}>Удалить отчёты?</motion.h2>
+            <motion.p variants={modalSectionVariants}>
+              Все отчёты сотрудника {group.employee} будут удалены из истории проверок. Статистика сотрудника пересчитается по оставшимся данным.
+            </motion.p>
+            {error && (
+              <motion.p className="report-delete-error" variants={modalSectionVariants}>{error}</motion.p>
+            )}
+            <motion.div className="modal-actions" variants={modalSectionVariants}>
+              <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onCancel} disabled={saving}>
+                Отмена
+              </motion.button>
+              <motion.button className="soft-danger-button" type="button" whileTap={{ scale: saving ? 1 : 0.97 }} onClick={onConfirm} disabled={saving}>
+                {saving ? 'Удаляем…' : 'Удалить'}
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </ModalPortal>
+  );
+}
+
 export function Report({ organizationId }) {
+  const showToast = useToast();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedEmployeeReport, setSelectedEmployeeReport] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteSaving, setDeleteSaving] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -247,6 +300,84 @@ export function Report({ organizationId }) {
     return searchValue.includes(query.toLowerCase());
   });
 
+  const openDeleteReportGroup = (event, group) => {
+    event.stopPropagation();
+    setDeleteTarget(group);
+    setDeleteError(null);
+  };
+
+  const handleDeleteReportGroup = async () => {
+    if (!deleteTarget || deleteSaving) return;
+
+    const reportIds = deleteTarget.reports.map((report) => report.id).filter(Boolean);
+    const checkIds = [...new Set(deleteTarget.reports.map((report) => report.checkId).filter(Boolean))];
+    const remainingReports = reports.filter((report) => !reportIds.includes(report.id));
+    const remainingEmployeeReports = remainingReports.filter((report) => report.employeeId === deleteTarget.employeeId);
+    const remainingAvgScore = remainingEmployeeReports.length
+      ? Math.round(remainingEmployeeReports.reduce((sum, report) => sum + (report.score || 0), 0) / remainingEmployeeReports.length)
+      : 0;
+
+    setDeleteSaving(true);
+    setDeleteError(null);
+
+    try {
+      if (checkIds.length > 0) {
+        const { error: dialoguesError } = await supabase
+          .from('uploaded_dialogues')
+          .delete()
+          .eq('organization_id', organizationId)
+          .in('check_id', checkIds);
+
+        if (dialoguesError) throw dialoguesError;
+      }
+
+      if (reportIds.length > 0) {
+        const { error: reportsError } = await supabase
+          .from('reports')
+          .delete()
+          .eq('organization_id', organizationId)
+          .in('id', reportIds);
+
+        if (reportsError) throw reportsError;
+      }
+
+      if (checkIds.length > 0) {
+        const { error: checksError } = await supabase
+          .from('qa_checks')
+          .delete()
+          .eq('organization_id', organizationId)
+          .in('id', checkIds);
+
+        if (checksError) throw checksError;
+      }
+
+      if (deleteTarget.employeeId) {
+        const { error: employeeError } = await supabase
+          .from('employees')
+          .update({
+            checks_count: remainingEmployeeReports.length,
+            score: remainingAvgScore
+          })
+          .eq('organization_id', organizationId)
+          .eq('id', deleteTarget.employeeId);
+
+        if (employeeError) throw employeeError;
+      }
+
+      setReports(remainingReports);
+      setSelectedEmployeeReport(null);
+      setSelectedReport(null);
+      setDeleteTarget(null);
+      showToast?.('Отчёты удалены');
+    } catch (error) {
+      console.error('[ReportDelete] delete error:', error);
+      setDeleteError(error?.message || 'Не удалось удалить отчёт.');
+      showToast?.('Не удалось удалить отчёт', 'error');
+    } finally {
+      setDeleteSaving(false);
+    }
+  };
+
   return (
     <>
       <div className="reports-head">
@@ -272,20 +403,39 @@ export function Report({ organizationId }) {
       ) : (
         <motion.div className="reports-grid" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}>
           {filteredReports.map((report) => (
-            <motion.button
+            <motion.div
               layout
               layoutId={`report-employee-${report.id}`}
               className="report-card"
               key={report.id}
+              role="button"
+              tabIndex={0}
               variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } }}
               transition={reportCardTransition}
               whileHover={{ y: -5, scale: 1.008 }}
               whileTap={{ scale: 0.985 }}
               onClick={() => setSelectedEmployeeReport(report)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setSelectedEmployeeReport(report);
+                }
+              }}
             >
               <div className="report-card-top">
                 <span className="report-number">Сводка по сотруднику</span>
-                <span className="report-status good">{report.reportCount} проверок</span>
+                <div className="report-card-actions">
+                  <span className="report-status good">{report.reportCount} проверок</span>
+                  <button
+                    className="report-delete-button"
+                    type="button"
+                    aria-label={`Удалить отчёты ${report.employee}`}
+                    onClick={(event) => openDeleteReportGroup(event, report)}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </div>
               <div className="report-person">
                 <Avatar name={report.employee} />
@@ -308,7 +458,7 @@ export function Report({ organizationId }) {
               <div className="report-score-line">
                 <AnimatedProgress value={report.avgScore} />
               </div>
-            </motion.button>
+            </motion.div>
           ))}
         </motion.div>
       )}
@@ -329,6 +479,20 @@ export function Report({ organizationId }) {
             report={selectedReport}
             layoutId={null}
             onClose={() => setSelectedReport(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deleteTarget && (
+          <DeleteReportGroupModal
+            group={deleteTarget}
+            saving={deleteSaving}
+            error={deleteError}
+            onCancel={() => {
+              if (!deleteSaving) setDeleteTarget(null);
+            }}
+            onConfirm={handleDeleteReportGroup}
           />
         )}
       </AnimatePresence>

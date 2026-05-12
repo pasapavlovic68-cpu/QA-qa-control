@@ -1993,6 +1993,7 @@ select {
   backdrop-filter: blur(20px);
   color: var(--text);
   text-align: left;
+  cursor: pointer;
 }
 
 .report-card-top,
@@ -2005,6 +2006,13 @@ select {
 .report-card-top {
   justify-content: space-between;
   gap: 12px;
+}
+
+.report-card-actions {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
 }
 
 .report-number {
@@ -2029,6 +2037,37 @@ select {
 .report-status.good {
   background: #eaf8f1;
   color: var(--success);
+}
+
+.report-delete-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(190, 60, 68, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 247, 247, 0.84);
+  color: #b86a70;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 160ms ease, transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.report-card:hover .report-delete-button,
+.report-card:focus-visible .report-delete-button,
+.report-delete-button:focus-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.report-delete-button:hover {
+  border-color: rgba(190, 60, 68, 0.2);
+  background: #fff1f1;
+}
+
+.report-delete-error {
+  color: var(--danger) !important;
 }
 
 .report-status.warning {
