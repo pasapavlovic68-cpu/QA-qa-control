@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { PremiumCard, RevealCard, Stagger, Avatar } from '../components/shared.jsx';
-import { KpiCard } from '../components/display.jsx';
+import { KpiCard, PremiumDropdown } from '../components/display.jsx';
 import { ModalPortal, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
 
 const emptyCardText = (text) => (
@@ -560,6 +560,23 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
     [completedChecks, employeeMap]
   );
 
+  const trendEmployeeValue = trendEmployeeId
+    ? employees.find((emp) => emp.id === trendEmployeeId)?.name ?? 'Все'
+    : 'Все';
+  const trendEmployeeOptions = useMemo(
+    () => ['Все', ...employees.map((emp) => emp.name)],
+    [employees]
+  );
+
+  const handleTrendEmployeeChange = (name) => {
+    if (name === 'Все') {
+      setTrendEmployeeId(null);
+      return;
+    }
+    const selected = employees.find((emp) => emp.name === name);
+    setTrendEmployeeId(selected?.id ?? null);
+  };
+
   const kpis = [
     {
       label: 'Проверено диалогов',
@@ -643,24 +660,12 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
       <div className="dashboard-grid">
         <PremiumCard className="chart-card wide" title="Динамика качества" action={`Последние ${trendPeriod} дней`}>
           <div className="qtc-filters">
-            <div className="qtc-filter-group">
-              <button
-                type="button"
-                className={`qtc-pill${trendEmployeeId === null ? ' active' : ''}`}
-                onClick={() => setTrendEmployeeId(null)}
-              >
-                Все
-              </button>
-              {employees.map((emp) => (
-                <button
-                  key={emp.id}
-                  type="button"
-                  className={`qtc-pill${trendEmployeeId === emp.id ? ' active' : ''}`}
-                  onClick={() => setTrendEmployeeId(emp.id)}
-                >
-                  {emp.name}
-                </button>
-              ))}
+            <div className="qtc-filter-group qtc-employee-select">
+              <PremiumDropdown
+                value={trendEmployeeValue}
+                options={trendEmployeeOptions}
+                onChange={handleTrendEmployeeChange}
+              />
             </div>
             <div className="qtc-filter-group qtc-filter-group--right">
               {[7, 30].map((p) => (

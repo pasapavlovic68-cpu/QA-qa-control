@@ -3263,6 +3263,25 @@ select {
   margin-left: auto;
 }
 
+.qtc-employee-select {
+  width: min(260px, 100%);
+}
+
+.qtc-employee-select .premium-select {
+  width: 100%;
+}
+
+.qtc-employee-select .premium-select-trigger {
+  height: 42px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.qtc-employee-select .premium-select-menu {
+  min-width: 260px;
+}
+
 .qtc-pill {
   padding: 4px 12px;
   border-radius: 999px;
