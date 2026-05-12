@@ -21,6 +21,29 @@ import { Sales } from './pages/Sales.jsx';
 import { Settings } from './pages/Settings.jsx';
 import { EmployeeDrawer } from './components/modals.jsx';
 
+function LeadProofLogoMark({ className = '' }) {
+  return (
+    <span className={`leadproof-logo-mark ${className}`.trim()} aria-hidden="true">
+      <svg width="31" height="31" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3.2l7 2.6v5.4c0 4.35-2.95 8.05-7 9.1-4.05-1.05-7-4.75-7-9.1V5.8l7-2.6z" />
+        <path d="M9.25 12.1l1.8 1.8 3.95-4" />
+      </svg>
+    </span>
+  );
+}
+
+function LeadProofBrand({ compact = false }) {
+  return (
+    <div className={`leadproof-brand-lockup${compact ? ' compact' : ''}`}>
+      <LeadProofLogoMark />
+      <div>
+        <strong>LeadProof</strong>
+        {!compact && <span>AI-контроль качества продаж</span>}
+      </div>
+    </div>
+  );
+}
+
 function LoginScreen({ embedded = false, initialMode = 'login', onClose }) {
   const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState('');
@@ -155,22 +178,7 @@ function LoginScreen({ embedded = false, initialMode = 'login', onClose }) {
           </button>
         )}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{
-            display: 'inline-grid',
-            placeItems: 'center',
-            width: 48,
-            height: 48,
-            borderRadius: 16,
-            background: 'linear-gradient(135deg,#ffffff,#eeeaff)',
-            border: '1px solid rgba(119,101,227,0.18)',
-            boxShadow: '0 10px 28px rgba(119,101,227,0.12)',
-            color: 'var(--accent)',
-            marginBottom: 14,
-          }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 12l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="4"/>
-            </svg>
-          </div>
+          <LeadProofLogoMark className="auth-logo-mark" />
           <h2 style={{ margin: '0 0 4px', fontSize: 22 }}>LeadProof</h2>
           <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14 }}>
             {isRegister ? 'Создайте аккаунт' : 'Войдите в систему'}
@@ -379,15 +387,7 @@ function LandingPage() {
     <div className="public-landing">
       <div className="landing-ambient" aria-hidden="true" />
       <header className="landing-nav">
-        <div className="landing-brand">
-          <span className="landing-brand-mark">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 12l2 2 4-4" />
-              <rect x="3" y="3" width="18" height="18" rx="4" />
-            </svg>
-          </span>
-          <strong>LeadProof</strong>
-        </div>
+        <LeadProofBrand />
         <button className="landing-login" onClick={() => openAuth('login')}>Войти</button>
       </header>
 
