@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   AnimatePresence,
@@ -791,6 +791,7 @@ function App({ session }) {
   const [employeesData, setEmployeesData] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [supabaseStatus, setSupabaseStatus] = useState('checking');
+  const inviteAcceptanceKeyRef = useRef('');
 
   useEffect(() => {
     let cancelled = false;
@@ -834,7 +835,9 @@ function App({ session }) {
 
   useEffect(() => {
     if (orgResolution?.status !== 'invite_found') return;
-    if (inviteAcceptanceStatus !== 'idle') return;
+    const inviteAcceptanceKey = `${session?.user?.id ?? 'no-user'}:${orgResolution.invite?.id ?? 'no-invite'}`;
+    if (inviteAcceptanceKeyRef.current === inviteAcceptanceKey) return;
+    inviteAcceptanceKeyRef.current = inviteAcceptanceKey;
 
     let cancelled = false;
     setInviteAcceptanceStatus('accepting');
@@ -862,12 +865,13 @@ function App({ session }) {
         setInviteAcceptanceError(err?.message || 'Не удалось подключить организацию.');
         setEmployeesLoading(false);
         setSupabaseStatus('offline');
+        inviteAcceptanceKeyRef.current = '';
       });
 
     return () => {
       cancelled = true;
     };
-  }, [orgResolution, inviteAcceptanceStatus, session?.user]);
+  }, [orgResolution?.status, orgResolution?.invite?.id, session?.user?.id]);
 
   useEffect(() => {
     if (!organizationId) return;
