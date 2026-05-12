@@ -4430,9 +4430,9 @@ select {
   display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
   align-items: center;
-  gap: 42px;
-  min-height: calc(100vh - 118px);
-  padding: 74px 0 54px;
+  gap: 34px;
+  min-height: 560px;
+  padding: 46px 0 30px;
 }
 
 .landing-hero-copy h1 {
@@ -4539,7 +4539,7 @@ select {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
-  padding-bottom: 44px;
+  padding-bottom: 28px;
 }
 
 .landing-glass-card {
@@ -4575,7 +4575,7 @@ select {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  padding-bottom: 44px;
+  padding-bottom: 28px;
 }
 
 .landing-feature-pill {

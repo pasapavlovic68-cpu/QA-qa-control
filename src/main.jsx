@@ -406,7 +406,7 @@ function LandingPage() {
             </p>
             <div className="landing-actions">
               <button className="landing-primary" onClick={() => openAuth('register')}>
-                Начать пробный период 14 дней
+                Создать пространство
               </button>
               <button className="landing-secondary" onClick={() => openAuth('login')}>
                 Войти
@@ -461,12 +461,12 @@ function LandingPage() {
 
         <section className="landing-cta">
           <div>
-            <span className="landing-eyebrow">14 дней на запуск</span>
+            <span className="landing-eyebrow">Для команды</span>
             <h2>Создайте пространство для своей команды</h2>
           </div>
           <div className="landing-actions">
             <button className="landing-primary" onClick={() => openAuth('register')}>
-              Попробовать бесплатно
+              Создать пространство
             </button>
             <button className="landing-secondary" onClick={() => openAuth('login')}>
               Войти
