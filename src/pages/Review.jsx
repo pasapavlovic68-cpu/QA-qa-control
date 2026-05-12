@@ -161,6 +161,79 @@ function dedupeMistakes(items) {
   });
 }
 
+function getDialogueTitle(fileName, index) {
+  const cleanName = (fileName || '').replace(/\.[^.]+$/, '').trim();
+  return cleanName ? `Диалог: ${cleanName}` : `Диалог ${index + 1}`;
+}
+
+function normalizeAiReport(rawReport, fallbackTitle) {
+  const criticalViolations = normalizeCriticalViolations(rawReport.critical_violations);
+  const mistakes = normalizeMistakeList(rawReport.mistakes);
+  const strengths = normalizeTextList(rawReport.strengths);
+  const positives = Array.isArray(rawReport.positives)
+    ? normalizeTextList(rawReport.positives)
+    : strengths;
+  const riskFlags = normalizeTextList(rawReport.risk_flags);
+  const nextStepQuality = normalizeQualityValue(rawReport.next_step_quality);
+  const objectionHandlingQuality = normalizeQualityValue(rawReport.objection_handling_quality);
+  const followUpQuality = normalizeQualityValue(rawReport.follow_up_quality);
+  const regulationEvidence = {
+    type: 'sales_department_regulation',
+    critical_violations: criticalViolations,
+    risk_flags: riskFlags,
+    next_step_quality: nextStepQuality,
+    objection_handling_quality: objectionHandlingQuality,
+    follow_up_quality: followUpQuality,
+  };
+
+  return {
+    score: typeof rawReport.score === 'number' ? Math.max(0, Math.min(100, Math.round(rawReport.score))) : 0,
+    title: typeof rawReport.title === 'string' && rawReport.title.trim() ? rawReport.title.trim() : fallbackTitle,
+    management_summary: typeof rawReport.management_summary === 'string' ? rawReport.management_summary : '',
+    critical_violations: criticalViolations,
+    mistakes: dedupeMistakes([...criticalViolations, ...mistakes]),
+    strengths,
+    positives,
+    recommendations: Array.isArray(rawReport.recommendations) ? rawReport.recommendations : [],
+    next_step_quality: nextStepQuality,
+    objection_handling_quality: objectionHandlingQuality,
+    follow_up_quality: followUpQuality,
+    risk_flags: riskFlags,
+    evidence: Array.isArray(rawReport.evidence)
+      ? [...rawReport.evidence, regulationEvidence]
+      : [regulationEvidence],
+  };
+}
+
+function buildAggregatePreviewReport(reports, employeeName) {
+  const dialogueCount = reports.length;
+  const avgScore = dialogueCount
+    ? Math.round(reports.reduce((sum, report) => sum + (report.score || 0), 0) / dialogueCount)
+    : 0;
+  const allMistakes = reports.flatMap((report) => report.mistakes ?? []);
+  const criticalCount = allMistakes.filter((mistake) => mistake.severity === 'critical').length;
+  const recommendations = reports.flatMap((report) => report.recommendations ?? []).slice(0, 6);
+  const summaries = reports
+    .map((report) => report.management_summary)
+    .filter(Boolean)
+    .slice(0, 4);
+
+  return {
+    score: avgScore,
+    title: `Сводный отчёт: ${employeeName}`,
+    management_summary: summaries.length
+      ? summaries.join('\n\n')
+      : `Проверено диалогов: ${dialogueCount}. Средняя оценка: ${avgScore}.`,
+    mistakes: dedupeMistakes(allMistakes),
+    positives: reports.flatMap((report) => report.positives ?? []).slice(0, 6),
+    recommendations,
+    evidence: [{ type: 'batch_summary', reports_count: reports.length, critical_count: criticalCount }],
+    employeeName,
+    dialogueCount,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export function Review({ analysis, setAnalysis, employees, organizationId, onDialogueAnalyzed }) {
   const showToast = useToast();
   const fileInputRef = useRef(null);
@@ -294,9 +367,6 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
     setAnalysis('running');
     setAnalysisStage('preparing');
 
-    const workerController = new AbortController();
-    const workerAbortTimer = setTimeout(() => workerController.abort(), 45000);
-
     try {
       setAnalysisStage('reading_dialogues');
       const { data: dialogues, error: dialoguesError } = await supabase
@@ -338,118 +408,107 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       const parseList = (str) =>
         (str || '').split('\n').map((s) => s.trim()).filter(Boolean);
       const settingsForbiddenPhrases = parseList(settings.forbidden_phrases);
+      const analysisContext = {
+        language: 'ru',
+        outputStyle: settings.report_style || 'management_report',
+        strictness: 'high',
+        requireEvidence: true,
+        domain: 'sales_department_quality_control',
+        regulationInstruction: SALES_DEPARTMENT_REGULATION.instruction,
+        expectedReportFields: SALES_DEPARTMENT_REGULATION.outputContract,
+        scoringRules: SALES_DEPARTMENT_REGULATION.scoring,
+        severityCategories: {
+          critical: SALES_DEPARTMENT_REGULATION.criticalViolations,
+          high: SALES_DEPARTMENT_REGULATION.highSeverity,
+          medium: SALES_DEPARTMENT_REGULATION.mediumSeverity,
+        },
+        restrictedCountries: SALES_DEPARTMENT_REGULATION.restrictedCountries,
+        companyInstruction: settings.company_instruction || '',
+        salesGoal: settings.sales_goal || '',
+        forbiddenPhrases: [...new Set([...DEFAULT_FORBIDDEN_PHRASES, ...settingsForbiddenPhrases])],
+        upsellStrategy: settings.upsell_strategy || '',
+        criticalMoments: parseList(settings.critical_moments)
+      };
+      const rulePayload = (rules ?? []).map((r) => ({
+        title: r.title,
+        description: r.description,
+        category: r.category || ''
+      }));
+      const dialoguePayloads = dialogues.map((dialogue, index) => {
+        const meta = parseDialogue(dialogue.raw_text);
+        return {
+          fileName: dialogue.file_name,
+          rawText: dialogue.raw_text,
+          cleanedText: meta.cleanedText,
+          detectedFormat: meta.detectedFormat,
+          messageCount: meta.messageCount,
+          clientMessageCount: meta.clientMessageCount,
+          operatorMessageCount: meta.operatorMessageCount,
+          fallbackTitle: getDialogueTitle(dialogue.file_name, index),
+        };
+      });
+      const analyzedReports = [];
 
       setAnalysisStage('contacting_ai');
-      const workerStartedAt = performance.now();
-      const response = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeName: selectedEmployeeName,
-          dialogues: dialogues.map((d) => {
-            const meta = parseDialogue(d.raw_text);
-            return {
-              fileName: d.file_name,
-              rawText: d.raw_text,
-              cleanedText: meta.cleanedText,
-              detectedFormat: meta.detectedFormat,
-              messageCount: meta.messageCount,
-              clientMessageCount: meta.clientMessageCount,
-              operatorMessageCount: meta.operatorMessageCount
-            };
-          }),
-          rules: (rules ?? []).map((r) => ({
-            title: r.title,
-            description: r.description,
-            category: r.category || ''
-          })),
-          salesDepartmentRegulation: SALES_DEPARTMENT_REGULATION,
-          analysisContext: {
-            language: 'ru',
-            outputStyle: settings.report_style || 'management_report',
-            strictness: 'high',
-            requireEvidence: true,
-            domain: 'sales_department_quality_control',
-            regulationInstruction: SALES_DEPARTMENT_REGULATION.instruction,
-            expectedReportFields: SALES_DEPARTMENT_REGULATION.outputContract,
-            scoringRules: SALES_DEPARTMENT_REGULATION.scoring,
-            severityCategories: {
-              critical: SALES_DEPARTMENT_REGULATION.criticalViolations,
-              high: SALES_DEPARTMENT_REGULATION.highSeverity,
-              medium: SALES_DEPARTMENT_REGULATION.mediumSeverity,
-            },
-            restrictedCountries: SALES_DEPARTMENT_REGULATION.restrictedCountries,
-            companyInstruction: settings.company_instruction || '',
-            salesGoal: settings.sales_goal || '',
-            forbiddenPhrases: [...new Set([...DEFAULT_FORBIDDEN_PHRASES, ...settingsForbiddenPhrases])],
-            upsellStrategy: settings.upsell_strategy || '',
-            criticalMoments: parseList(settings.critical_moments)
+      for (let index = 0; index < dialoguePayloads.length; index += 1) {
+        const dialogue = dialoguePayloads[index];
+        setAnalysisMessage({ type: 'success', text: `Анализируем диалог ${index + 1} из ${dialoguePayloads.length}: ${dialogue.fileName}` });
+        const workerController = new AbortController();
+        const workerAbortTimer = setTimeout(() => workerController.abort(), 45000);
+        const workerStartedAt = performance.now();
+
+        try {
+          const response = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              employeeName: selectedEmployeeName,
+              dialogues: [dialogue],
+              rules: rulePayload,
+              salesDepartmentRegulation: SALES_DEPARTMENT_REGULATION,
+              analysisContext: {
+                ...analysisContext,
+                batch: {
+                  currentDialogue: index + 1,
+                  totalDialogues: dialoguePayloads.length,
+                  fileName: dialogue.fileName,
+                },
+              }
+            }),
+            signal: workerController.signal
+          });
+          console.log(`[Review] worker ms for ${dialogue.fileName}: ${Math.round(performance.now() - workerStartedAt)}`);
+
+          if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Worker недоступен (${response.status}): ${errText}`);
           }
-        }),
-        signal: workerController.signal
-      });
-      console.log(`[Review] worker ms: ${Math.round(performance.now() - workerStartedAt)}`);
 
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Worker недоступен (${response.status}): ${errText}`);
+          let parsed;
+          try {
+            parsed = await response.json();
+          } catch {
+            throw new Error('Worker вернул некорректный JSON.');
+          }
+
+          const rawReport = parsed?.report;
+          if (!rawReport || typeof rawReport !== 'object') {
+            throw new Error('Worker вернул неверный формат отчёта.');
+          }
+
+          analyzedReports.push(normalizeAiReport(rawReport, dialogue.fallbackTitle));
+        } finally {
+          clearTimeout(workerAbortTimer);
+        }
       }
 
-      let parsed;
-      try {
-        parsed = await response.json();
-      } catch {
-        throw new Error('Worker вернул некорректный JSON.');
-      }
-
-      const rawReport = parsed?.report;
-      if (!rawReport || typeof rawReport !== 'object') {
-        throw new Error('Worker вернул неверный формат отчёта.');
-      }
-
-      const criticalViolations = normalizeCriticalViolations(rawReport.critical_violations);
-      const mistakes = normalizeMistakeList(rawReport.mistakes);
-      const strengths = normalizeTextList(rawReport.strengths);
-      const positives = Array.isArray(rawReport.positives)
-        ? normalizeTextList(rawReport.positives)
-        : strengths;
-      const riskFlags = normalizeTextList(rawReport.risk_flags);
-      const nextStepQuality = normalizeQualityValue(rawReport.next_step_quality);
-      const objectionHandlingQuality = normalizeQualityValue(rawReport.objection_handling_quality);
-      const followUpQuality = normalizeQualityValue(rawReport.follow_up_quality);
-      const regulationEvidence = {
-        type: 'sales_department_regulation',
-        critical_violations: criticalViolations,
-        risk_flags: riskFlags,
-        next_step_quality: nextStepQuality,
-        objection_handling_quality: objectionHandlingQuality,
-        follow_up_quality: followUpQuality,
-      };
-
-      const report = {
-        score: typeof rawReport.score === 'number' ? Math.max(0, Math.min(100, Math.round(rawReport.score))) : 0,
-        title: typeof rawReport.title === 'string' && rawReport.title.trim() ? rawReport.title.trim() : 'Отчёт',
-        management_summary: typeof rawReport.management_summary === 'string' ? rawReport.management_summary : '',
-        critical_violations: criticalViolations,
-        mistakes: dedupeMistakes([...criticalViolations, ...mistakes]),
-        strengths,
-        positives,
-        recommendations: Array.isArray(rawReport.recommendations) ? rawReport.recommendations : [],
-        next_step_quality: nextStepQuality,
-        objection_handling_quality: objectionHandlingQuality,
-        follow_up_quality: followUpQuality,
-        risk_flags: riskFlags,
-        evidence: Array.isArray(rawReport.evidence)
-          ? [...rawReport.evidence, regulationEvidence]
-          : [regulationEvidence],
-      };
-
-      const criticalCount = report.mistakes.filter((m) => m.severity === 'critical').length;
+      const aggregateReport = buildAggregatePreviewReport(analyzedReports, selectedEmployeeName);
+      const criticalCount = aggregateReport.mistakes.filter((m) => m.severity === 'critical').length;
 
       setAnalysisStage('saving_report');
       const { error: reportError } = await supabase
         .from('reports')
-        .insert({
+        .insert(analyzedReports.map((report) => ({
           check_id: currentCheckId,
           employee_id: selectedEmployee.id,
           organization_id: organizationId,
@@ -460,7 +519,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           positives: report.positives,
           recommendations: report.recommendations,
           evidence: report.evidence
-        });
+        })));
 
       if (reportError) throw new Error('Не удалось сохранить отчёт в базе данных.');
 
@@ -468,9 +527,9 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         .from('qa_checks')
         .update({
           status: 'complete',
-          score: report.score,
+          score: aggregateReport.score,
           completed_at: new Date().toISOString(),
-          summary: report.management_summary,
+          summary: aggregateReport.management_summary,
           critical_errors_count: criticalCount
         })
         .eq('id', currentCheckId);
@@ -478,7 +537,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       if (checkUpdateError) throw checkUpdateError;
 
       // Update employee checks_count: read current value, add analyzed dialogue count
-      console.log(`[PostAnalysisDataFlow] updating employee id=${selectedEmployee.id}: checks_count +${dialogueCount}, score=${report.score}`);
+      console.log(`[PostAnalysisDataFlow] updating employee id=${selectedEmployee.id}: checks_count +${dialogueCount}, score=${aggregateReport.score}`);
       const { data: empRow, error: empFetchErr } = await supabase
         .from('employees')
         .select('checks_count')
@@ -491,28 +550,23 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         const newCount = (empRow.checks_count ?? 0) + dialogueCount;
         const { error: empUpdateErr } = await supabase
           .from('employees')
-          .update({ checks_count: newCount, score: report.score })
+          .update({ checks_count: newCount, score: aggregateReport.score })
           .eq('id', selectedEmployee.id);
 
         if (empUpdateErr) {
           console.error(`[PostAnalysisDataFlow] failed to update employee id=${selectedEmployee.id}:`, empUpdateErr);
         } else {
-          console.log(`[PostAnalysisDataFlow] employee updated: id=${selectedEmployee.id} checks_count=${newCount} score=${report.score}`);
+          console.log(`[PostAnalysisDataFlow] employee updated: id=${selectedEmployee.id} checks_count=${newCount} score=${aggregateReport.score}`);
           // Sync local state (score + dialogs) without page reload
-          onDialogueAnalyzed?.(selectedEmployee.id, dialogueCount, report.score);
+          onDialogueAnalyzed?.(selectedEmployee.id, dialogueCount, aggregateReport.score);
         }
       }
 
       setAnalysisStage('completed');
       console.log(`[Review] total analysis ms: ${Math.round(performance.now() - startedAt)}`);
       setAnalysis('complete');
-      setAnalysisMessage({ type: 'success', text: 'Отчёт сформирован и сохранён.' });
-      setPreviewReport({
-        ...report,
-        employeeName: selectedEmployeeName,
-        dialogueCount,
-        createdAt: new Date().toISOString(),
-      });
+      setAnalysisMessage({ type: 'success', text: `Сформировано отчётов: ${analyzedReports.length}.` });
+      setPreviewReport(aggregateReport);
       showToast('Отчёт сформирован и сохранён');
     } catch (err) {
       const userMessage = err.name === 'AbortError'
@@ -533,7 +587,6 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           });
       }
     } finally {
-      clearTimeout(workerAbortTimer);
       setAnalyzing(false);
     }
   };
