@@ -3264,10 +3264,14 @@ select {
 }
 
 .qtc-employee-select {
+  position: relative;
+  z-index: 30;
   width: min(260px, 100%);
 }
 
 .qtc-employee-select .premium-select {
+  position: relative;
+  z-index: 31;
   width: 100%;
 }
 
@@ -3279,7 +3283,22 @@ select {
 }
 
 .qtc-employee-select .premium-select-menu {
-  min-width: 260px;
+  z-index: 120;
+  min-width: 220px;
+  max-height: 238px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.chart-card:has(.qtc-employee-select .premium-select-menu) {
+  position: relative;
+  z-index: 40;
+}
+
+.qtc-employee-select .premium-select-option {
+  min-height: 38px;
 }
 
 .qtc-pill {
