@@ -96,73 +96,40 @@ export async function acceptOrganizationInvite(supabase, user, invite) {
     throw error;
   }
 
-  const { data: existingMember, error: existingError } = await supabase
-    .from('employees')
-    .select('id, organization_id')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
+  const displayName =
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    userEmail.split('@')[0] ||
+    'Новый пользователь';
 
-  if (existingError) {
-    console.error('[InviteAcceptance] failed:', existingError);
-    throw existingError;
-  }
+  const acceptPromise = supabase.rpc('accept_invite_for_current_user', {
+    p_invite_id: invite.id,
+    p_display_name: displayName,
+  });
 
-  if (existingMember) {
-    if (existingMember.organization_id !== invite.organization_id) {
-      const error = new Error('Пользователь уже подключён к другой организации.');
-      console.error('[InviteAcceptance] failed:', error);
-      throw error;
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Принятие приглашения заняло слишком много времени. Проверьте SQL-функцию accept_invite_for_current_user.')), 15000);
+  });
+
+  const { data, error: acceptError } = await Promise.race([acceptPromise, timeoutPromise]);
+
+  if (acceptError) {
+    console.error('[InviteAcceptance] failed:', acceptError);
+    if (acceptError.code === '42883') {
+      throw new Error('В Supabase не создана функция accept_invite_for_current_user. Выполните SQL для invite acceptance.');
     }
-
-    console.log('[InviteAcceptance] employee already exists:', existingMember.id);
-  } else {
-    const displayName =
-      user.user_metadata?.full_name ||
-      user.user_metadata?.name ||
-      userEmail.split('@')[0] ||
-      'Новый пользователь';
-
-    const { error: insertError } = await supabase
-      .from('employees')
-      .insert({
-        organization_id: invite.organization_id,
-        auth_user_id: user.id,
-        email: user.email,
-        name: displayName,
-        role: 'member',
-        status: 'Активен',
-        score: 0,
-        checks_count: 0,
-      });
-
-    if (insertError) {
-      console.error('[InviteAcceptance] failed:', insertError);
-      throw insertError;
-    }
-
-    console.log('[InviteAcceptance] employee created:', user.id);
+    throw acceptError;
   }
 
-  const { error: inviteError } = await supabase
-    .from('organization_invites')
-    .update({
-      status: 'accepted',
-      accepted_at: new Date().toISOString(),
-      accepted_auth_user_id: user.id,
-    })
-    .eq('id', invite.id)
-    .eq('organization_id', invite.organization_id);
+  const accepted = Array.isArray(data) ? data[0] : data;
+  const organizationId = accepted?.organization_id ?? invite.organization_id;
 
-  if (inviteError) {
-    console.error('[InviteAcceptance] failed:', inviteError);
-    throw inviteError;
-  }
-
+  console.log('[InviteAcceptance] employee created or already exists:', user.id);
   console.log('[InviteAcceptance] invite accepted:', invite.id);
 
   return {
     success: true,
-    organizationId: invite.organization_id,
+    organizationId,
   };
 }
 
