@@ -977,9 +977,8 @@ function App({ session }) {
           systemStatus={{
             supabase: supabaseStatus,
             analysis: analysis,
-            upload: 'beta',
-            reports: analysis === 'complete' ? 'active' : 'beta',
-            pdf: 'not_implemented'
+            upload: supabaseStatus === 'connected' ? 'connected' : supabaseStatus,
+            reports: analysis === 'complete' ? 'active' : 'checking',
           }}
         />
         <main className="workspace">

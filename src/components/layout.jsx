@@ -52,9 +52,16 @@ const STATUS_DOT = {
 };
 
 function analysisToStatus(analysis) {
-  if (analysis === 'complete' || analysis === 'running') return 'active';
+  if (analysis === 'complete' || analysis === 'running' || analysis === 'idle') return 'connected';
   if (analysis === 'error') return 'degraded';
-  return 'beta';
+  return 'checking';
+}
+
+function featureStatus(value, fallback = 'checking') {
+  if (value === 'connected' || value === 'active') return 'connected';
+  if (value === 'offline' || value === 'degraded') return value;
+  if (value === 'checking') return 'checking';
+  return fallback;
 }
 
 function OrganizationNameModal({ organizationId, orgName, onClose, onSaved }) {
@@ -737,10 +744,9 @@ export function Sidebar({ active, setActive, user, orgName, organizationId, onOr
         <div className="mvp-status-list">
           {[
             { label: 'AI-анализ', value: analysisToStatus(systemStatus.analysis) },
-            { label: 'Загрузка файлов', value: systemStatus.upload ?? 'beta' },
+            { label: 'Загрузка файлов', value: featureStatus(systemStatus.upload) },
             { label: 'База данных', value: systemStatus.supabase ?? 'checking' },
             { label: 'API', value: systemStatus.supabase === 'connected' ? 'connected' : systemStatus.supabase === 'offline' ? 'offline' : 'checking' },
-            { label: 'PDF-экспорт', value: systemStatus.pdf ?? 'not_implemented' },
           ].map(({ label, value }) => (
             <div className="mvp-status-row" key={label}>
               <span><i className={`dot ${STATUS_DOT[value] ?? 'demo'}`} />{label}</span>
