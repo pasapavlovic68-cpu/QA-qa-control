@@ -88,17 +88,30 @@ using (
 );
 
 drop policy if exists "Organization members can select employees in their organization" on public.employees;
+drop function if exists public.is_organization_member(uuid);
+create or replace function public.is_organization_member(p_organization_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.employees member
+    where member.organization_id = p_organization_id
+      and member.auth_user_id = auth.uid()
+  );
+$$;
+
+grant execute on function public.is_organization_member(uuid) to authenticated;
+
 create policy "Organization members can select employees in their organization"
 on public.employees
 for select
 to authenticated
 using (
-  exists (
-    select 1
-    from public.employees member
-    where member.organization_id = employees.organization_id
-      and member.auth_user_id = auth.uid()
-  )
+  public.is_organization_member(organization_id)
 );
 
 drop policy if exists "Organization members can select their organization" on public.organizations;
@@ -107,12 +120,7 @@ on public.organizations
 for select
 to authenticated
 using (
-  exists (
-    select 1
-    from public.employees member
-    where member.organization_id = organizations.id
-      and member.auth_user_id = auth.uid()
-  )
+  public.is_organization_member(id)
 );
 
 create or replace function public.accept_invite_for_current_user(

@@ -535,7 +535,15 @@ function Root() {
       });
   }, [session?.user?.id]);
 
-  if (session === undefined) return null;
+  if (session === undefined) {
+    return (
+      <OrganizationGate
+        resolution={{ status: 'loading', organizationName: '' }}
+        inviteAcceptanceStatus="idle"
+        inviteAcceptanceError=""
+      />
+    );
+  }
   if (!session) return <LandingPage />;
   return <App session={session} />;
 }
@@ -568,6 +576,8 @@ function OrganizationGate({ resolution, inviteAcceptanceStatus, inviteAcceptance
   const organizationName = resolution?.organizationName || 'организацию';
   const isInvite = resolution?.status === 'invite_found';
   const hasInviteError = isInvite && inviteAcceptanceStatus === 'error';
+  const isLoading = resolution?.status === 'loading';
+  const hasResolutionError = resolution?.status === 'error';
 
   return (
     <div style={{
@@ -588,14 +598,18 @@ function OrganizationGate({ resolution, inviteAcceptanceStatus, inviteAcceptance
         textAlign: 'center',
       }}>
         <h2 style={{ margin: '0 0 10px', fontSize: 24, color: 'var(--text)' }}>
+          {isLoading && 'Загружаем LeadProof...'}
+          {hasResolutionError && 'Не удалось открыть рабочее пространство'}
           {hasInviteError && 'Не удалось подключить организацию'}
           {isInvite && !hasInviteError && 'Подключаем организацию...'}
-          {!isInvite && 'Рабочее пространство ещё не создано'}
+          {!isLoading && !hasResolutionError && !isInvite && 'Рабочее пространство ещё не создано'}
         </h2>
         <p style={{ margin: 0, color: 'var(--muted)', fontSize: 15, lineHeight: 1.55 }}>
+          {isLoading && 'Проверяем сессию и доступ к организации.'}
+          {hasResolutionError && (resolution?.message || 'Обновите страницу или войдите заново.')}
           {hasInviteError && (inviteAcceptanceError || 'Проверьте приглашение и попробуйте войти снова.')}
           {isInvite && !hasInviteError && `Найдено приглашение в организацию: ${organizationName}`}
-          {!isInvite && 'Создание организации будет добавлено следующим шагом.'}
+          {!isLoading && !hasResolutionError && !isInvite && 'Создание организации будет добавлено следующим шагом.'}
         </p>
       </div>
     </div>
@@ -771,6 +785,7 @@ function App({ session }) {
   const [organizationId, setOrganizationId] = useState(null);
   const [orgName, setOrgName] = useState('');
   const [orgResolution, setOrgResolution] = useState(null);
+  const [orgResolutionError, setOrgResolutionError] = useState('');
   const [inviteAcceptanceStatus, setInviteAcceptanceStatus] = useState('idle');
   const [inviteAcceptanceError, setInviteAcceptanceError] = useState('');
   const [employeesData, setEmployeesData] = useState([]);
@@ -785,6 +800,7 @@ function App({ session }) {
     setEmployeesData([]);
     setEmployeesLoading(true);
     setSupabaseStatus('checking');
+    setOrgResolutionError('');
     setInviteAcceptanceStatus('idle');
     setInviteAcceptanceError('');
 
@@ -805,6 +821,8 @@ function App({ session }) {
       .catch((err) => {
         if (cancelled) return;
         console.error('[App] failed to resolve user organization:', err);
+        setOrgResolution({ status: 'error', message: err?.message || 'Не удалось загрузить организацию.' });
+        setOrgResolutionError(err?.message || 'Не удалось загрузить организацию.');
         setEmployeesLoading(false);
         setSupabaseStatus('offline');
       });
@@ -912,7 +930,25 @@ function App({ session }) {
     showToast?.('Рабочее пространство создано');
   };
 
-  if (!orgResolution) return null;
+  if (!orgResolution) {
+    return (
+      <OrganizationGate
+        resolution={{ status: 'loading', organizationName: '' }}
+        inviteAcceptanceStatus={inviteAcceptanceStatus}
+        inviteAcceptanceError=""
+      />
+    );
+  }
+
+  if (orgResolution.status === 'error') {
+    return (
+      <OrganizationGate
+        resolution={{ status: 'error', message: orgResolutionError || orgResolution.message }}
+        inviteAcceptanceStatus={inviteAcceptanceStatus}
+        inviteAcceptanceError=""
+      />
+    );
+  }
 
   if (orgResolution.status === 'needs_onboarding') {
     return <OnboardingWorkspaceScreen user={session?.user} onCreated={handleWorkspaceCreated} />;
