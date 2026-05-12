@@ -525,7 +525,15 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
     if (a.name === 'Без канала') return 1;
     if (b.name === 'Без канала') return -1;
     return a.name.localeCompare(b.name, 'ru');
-  });
+  }).map((group) => ({
+    ...group,
+    employees: [...group.employees].sort((a, b) => {
+      const aIsWorking = todaySchedule[a.id]?.status === 'work' ? 0 : 1;
+      const bIsWorking = todaySchedule[b.id]?.status === 'work' ? 0 : 1;
+      if (aIsWorking !== bIsWorking) return aIsWorking - bIsWorking;
+      return a.name.localeCompare(b.name, 'ru');
+    }),
+  }));
 
   return (
     <>
