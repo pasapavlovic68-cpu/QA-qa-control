@@ -3964,9 +3964,9 @@ select {
 }
 
 .today-schedule-badge {
-  flex: 0 0 128px;
-  width: 128px;
-  min-width: 128px;
+  flex: 0 0 206px;
+  width: 206px;
+  min-width: 206px;
   height: 26px;
   justify-content: flex-start;
   border: 1px solid var(--today-schedule-border);
@@ -3982,7 +3982,27 @@ select {
 .today-schedule-label {
   display: block;
   min-width: 0;
+  flex: 0 0 auto;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-schedule-divider {
+  width: 1px;
+  height: 12px;
+  flex: 0 0 auto;
+  background: currentColor;
+  opacity: 0.28;
+}
+
+.today-schedule-time {
+  min-width: 0;
+  overflow: hidden;
+  color: #4f6f63;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4212,7 +4232,7 @@ select {
   z-index: 20;
   display: grid;
   gap: 4px;
-  min-width: 168px;
+  min-width: 224px;
   padding: 8px;
   border: 1px solid rgba(255,255,255,0.78);
   border-radius: 18px;
@@ -4234,6 +4254,79 @@ select {
 
 .employee-schedule-selector button:hover {
   background: rgba(119,101,227,0.08);
+}
+
+.employee-schedule-shift-editor {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(25,138,98,0.12);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(25,138,98,0.08), rgba(255,255,255,0.82));
+}
+
+.employee-schedule-shift-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.employee-schedule-shift-title i {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.employee-schedule-time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.employee-schedule-time-grid label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.employee-schedule-time-grid input {
+  width: 100%;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid rgba(119,101,227,0.14);
+  border-radius: 11px;
+  background: rgba(255,255,255,0.86);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  outline: none;
+}
+
+.employee-schedule-time-grid input:focus {
+  border-color: rgba(25,138,98,0.34);
+  box-shadow: 0 0 0 3px rgba(25,138,98,0.08);
+}
+
+.employee-schedule-selector .employee-schedule-save-shift {
+  justify-content: center;
+  background: rgba(25,138,98,0.12);
+  color: #198a62;
+}
+
+.employee-schedule-selector .employee-schedule-save-shift:hover {
+  background: rgba(25,138,98,0.16);
 }
 
 .employee-schedule-selector button:last-child i {

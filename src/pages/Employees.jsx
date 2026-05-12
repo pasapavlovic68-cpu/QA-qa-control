@@ -57,6 +57,8 @@ const SCHEDULE_STATUSES = {
 };
 
 const UNSET_SCHEDULE_STATUS = { label: 'Не назначено', short: '—', color: '#8a8fa8' };
+const DEFAULT_SHIFT_START = '10:00';
+const DEFAULT_SHIFT_END = '19:00';
 
 function formatDateKey(date) {
   const year = date.getFullYear();
@@ -93,6 +95,20 @@ function formatScheduleDay(date) {
 
 function formatScheduleWeekday(date) {
   return date.toLocaleDateString('ru-RU', { weekday: 'short' }).replace('.', '');
+}
+
+function normalizeScheduleTime(value) {
+  if (!value || typeof value !== 'string') return '';
+  return value.slice(0, 5);
+}
+
+function createScheduleEntry(row) {
+  if (!row?.status) return null;
+  return {
+    status: row.status,
+    start_time: normalizeScheduleTime(row.start_time),
+    end_time: normalizeScheduleTime(row.end_time),
+  };
 }
 
 function StatusBadge({ name, statusTone, color }) {
@@ -135,12 +151,16 @@ function ChannelBadge({ name, color }) {
   );
 }
 
-function TodayScheduleBadge({ status }) {
+function TodayScheduleBadge({ entry }) {
+  const status = typeof entry === 'string' ? entry : entry?.status;
+  const startTime = normalizeScheduleTime(entry?.start_time);
+  const endTime = normalizeScheduleTime(entry?.end_time);
+  const hasWorkTime = status === 'work' && startTime && endTime;
   const schedule = SCHEDULE_STATUSES[status] ?? UNSET_SCHEDULE_STATUS;
 
   return (
     <span
-      className={`today-schedule-badge ${status ? 'filled' : 'unset'}`}
+      className={`today-schedule-badge ${status ? 'filled' : 'unset'} ${hasWorkTime ? 'has-time' : ''}`}
       style={{
         '--today-schedule-color': schedule.color,
         '--today-schedule-bg': hexToRgba(schedule.color, status ? 0.12 : 0.08),
@@ -149,6 +169,12 @@ function TodayScheduleBadge({ status }) {
     >
       <span className="today-schedule-dot" />
       <span className="today-schedule-label">{schedule.label}</span>
+      {hasWorkTime && (
+        <>
+          <span className="today-schedule-divider" />
+          <span className="today-schedule-time">{startTime}-{endTime}</span>
+        </>
+      )}
     </span>
   );
 }
@@ -223,17 +249,35 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
     }
     supabase
       .from('employee_schedule')
-      .select('employee_id, status')
+      .select('employee_id, status, start_time, end_time')
       .eq('organization_id', organizationId)
       .eq('work_date', todayDateKey)
       .then(({ data, error }) => {
         if (error) {
           console.error('[Employees] today schedule fetch error:', error);
+          if (error.code === '42703') {
+            supabase
+              .from('employee_schedule')
+              .select('employee_id, status')
+              .eq('organization_id', organizationId)
+              .eq('work_date', todayDateKey)
+              .then(({ data: fallbackData, error: fallbackError }) => {
+                if (fallbackError) {
+                  console.error('[Employees] today schedule fallback fetch error:', fallbackError);
+                  return;
+                }
+                const fallbackSchedule = {};
+                (fallbackData ?? []).forEach((record) => {
+                  fallbackSchedule[record.employee_id] = createScheduleEntry(record);
+                });
+                setTodaySchedule(fallbackSchedule);
+              });
+          }
           return;
         }
         const nextSchedule = {};
         (data ?? []).forEach((record) => {
-          nextSchedule[record.employee_id] = record.status;
+          nextSchedule[record.employee_id] = createScheduleEntry(record);
         });
         setTodaySchedule(nextSchedule);
       });
@@ -346,14 +390,18 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
     }
   };
 
-  const handleScheduleChange = ({ employeeId, dateKey, status }) => {
+  const handleScheduleChange = ({ employeeId, dateKey, status, start_time, end_time }) => {
     if (dateKey !== todayDateKey) return;
     setTodaySchedule((prev) => {
       const next = { ...prev };
       if (!status) {
         delete next[employeeId];
       } else {
-        next[employeeId] = status;
+        next[employeeId] = {
+          status,
+          start_time: normalizeScheduleTime(start_time),
+          end_time: normalizeScheduleTime(end_time),
+        };
       }
       return next;
     });
@@ -633,7 +681,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
                         </div>
                         <div className="employee-badge-row">
                           <ChannelBadge name={displayChannel} color={channelColor} />
-                          <TodayScheduleBadge status={todaySchedule[employee.id]} />
+                          <TodayScheduleBadge entry={todaySchedule[employee.id]} />
                         </div>
                         <div className="employee-assignment-actions">
                           <motion.button
@@ -1009,7 +1057,7 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
       const to = formatDateKey(dates[dates.length - 1]);
       const { data, error: fetchError } = await supabase
         .from('employee_schedule')
-        .select('id, employee_id, work_date, status')
+        .select('id, employee_id, work_date, status, start_time, end_time')
         .eq('organization_id', organizationId)
         .in('employee_id', employeeIds)
         .gte('work_date', from)
@@ -1018,13 +1066,36 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
       setLoading(false);
       if (fetchError) {
         console.error('[EmployeeSchedule] fetch error:', fetchError);
+        if (fetchError.code === '42703') {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('employee_schedule')
+            .select('id, employee_id, work_date, status')
+            .eq('organization_id', organizationId)
+            .in('employee_id', employeeIds)
+            .gte('work_date', from)
+            .lte('work_date', to);
+
+          if (fallbackError) {
+            console.error('[EmployeeSchedule] fallback fetch error:', fallbackError);
+            setError('Не удалось загрузить график.');
+            return;
+          }
+
+          const fallbackMap = {};
+          (fallbackData ?? []).forEach((row) => {
+            fallbackMap[`${row.employee_id}:${row.work_date}`] = createScheduleEntry(row);
+          });
+          setSchedule(fallbackMap);
+          setError('Чтобы сохранять время смен, добавьте SQL-колонки start_time и end_time.');
+          return;
+        }
         setError('Не удалось загрузить график.');
         return;
       }
 
       const map = {};
       (data ?? []).forEach((row) => {
-        map[`${row.employee_id}:${row.work_date}`] = row.status;
+        map[`${row.employee_id}:${row.work_date}`] = createScheduleEntry(row);
       });
       setSchedule(map);
     };
@@ -1052,7 +1123,7 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
     return a.name.localeCompare(b.name, 'ru');
   });
 
-  const handleCellChange = async (employee, dateKey, nextStatus) => {
+  const handleCellChange = async (employee, dateKey, nextStatus, shift = {}) => {
     const cellKey = `${employee.id}:${dateKey}`;
     setError(null);
 
@@ -1076,10 +1147,9 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
             delete next[cellKey];
             return next;
           });
-          onScheduleChange?.({ employeeId: employee.id, dateKey, status: null });
+          onScheduleChange?.({ employeeId: employee.id, dateKey, status: null, start_time: null, end_time: null });
         },
         toast: () => showToast('График обновлён'),
-        close: onClose,
         onError: (error) => {
           console.error('[EmployeeSchedule] delete error:', error);
           setSelector(null);
@@ -1094,6 +1164,8 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
       employee_id: employee.id,
       work_date: dateKey,
       status: nextStatus,
+      start_time: nextStatus === 'work' ? shift.start_time : null,
+      end_time: nextStatus === 'work' ? shift.end_time : null,
       updated_at: new Date().toISOString(),
     };
 
@@ -1103,24 +1175,40 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
         const { data, error: upsertError } = await supabase
           .from('employee_schedule')
           .upsert(payload, { onConflict: 'employee_id,work_date' })
-          .select('id, employee_id, work_date, status')
+          .select('id, employee_id, work_date, status, start_time, end_time')
           .single();
         if (upsertError) throw upsertError;
         return data;
       },
       reset: (data) => {
         setSelector(null);
-        setSchedule((prev) => ({ ...prev, [cellKey]: data.status }));
-        onScheduleChange?.({ employeeId: employee.id, dateKey, status: data.status });
+        const entry = createScheduleEntry(data);
+        setSchedule((prev) => ({ ...prev, [cellKey]: entry }));
+        onScheduleChange?.({ employeeId: employee.id, dateKey, ...entry });
       },
       toast: () => showToast('График обновлён'),
-      close: onClose,
       onError: (error) => {
         console.error('[EmployeeSchedule] upsert error:', error);
         setSelector(null);
-        setError('Не удалось сохранить день.');
+        setError(error.code === '42703' ? 'Добавьте SQL-колонки start_time и end_time для сохранения времени.' : 'Не удалось сохранить день.');
       },
     });
+  };
+
+  const openScheduleSelector = (cellKey, employee, dateKey, entry) => {
+    const currentStart = normalizeScheduleTime(entry?.start_time) || DEFAULT_SHIFT_START;
+    const currentEnd = normalizeScheduleTime(entry?.end_time) || DEFAULT_SHIFT_END;
+    setSelector({
+      cellKey,
+      employee,
+      dateKey,
+      startTime: currentStart,
+      endTime: currentEnd,
+    });
+  };
+
+  const updateSelectorTime = (field, value) => {
+    setSelector((current) => current ? { ...current, [field]: value } : current);
   };
 
   return (
@@ -1191,7 +1279,8 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
                           {dates.map((date) => {
                             const dateKey = formatDateKey(date);
                             const cellKey = `${employee.id}:${dateKey}`;
-                            const statusKey = schedule[cellKey];
+                            const scheduleEntry = schedule[cellKey];
+                            const statusKey = typeof scheduleEntry === 'string' ? scheduleEntry : scheduleEntry?.status;
                             const statusMeta = SCHEDULE_STATUSES[statusKey];
                             const selectorOpen = selector?.cellKey === cellKey;
                             return (
@@ -1205,7 +1294,7 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
                                     borderColor: hexToRgba(statusMeta.color, 0.28),
                                   } : undefined}
                                   disabled={savingCell === cellKey}
-                                  onClick={() => setSelector(selectorOpen ? null : { cellKey, employee, dateKey })}
+                                  onClick={() => selectorOpen ? setSelector(null) : openScheduleSelector(cellKey, employee, dateKey, scheduleEntry)}
                                 >
                                   {savingCell === cellKey ? '...' : statusMeta?.short || '—'}
                                 </button>
@@ -1218,7 +1307,41 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
                                       exit={{ opacity: 0, y: 6, scale: 0.97 }}
                                       transition={{ duration: 0.18 }}
                                     >
-                                      {Object.entries(SCHEDULE_STATUSES).map(([key, item]) => (
+                                      <div className="employee-schedule-shift-editor">
+                                        <div className="employee-schedule-shift-title">
+                                          <i style={{ background: SCHEDULE_STATUSES.work.color }}>{SCHEDULE_STATUSES.work.short}</i>
+                                          <span>{SCHEDULE_STATUSES.work.label}</span>
+                                        </div>
+                                        <div className="employee-schedule-time-grid">
+                                          <label>
+                                            <span>С</span>
+                                            <input
+                                              type="time"
+                                              value={selector.startTime}
+                                              onChange={(event) => updateSelectorTime('startTime', event.target.value)}
+                                            />
+                                          </label>
+                                          <label>
+                                            <span>До</span>
+                                            <input
+                                              type="time"
+                                              value={selector.endTime}
+                                              onChange={(event) => updateSelectorTime('endTime', event.target.value)}
+                                            />
+                                          </label>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          className="employee-schedule-save-shift"
+                                          onClick={() => handleCellChange(employee, dateKey, 'work', {
+                                            start_time: selector.startTime || DEFAULT_SHIFT_START,
+                                            end_time: selector.endTime || DEFAULT_SHIFT_END,
+                                          })}
+                                        >
+                                          Сохранить смену
+                                        </button>
+                                      </div>
+                                      {Object.entries(SCHEDULE_STATUSES).filter(([key]) => key !== 'work').map(([key, item]) => (
                                         <button key={key} type="button" onClick={() => handleCellChange(employee, dateKey, key)}>
                                           <i style={{ background: item.color }}>{item.short}</i>
                                           {item.label}
