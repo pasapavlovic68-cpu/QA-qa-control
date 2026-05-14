@@ -427,7 +427,11 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         salesGoal: settings.sales_goal || '',
         forbiddenPhrases: [...new Set([...DEFAULT_FORBIDDEN_PHRASES, ...settingsForbiddenPhrases])],
         upsellStrategy: settings.upsell_strategy || '',
-        criticalMoments: parseList(settings.critical_moments)
+        criticalMoments: parseList(settings.critical_moments),
+        // Custom rules priority: checked first, deductions applied by weight before regulation
+        customRulesInstruction: (rules ?? []).filter((r) => r.enabled !== false).length > 0
+          ? `ОБЯЗАТЕЛЬНО: В организации есть ${(rules ?? []).filter((r) => r.enabled !== false).length} кастомных правил. Проверь каждое правило отдельно. Нарушение правила снижает балл по весу: Критичная = -20...-30, Высокая = -10...-15, Средняя = -5...-10, Низкая = -2...-5. Кастомные правила имеют приоритет над общим регламентом.`
+          : null,
       };
       const rulePayload = (rules ?? []).map((r) => {
         // category field stores "Category · Weight" (e.g. "Процесс · Критичная")
@@ -453,6 +457,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         };
       });
       const analyzedReports = [];
+      const failedDialogues = [];
 
       setAnalysisStage('contacting_ai');
       for (let index = 0; index < dialoguePayloads.length; index += 1) {
@@ -502,9 +507,28 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           }
 
           analyzedReports.push(normalizeAiReport(rawReport, dialogue.fallbackTitle));
+        } catch (dialogueErr) {
+          // Don't abort entire batch — save successful dialogues, report failures separately
+          const errMsg = dialogueErr.name === 'AbortError' ? 'Timeout (45s)' : dialogueErr.message;
+          failedDialogues.push({ fileName: dialogue.fileName, error: errMsg });
+          console.error(`[Review] dialogue ${index + 1}/${dialoguePayloads.length} failed (${dialogue.fileName}):`, dialogueErr);
         } finally {
           clearTimeout(workerAbortTimer);
         }
+      }
+
+      // All dialogues failed — nothing to save
+      if (analyzedReports.length === 0) {
+        throw new Error(
+          failedDialogues.length === 1
+            ? `Диалог не удалось проанализировать: ${failedDialogues[0].error}`
+            : `Все ${failedDialogues.length} диалогов завершились с ошибкой.`
+        );
+      }
+
+      // Some failed — warn user but continue saving the successful ones
+      if (failedDialogues.length > 0) {
+        showToast(`Сохранено ${analyzedReports.length} из ${dialoguePayloads.length} — ${failedDialogues.length} диал. не удалось`, 'error');
       }
 
       const aggregateReport = buildAggregatePreviewReport(analyzedReports, selectedEmployeeName);
@@ -562,7 +586,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       if (empFetchErr) {
         console.error(`[PostAnalysisDataFlow] failed to fetch employee checks_count:`, empFetchErr);
       } else {
-        const newCount = (empRow.checks_count ?? 0) + dialogueCount;
+        const newCount = (empRow.checks_count ?? 0) + analyzedReports.length;
         const { error: empUpdateErr } = await supabase
           .from('employees')
           .update({ checks_count: newCount, score: trueAvgScore })
