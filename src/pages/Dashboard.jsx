@@ -717,42 +717,46 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
               : emptyCardText('Топ появится после первых проверок.')}
           </div>
         </PremiumCard>
-        <RevealCard title="Частые ошибки" action="Приоритеты">
-          {topErrors.length > 0
-            ? (
-              <div className="error-bars">
-                {topErrors.map(([title, count]) => (
-                  <div className="bar-row" key={title}>
-                    <div><span>{title}</span><b>{count}</b></div>
-                    <div className="bar-track">
-                      <motion.span
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(count * 20, 100)}%` }}
-                        transition={{ duration: 0.7 }}
-                      />
+        <RevealCard title="Частые ошибки" action="Приоритеты" className="dashboard-fixed-card">
+          <div className="dashboard-card-scroll">
+            {topErrors.length > 0
+              ? (
+                <div className="error-bars">
+                  {topErrors.map(([title, count]) => (
+                    <div className="bar-row" key={title}>
+                      <div><span>{title}</span><b>{count}</b></div>
+                      <div className="bar-track">
+                        <motion.span
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(count * 20, 100)}%` }}
+                          transition={{ duration: 0.7 }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )
-            : emptyCardText(dashLoading ? 'Загружаем…' : 'Ошибки появятся после AI-анализа диалогов.')}
+                  ))}
+                </div>
+              )
+              : emptyCardText(dashLoading ? 'Загружаем…' : 'Ошибки появятся после AI-анализа диалогов.')}
+          </div>
         </RevealCard>
-        <RevealCard title="Последние проверки" action="Журнал">
-          {latestChecks.length > 0
-            ? (
-              <div className="rank-list">
-                {latestChecks.map((check) => (
-                  <div className="rank-row" key={check.id} style={{ cursor: 'default' }}>
-                    <span className="rank">{check.score}</span>
-                    <span>
-                      <strong>{check.employee}</strong>
-                      <small>{check.date}</small>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )
-            : emptyCardText(dashLoading ? 'Загружаем…' : 'Проверок пока нет.')}
+        <RevealCard title="Последние проверки" action="Журнал" className="dashboard-fixed-card">
+          <div className="dashboard-card-scroll">
+            {latestChecks.length > 0
+              ? (
+                <div className="rank-list">
+                  {latestChecks.map((check) => (
+                    <div className="rank-row" key={check.id} style={{ cursor: 'default' }}>
+                      <span className="rank">{check.score}</span>
+                      <span>
+                        <strong>{check.employee}</strong>
+                        <small>{check.date}</small>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )
+              : emptyCardText(dashLoading ? 'Загружаем…' : 'Проверок пока нет.')}
+          </div>
         </RevealCard>
       </div>
     </>

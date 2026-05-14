@@ -415,6 +415,18 @@ h1 {
   color: var(--success);
 }
 
+.dashboard-fixed-card {
+  height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-card-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
 .dashboard-grid,
 .report-layout {
   display: grid;
