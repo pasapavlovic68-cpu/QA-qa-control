@@ -646,6 +646,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         getStatusTone={getStatusTone}
         todaySchedule={todaySchedule}
         openStatusAssignment={openStatusAssignment}
+        openChannelAssignment={openChannelAssignment}
         getDisplayName={getDisplayName}
         editingNameId={editingNameId}
         editingNameValue={editingNameValue}
@@ -963,7 +964,7 @@ function EmployeeChannelAssignModal({ employee, channels, saving, error, onClose
   );
 }
 
-function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, todaySchedule, openStatusAssignment, getDisplayName, editingNameId, editingNameValue, nameSaving, onStartEditName, onNameChange, onNameSave, onNameCancel }) {
+function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, todaySchedule, openStatusAssignment, openChannelAssignment, getDisplayName, editingNameId, editingNameValue, nameSaving, onStartEditName, onNameChange, onNameSave, onNameCancel }) {
   const showToast = useToast();
   const [period, setPeriod] = useState('two_weeks');
   const [schedule, setSchedule] = useState({});
@@ -1291,6 +1292,19 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                             <StatusBadge name={displayStatus} statusTone={fallbackTone} color={customColor} />
                           </button>
                           <TodayScheduleBadge entry={todaySchedule[employee.id]} />
+                          <button
+                            type="button"
+                            className="status-badge-clickable"
+                            style={{ marginTop: 2 }}
+                            onClick={(e) => { e.stopPropagation(); openChannelAssignment(employee, e); }}
+                          >
+                            {(() => {
+                              const ch = getDisplayChannel(employee);
+                              const chList = ch ? ch.split(',').map((s) => s.trim()).filter(Boolean) : [];
+                              if (!chList.length) return <ChannelBadge name="Без канала" color="#8a8fa8" />;
+                              return chList.map((c) => <ChannelBadge key={c} name={c} color={getChannelColor(c, channels)} />);
+                            })()}
+                          </button>
                         </div>
                       </div>
                       <button
