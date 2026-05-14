@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { CustomSelect } from '../components/shared.jsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Building2, FileText, ShieldAlert, SlidersHorizontal, Target, TrendingUp, X, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
@@ -179,28 +180,11 @@ function SettingEditModal({ fieldKey, meta, initialValue, layoutId, onClose, onS
 
             <motion.div variants={modalSectionVariants}>
               {meta.type === 'select' ? (
-                <select
+                <CustomSelect
                   value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: 48,
-                    padding: '0 14px',
-                    border: '1px solid var(--line)',
-                    borderRadius: 15,
-                    background: 'rgba(255,255,255,0.84)',
-                    color: 'var(--text)',
-                    fontSize: 15,
-                    outline: 'none',
-                    cursor: 'pointer',
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <option value="">— не выбрано —</option>
-                  {meta.options.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                  options={meta.options}
+                  onChange={setDraft}
+                />
               ) : (
                 <>
                   <textarea

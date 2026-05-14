@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Plus, X, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
-import { Avatar } from '../components/shared.jsx';
+import { Avatar, CustomSelect } from '../components/shared.jsx';
 import { ModalPortal, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -206,14 +206,15 @@ function AddStatsModal({ employees, organizationId, onClose, onSaved }) {
             </motion.div>
 
             <motion.div className="stats-form-grid" variants={modalSectionVariants}>
-              <label className="stats-form-field">
+              <div className="stats-form-field">
                 <span>Сотрудник</span>
-                <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
-              </label>
+                <CustomSelect
+                  value={employeeId}
+                  options={employees.map((emp) => ({ value: emp.id, label: emp.name }))}
+                  onChange={setEmployeeId}
+                  placeholder="Выбрать сотрудника"
+                />
+              </div>
               <div className="stats-form-field">
                 <span>Дата</span>
                 <DatePicker value={date} onChange={setDate} />

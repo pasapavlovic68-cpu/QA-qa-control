@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase.js';
 import { runModalSuccessFlow } from '../lib/modalSuccess.js';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from './modal.jsx';
 import { useToast } from './Toast.jsx';
-import { Avatar, Metric, PremiumCard, Evidence, ChatSnippet } from './shared.jsx';
+import { Avatar, Metric, PremiumCard, Evidence, ChatSnippet, CustomSelect } from './shared.jsx';
 import { PremiumDropdown, RuleToggle } from './display.jsx';
 
 const STATUS_PRESETS = [
@@ -830,9 +830,12 @@ export function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
             <motion.div variants={modalSectionVariants} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <label className="sales-field">
                 <span>Сотрудник</span>
-                <select value={empId} onChange={(e) => setEmpId(e.target.value)} style={{ ...INPUT_STYLE, cursor: 'pointer' }}>
-                  {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                </select>
+                <CustomSelect
+                  value={empId}
+                  options={employees.map((e) => ({ value: e.id, label: e.name }))}
+                  onChange={setEmpId}
+                  placeholder="Выбрать сотрудника"
+                />
               </label>
               <label className="sales-field">
                 <span>Дата</span>

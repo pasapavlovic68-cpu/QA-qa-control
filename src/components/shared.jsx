@@ -1,5 +1,6 @@
-import React from 'react';
-import { motion, useInView } from 'framer-motion';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { ChevronDown, Check } from 'lucide-react';
 
 export function PremiumCard({ title, action, children, className = '', compact = false }) {
   return (
@@ -65,6 +66,58 @@ export function ChatSnippet({ role, text, good }) {
     <div className={`chat-snippet ${good ? 'good' : ''}`}>
       <span>{role}</span>
       <p>{text}</p>
+    </div>
+  );
+}
+
+export function CustomSelect({ value, options, onChange, placeholder = 'Выбрать' }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const selected = options.find((o) => o.value === value);
+
+  return (
+    <div ref={ref} className="custom-select">
+      <button
+        type="button"
+        className={`custom-select-trigger${open ? ' open' : ''}`}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span>{selected?.label || placeholder}</span>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown size={16} />
+        </motion.span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="custom-select-menu"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {options.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`custom-select-option${opt.value === value ? ' selected' : ''}`}
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+              >
+                <span>{opt.label}</span>
+                {opt.value === value && <Check size={14} />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

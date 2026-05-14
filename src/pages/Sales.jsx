@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart2, CalendarDays, Pencil, Plus, Save, Trash2, Trophy, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
-import { PremiumCard } from '../components/shared.jsx';
+import { PremiumCard, CustomSelect } from '../components/shared.jsx';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
 import { aggregateSales, formatCash, getWeekStart, getMonthStart } from '../lib/salesMetrics.js';
 import { useToast } from '../components/Toast.jsx';
@@ -186,15 +186,12 @@ function AddSalesModal({ employees, organizationId, onClose, onSaved }) {
             <motion.div className="employee-form-grid" variants={modalSectionVariants}>
               <label>
                 <span>Сотрудник</span>
-                <select
+                <CustomSelect
                   value={form.employee_id}
-                  onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))}
-                  style={{ width: '100%', height: 44, padding: '0 12px', borderRadius: 12, border: '1px solid var(--line)', background: 'rgba(255,255,255,0.84)', color: 'var(--text)', fontSize: 14 }}
-                >
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
+                  options={employees.map((emp) => ({ value: emp.id, label: emp.name }))}
+                  onChange={(v) => setForm((f) => ({ ...f, employee_id: v }))}
+                  placeholder="Выбрать сотрудника"
+                />
               </label>
               <label>
                 <span>Дата</span>
