@@ -231,7 +231,7 @@ export function RuleToggle({ active, onClick }) {
   );
 }
 
-export function PremiumDropdown({ value, options, onChange }) {
+export function PremiumDropdown({ value, options, onChange, dropUp = false }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -250,10 +250,10 @@ export function PremiumDropdown({ value, options, onChange }) {
       <AnimatePresence>
         {open && (
           <motion.div
-            className="premium-select-menu"
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            className={`premium-select-menu${dropUp ? ' drop-up' : ''}`}
+            initial={{ opacity: 0, y: dropUp ? 8 : -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            exit={{ opacity: 0, y: dropUp ? 6 : -6, scale: 0.98 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
             {options.map((option) => (

@@ -1909,6 +1909,11 @@ select {
   backdrop-filter: blur(18px);
 }
 
+.premium-select-menu.drop-up {
+  top: unset;
+  bottom: calc(100% + 6px);
+}
+
 .premium-select-option {
   display: flex;
   align-items: center;

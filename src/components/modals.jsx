@@ -420,7 +420,7 @@ export function RuleModal({ mode, rule, setRule, onClose, onSubmit, saving = fal
             </label>
             <label>
               <span>Вес ошибки / важность</span>
-              <PremiumDropdown value={rule.weight} options={['Критичная', 'Высокая', 'Средняя', 'Низкая']} onChange={updateField('weight')} />
+              <PremiumDropdown value={rule.weight} options={['Критичная', 'Высокая', 'Средняя', 'Низкая']} onChange={updateField('weight')} dropUp />
             </label>
             <label>
               <span>Статус</span>
