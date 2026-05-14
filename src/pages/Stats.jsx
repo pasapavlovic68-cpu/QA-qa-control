@@ -1,10 +1,112 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
 import { Avatar } from '../components/shared.jsx';
 import { ModalPortal, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
+
+const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+function DatePicker({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [viewYear, setViewYear] = useState(() => value ? parseInt(value.slice(0, 4)) : new Date().getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => value ? parseInt(value.slice(5, 7)) - 1 : new Date().getMonth());
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const displayDate = value
+    ? new Date(value + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    : 'Выбрать дату';
+
+  const getDays = () => {
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    const offset = firstDay === 0 ? 6 : firstDay - 1;
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < offset; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    return cells;
+  };
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const selectDay = (day) => {
+    const mm = String(viewMonth + 1).padStart(2, '0');
+    const dd = String(day).padStart(2, '0');
+    onChange(`${viewYear}-${mm}-${dd}`);
+    setOpen(false);
+  };
+
+  const today = toDateKey(new Date());
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        className="datepicker-trigger"
+        onClick={() => setOpen(o => !o)}
+      >
+        <Calendar size={15} />
+        <span>{displayDate}</span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="datepicker-popup"
+            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="datepicker-header">
+              <button type="button" className="datepicker-nav" onClick={prevMonth}><ChevronLeft size={15} /></button>
+              <span>{MONTHS[viewMonth]} {viewYear}</span>
+              <button type="button" className="datepicker-nav" onClick={nextMonth}><ChevronRight size={15} /></button>
+            </div>
+            <div className="datepicker-weekdays">
+              {WEEKDAYS.map(d => <span key={d}>{d}</span>)}
+            </div>
+            <div className="datepicker-grid">
+              {getDays().map((day, i) => {
+                if (!day) return <span key={`e-${i}`} />;
+                const mm = String(viewMonth + 1).padStart(2, '0');
+                const dd = String(day).padStart(2, '0');
+                const key = `${viewYear}-${mm}-${dd}`;
+                const isSelected = key === value;
+                const isToday = key === today;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`datepicker-day${isSelected ? ' selected' : ''}${isToday && !isSelected ? ' today' : ''}`}
+                    onClick={() => selectDay(day)}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 function getWeekStart(date) {
   const d = new Date(date);
@@ -112,10 +214,10 @@ function AddStatsModal({ employees, organizationId, onClose, onSaved }) {
                   ))}
                 </select>
               </label>
-              <label className="stats-form-field">
+              <div className="stats-form-field">
                 <span>Дата</span>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-              </label>
+                <DatePicker value={date} onChange={setDate} />
+              </div>
               <label className="stats-form-field">
                 <span>Диалоги</span>
                 <input type="number" min="0" value={dialogs} onChange={(e) => setDialogs(e.target.value)} placeholder="0" />

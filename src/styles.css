@@ -5293,3 +5293,133 @@ select {
   border-color: rgba(119, 101, 227, 0.45);
   box-shadow: 0 0 0 3px rgba(119, 101, 227, 0.1);
 }
+
+/* ── Custom date picker ─────────────────────────────────── */
+
+.datepicker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+
+.datepicker-trigger:hover {
+  border-color: rgba(119, 101, 227, 0.4);
+}
+
+.datepicker-trigger svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.datepicker-popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  width: 260px;
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(253, 252, 255, 0.98);
+  border: 1px solid rgba(119, 101, 227, 0.14);
+  box-shadow: 0 20px 56px rgba(35, 31, 58, 0.16);
+  backdrop-filter: blur(20px);
+}
+
+.datepicker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.datepicker-header span {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.datepicker-nav {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background: rgba(119, 101, 227, 0.08);
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.datepicker-nav:hover {
+  background: rgba(119, 101, 227, 0.16);
+}
+
+.datepicker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+
+.datepicker-weekdays span {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 2px 0;
+  text-transform: uppercase;
+}
+
+.datepicker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.datepicker-day {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.datepicker-day:hover {
+  background: rgba(119, 101, 227, 0.1);
+  color: var(--accent);
+}
+
+.datepicker-day.today {
+  background: rgba(119, 101, 227, 0.08);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.datepicker-day.selected {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.datepicker-day.selected:hover {
+  background: var(--accent);
+  color: #fff;
+}
