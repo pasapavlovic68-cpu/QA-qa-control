@@ -1112,6 +1112,11 @@ export function ChannelManagementModal({ channels, organizationId, onClose, onAd
   const [deletingId, setDeletingId] = useState(null);
   const [expandedChannel, setExpandedChannel] = useState(null);
   const [assigningSaving, setAssigningSaving] = useState(null);
+  // Local channel map so consecutive toggles see the latest state (employees prop is stale)
+  const [channelMap, setChannelMap] = useState(() =>
+    Object.fromEntries(employees.map((e) => [e.id, e.channel ?? '']))
+  );
+  const getEffectiveChannel = (employee) => channelMap[employee.id] ?? employee.channel ?? '';
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -1177,8 +1182,15 @@ export function ChannelManagementModal({ channels, organizationId, onClose, onAd
   const handleToggleEmployee = async (employee, channelName) => {
     const key = `${employee.id}:${channelName}`;
     if (assigningSaving === key) return;
-    const isInChannel = employee.channel === channelName;
-    const newChannel = isInChannel ? null : channelName;
+    const effective = getEffectiveChannel(employee);
+    const currentChannels = effective
+      ? effective.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    const isInChannel = currentChannels.includes(channelName);
+    const updatedChannels = isInChannel
+      ? currentChannels.filter((c) => c !== channelName)
+      : [...currentChannels, channelName];
+    const newChannel = updatedChannels.join(',') || null;
     setAssigningSaving(key);
     const { error } = await supabase
       .from('employees')
@@ -1187,7 +1199,9 @@ export function ChannelManagementModal({ channels, organizationId, onClose, onAd
       .eq('organization_id', organizationId);
     setAssigningSaving(null);
     if (!error) {
-      onAssignEmployee?.(employee.id, newChannel);
+      const saved = newChannel ?? '';
+      setChannelMap((prev) => ({ ...prev, [employee.id]: saved }));
+      onAssignEmployee?.(employee.id, saved);
       showToast?.(isInChannel ? 'Сотрудник удалён из канала' : 'Сотрудник добавлен в канал');
     }
   };
@@ -1230,7 +1244,7 @@ export function ChannelManagementModal({ channels, organizationId, onClose, onAd
                 <div className="status-mgmt-list">
                   {channels.map((channel) => {
                     const isExpanded = expandedChannel === channel.id;
-                    const memberCount = employees.filter((e) => e.channel === channel.name).length;
+                    const memberCount = employees.filter((e) => getEffectiveChannel(e).split(',').map((s) => s.trim()).includes(channel.name)).length;
                     return (
                       <div key={channel.id} className="channel-mgmt-card">
                         <div className="status-mgmt-row" style={{ cursor: 'pointer' }} onClick={() => setExpandedChannel(isExpanded ? null : channel.id)}>
@@ -1257,7 +1271,7 @@ export function ChannelManagementModal({ channels, organizationId, onClose, onAd
                               <p style={{ fontSize: 12, color: 'var(--muted)', padding: '8px 12px' }}>Нет сотрудников</p>
                             ) : (
                               employees.map((employee) => {
-                                const inChannel = employee.channel === channel.name;
+                                const inChannel = getEffectiveChannel(employee).split(',').map((s) => s.trim()).includes(channel.name);
                                 const saving = assigningSaving === `${employee.id}:${channel.name}`;
                                 return (
                                   <button
