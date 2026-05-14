@@ -474,12 +474,11 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
     });
   }, [employees, latestScoreByEmployee, criticalByEmployee, mistakesByEmployee]);
 
-  // Top employees: only those with at least one completed report, sorted by latest score DESC
+  // Top employees: only those with score >= 80, sorted by latest score DESC
   const topEmployees = useMemo(() => {
     return employees
-      .filter((e) => latestScoreByEmployee[e.id] !== undefined)
-      .sort((a, b) => (latestScoreByEmployee[b.id] ?? 0) - (latestScoreByEmployee[a.id] ?? 0))
-      .slice(0, 4);
+      .filter((e) => latestScoreByEmployee[e.id] !== undefined && latestScoreByEmployee[e.id] >= 80)
+      .sort((a, b) => (latestScoreByEmployee[b.id] ?? 0) - (latestScoreByEmployee[a.id] ?? 0));
   }, [employees, latestScoreByEmployee]);
 
   const employeeMap = useMemo(() => {
@@ -688,33 +687,35 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
             employeeFiltered={trendEmployeeId !== null}
           />
         </PremiumCard>
-        <PremiumCard title="Топ сотрудников" action="Рейтинг">
-          <div className="rank-list">
-            {dashLoading || employeesLoading
-              ? emptyCardText('Загружаем…')
-              : topEmployees.length > 0
-              ? topEmployees.map((employee, index) => {
-                  const score = latestScoreByEmployee[employee.id] ?? employee.score;
-                  return (
-                    <motion.button
-                      className="rank-row"
-                      key={employee.id}
-                      layout
-                      layoutId={`dashboard-top-employee-${employee.id}`}
-                      whileHover={{ x: 4 }}
-                      transition={dashboardSharedTransition}
-                      onClick={() => setDashboardEmployeeDetail(employee)}
-                    >
-                      <span className="rank">{index + 1}</span>
-                      <span>
-                        <strong>{employee.name}</strong>
-                        <small>{employee.role}</small>
-                      </span>
-                      <b style={{ color: scoreColor(score) }}>{score}</b>
-                    </motion.button>
-                  );
-                })
-              : emptyCardText('Топ появится после первых проверок.')}
+        <PremiumCard title="Топ сотрудников" action="Рейтинг" className="dashboard-fixed-card">
+          <div className="dashboard-card-scroll">
+            <div className="rank-list">
+              {dashLoading || employeesLoading
+                ? emptyCardText('Загружаем…')
+                : topEmployees.length > 0
+                ? topEmployees.map((employee, index) => {
+                    const score = latestScoreByEmployee[employee.id] ?? employee.score;
+                    return (
+                      <motion.button
+                        className="rank-row"
+                        key={employee.id}
+                        layout
+                        layoutId={`dashboard-top-employee-${employee.id}`}
+                        whileHover={{ x: 4 }}
+                        transition={dashboardSharedTransition}
+                        onClick={() => setDashboardEmployeeDetail(employee)}
+                      >
+                        <span className="rank">{index + 1}</span>
+                        <span>
+                          <strong>{employee.name}</strong>
+                          <small>{employee.role}</small>
+                        </span>
+                        <b style={{ color: scoreColor(score) }}>{score}</b>
+                      </motion.button>
+                    );
+                  })
+                : emptyCardText('Нет сотрудников с показателем 80% и выше.')}
+            </div>
           </div>
         </PremiumCard>
         <RevealCard title="Частые ошибки" action="Приоритеты" className="dashboard-fixed-card">
