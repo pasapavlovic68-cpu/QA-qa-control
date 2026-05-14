@@ -415,10 +415,23 @@ h1 {
   color: var(--success);
 }
 
-.dashboard-fixed-card {
-  height: 320px;
+.dashboard-grid > * {
   display: flex;
   flex-direction: column;
+}
+
+.dashboard-grid > * > .premium-card,
+.dashboard-grid > .premium-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dashboard-fixed-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .dashboard-card-scroll {

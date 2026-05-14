@@ -474,11 +474,12 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
     });
   }, [employees, latestScoreByEmployee, criticalByEmployee, mistakesByEmployee]);
 
-  // Top employees: only those with score >= 80, sorted by latest score DESC
+  // Top employees: score >= 80, max 3, sorted by latest score DESC
   const topEmployees = useMemo(() => {
     return employees
       .filter((e) => latestScoreByEmployee[e.id] !== undefined && latestScoreByEmployee[e.id] >= 80)
-      .sort((a, b) => (latestScoreByEmployee[b.id] ?? 0) - (latestScoreByEmployee[a.id] ?? 0));
+      .sort((a, b) => (latestScoreByEmployee[b.id] ?? 0) - (latestScoreByEmployee[a.id] ?? 0))
+      .slice(0, 3);
   }, [employees, latestScoreByEmployee]);
 
   const employeeMap = useMemo(() => {
