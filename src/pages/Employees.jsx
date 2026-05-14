@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, CalendarDays, Check, Plus, Radio, Tag, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Check, Plus, Radio, Tag, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { Avatar } from '../components/shared.jsx';
-import { employeeCardTransition, EmployeeFormModal, DeleteEmployeeModal, StatusManagementModal, ChannelManagementModal } from '../components/modals.jsx';
+import { EmployeeFormModal, DeleteEmployeeModal, StatusManagementModal, ChannelManagementModal } from '../components/modals.jsx';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { runModalSuccessFlow } from '../lib/modalSuccess.js';
@@ -207,7 +207,6 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   const [channelMgmtOpen, setChannelMgmtOpen] = useState(false);
   const [channelTarget, setChannelTarget] = useState(null);
   const [channelOverrides, setChannelOverrides] = useState({}); // {employeeId: channelName}
-  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [todaySchedule, setTodaySchedule] = useState({});
   const todayDateKey = getMoscowDateKey();
 
@@ -539,8 +538,8 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
     <>
       <div className="employees-page-head">
         <div>
-          <span className="eyebrow">Команда на контроле</span>
-          <h2>Карточки сотрудников</h2>
+          <span className="eyebrow">Команда / смены</span>
+          <h2>График сотрудников</h2>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <motion.button
@@ -560,15 +559,6 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
           >
             <Radio size={15} />
             Каналы
-          </motion.button>
-          <motion.button
-            className="ghost-button"
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ y: -2 }}
-            onClick={() => setScheduleOpen(true)}
-          >
-            <CalendarDays size={15} />
-            График
           </motion.button>
           <motion.button
             className="primary-button"
@@ -616,91 +606,20 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         )}
       </AnimatePresence>
 
-      {employeesLoading ? (
-        <div className="employee-grid" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 220 }}>
-          <p style={{ opacity: 0.45, fontSize: '0.95rem' }}>Загружаем сотрудников…</p>
-        </div>
-      ) : employees.length === 0 ? (
-        <div className="employee-grid" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 220, gap: 8, textAlign: 'center' }}>
-          <p style={{ fontWeight: 600, opacity: 0.65, fontSize: '1rem' }}>Пока нет сотрудников</p>
-          <p style={{ opacity: 0.4, fontSize: '0.875rem', maxWidth: 320 }}>Добавьте первого сотрудника, чтобы начать проверку диалогов.</p>
-        </div>
-      ) : (
-        <motion.div className="employee-channel-groups" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}>
-          {groupedEmployees.map((group) => (
-            <section className="employee-channel-group" key={group.name}>
-              <div className="employee-channel-heading">
-                <span className="employee-channel-dot" style={{ background: group.color }} />
-                <h3>{group.name}</h3>
-                <span>{group.employees.length}</span>
-              </div>
-              <div className="employee-grid">
-                <AnimatePresence mode="popLayout">
-                  {group.employees.map((employee) => {
-                    const displayStatus = getDisplayStatus(employee);
-                    const displayChannel = getDisplayChannel(employee);
-                    const customColor = getStatusColor(displayStatus, statuses);
-                    const channelColor = getChannelColor(displayChannel, channels);
-                    const fallbackTone = getStatusTone(displayStatus);
-                    const displayEmployee = { ...employee, status: displayStatus, statusTone: fallbackTone, channel: displayChannel };
-
-                    return (
-                      <motion.article
-                        layout
-                        layoutId={`employee-${employee.id}`}
-                        className="employee-card"
-                        key={employee.id}
-                        variants={{ hidden: { opacity: 0, y: 18, scale: 0.98 }, show: { opacity: 1, y: 0, scale: 1 } }}
-                        initial="hidden"
-                        animate="show"
-                        exit={{ opacity: 0, scale: 0.96, y: 10 }}
-                        transition={employeeCardTransition}
-                        whileHover={{ y: -5, scale: 1.008 }}
-                        whileTap={{ scale: 0.985 }}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => {
-                          setSelectedEmployee(displayEmployee);
-                          setDetailOpen(true);
-                        }}
-                      >
-                        <div className="employee-head">
-                          <div className="employee-identity">
-                            <Avatar name={employee.name} />
-                            <div className="employee-title">
-                              <h3>{employee.name}</h3>
-                              <p>{employee.role}</p>
-                            </div>
-                          </div>
-                          <div className="employee-head-actions">
-                            <StatusBadge
-                              name={displayStatus}
-                              statusTone={fallbackTone}
-                              color={customColor}
-                            />
-                            <motion.button
-                              className="employee-delete"
-                              aria-label={`Удалить сотрудника ${employee.name}`}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={(event) => requestDelete(employee, event)}
-                            >
-                              <Trash2 size={15} />
-                            </motion.button>
-                          </div>
-                        </div>
-                        <div className="employee-badge-row">
-                          <ChannelBadge name={displayChannel} color={channelColor} />
-                          <TodayScheduleBadge entry={todaySchedule[employee.id]} />
-                        </div>
-                      </motion.article>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-            </section>
-          ))}
-        </motion.div>
-      )}
+      <EmployeeSchedulePanel
+        employees={employees}
+        channels={channels}
+        organizationId={organizationId}
+        getDisplayChannel={getDisplayChannel}
+        onScheduleChange={handleScheduleChange}
+        statuses={statuses}
+        requestDelete={requestDelete}
+        getDisplayStatus={getDisplayStatus}
+        getStatusColor={getStatusColor}
+        getStatusTone={getStatusTone}
+        openStatusAssignment={openStatusAssignment}
+        openChannelAssignment={openChannelAssignment}
+      />
 
       <AnimatePresence>
         {addOpen && (
@@ -796,18 +715,6 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {scheduleOpen && (
-          <EmployeeScheduleModal
-            employees={employees}
-            channels={channels}
-            organizationId={organizationId}
-            getDisplayChannel={getDisplayChannel}
-            onScheduleChange={handleScheduleChange}
-            onClose={() => setScheduleOpen(false)}
-          />
-        )}
-      </AnimatePresence>
     </>
   );
 }
@@ -1000,7 +907,7 @@ function EmployeeChannelAssignModal({ employee, channels, saving, error, onClose
   );
 }
 
-function EmployeeScheduleModal({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, onClose }) {
+function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, openStatusAssignment, openChannelAssignment }) {
   const showToast = useToast();
   const [period, setPeriod] = useState('two_weeks');
   const [schedule, setSchedule] = useState({});
@@ -1010,16 +917,6 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
   const [selector, setSelector] = useState(null);
   const [error, setError] = useState(null);
   const dates = getScheduleDates(period);
-
-  useModalScrollLock();
-
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
 
   useEffect(() => {
     if (!organizationId || employees.length === 0) {
@@ -1229,70 +1126,63 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
   };
 
   return (
-    <ModalPortal>
-      <motion.div className="modal-backdrop employee-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-        <motion.div
-          className="modal-shell modal-shell--large employee-schedule-modal"
-          onClick={(event) => event.stopPropagation()}
-          role="dialog"
-          aria-modal="true"
-          initial={modalMotion.initial}
-          animate={modalMotion.animate}
-          exit={modalMotion.exit}
-          transition={modalMotion.transition}
-        >
-          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
-            <motion.div className="modal-title employee-schedule-title" variants={modalSectionVariants}>
-              <div>
-                <span className="eyebrow">Команда / смены</span>
-                <h2>График сотрудников</h2>
-              </div>
-              <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
-            </motion.div>
+    <div className="employee-schedule-panel">
+      <div className="employee-schedule-toolbar">
+        <div className="employee-schedule-period">
+          <button className={period === 'two_weeks' ? 'active' : ''} type="button" onClick={() => setPeriod('two_weeks')}>2 недели</button>
+          <button className={period === 'month' ? 'active' : ''} type="button" onClick={() => setPeriod('month')}>Месяц</button>
+        </div>
+        <div className="employee-schedule-legend">
+          {Object.entries(SCHEDULE_STATUSES).map(([key, item]) => (
+            <span key={key}><i style={{ background: item.color }}>{item.short}</i> — {item.label}</span>
+          ))}
+        </div>
+      </div>
 
-            <motion.div className="employee-schedule-toolbar" variants={modalSectionVariants}>
-              <div className="employee-schedule-period">
-                <button className={period === 'two_weeks' ? 'active' : ''} type="button" onClick={() => setPeriod('two_weeks')}>2 недели</button>
-                <button className={period === 'month' ? 'active' : ''} type="button" onClick={() => setPeriod('month')}>Месяц</button>
-              </div>
-              <div className="employee-schedule-legend">
-                {Object.entries(SCHEDULE_STATUSES).map(([key, item]) => (
-                  <span key={key}><i style={{ background: item.color }}>{item.short}</i> — {item.label}</span>
-                ))}
-              </div>
-            </motion.div>
+      {error && <p className="status-error">{error}</p>}
 
-            {error && <motion.p className="status-error" variants={modalSectionVariants}>{error}</motion.p>}
+      <div className="employee-schedule-table-wrap">
+        {loading ? (
+          <div className="employee-schedule-empty">Загружаем график...</div>
+        ) : employees.length === 0 ? (
+          <div className="employee-schedule-empty">Добавьте первого сотрудника, чтобы начать.</div>
+        ) : (
+          <div className="employee-schedule-table" style={{ '--schedule-days': dates.length }}>
+            <div className="employee-schedule-header-row">
+              <div className="employee-schedule-name-cell sticky">Сотрудник</div>
+              {dates.map((date) => (
+                <div key={formatDateKey(date)} className="employee-schedule-date-cell">
+                  <strong>{formatScheduleDay(date)}</strong>
+                  <span>{formatScheduleWeekday(date)}</span>
+                </div>
+              ))}
+            </div>
 
-            <motion.div className="employee-schedule-table-wrap" variants={modalSectionVariants}>
-              {loading ? (
-                <div className="employee-schedule-empty">Загружаем график...</div>
-              ) : employees.length === 0 ? (
-                <div className="employee-schedule-empty">Сначала добавьте сотрудников.</div>
-              ) : (
-                <div className="employee-schedule-table" style={{ '--schedule-days': dates.length }}>
-                  <div className="employee-schedule-header-row">
-                    <div className="employee-schedule-name-cell sticky">Сотрудник</div>
-                    {dates.map((date) => (
-                      <div key={formatDateKey(date)} className="employee-schedule-date-cell">
-                        <strong>{formatScheduleDay(date)}</strong>
-                        <span>{formatScheduleWeekday(date)}</span>
+            {groups.map((group) => (
+              <div className="employee-schedule-group" key={group.name}>
+                <div className="employee-schedule-group-row">
+                  <span className="employee-channel-dot" style={{ background: group.color }} />
+                  {group.name}
+                </div>
+                {group.employees.map((employee) => {
+                  const displayStatus = getDisplayStatus(employee);
+                  const customColor = getStatusColor(displayStatus, statuses);
+                  const fallbackTone = getStatusTone(displayStatus);
+                  return (
+                  <div className="employee-schedule-row" key={employee.id}>
+                    <div className="employee-schedule-name-cell sticky">
+                      <Avatar name={employee.name} />
+                      <div className="employee-schedule-name-info">
+                        <strong>{employee.name}</strong>
+                        <span>{employee.role}</span>
                       </div>
-                    ))}
-                  </div>
-
-                  {groups.map((group) => (
-                    <div className="employee-schedule-group" key={group.name}>
-                      <div className="employee-schedule-group-row">
-                        <span className="employee-channel-dot" style={{ background: group.color }} />
-                        {group.name}
-                      </div>
-                      {group.employees.map((employee) => (
-                        <div className="employee-schedule-row" key={employee.id}>
-                          <div className="employee-schedule-name-cell sticky">
-                            <Avatar name={employee.name} />
-                            <span>{employee.name}</span>
-                          </div>
+                      <StatusBadge name={displayStatus} statusTone={fallbackTone} color={customColor} />
+                      <button
+                        type="button"
+                        className="employee-delete"
+                        onClick={(e) => { e.stopPropagation(); requestDelete(employee, e); }}
+                      ><Trash2 size={14} /></button>
+                    </div>
                           {dates.map((date) => {
                             const dateKey = formatDateKey(date);
                             const cellKey = `${employee.id}:${dateKey}`;
@@ -1384,16 +1274,14 @@ function EmployeeScheduleModal({ employees, channels, organizationId, getDisplay
                               </div>
                             );
                           })}
-                        </div>
-                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        </motion.div>
-      </motion.div>
-    </ModalPortal>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
