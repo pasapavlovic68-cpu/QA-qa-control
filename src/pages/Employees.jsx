@@ -617,8 +617,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         getDisplayStatus={getDisplayStatus}
         getStatusColor={getStatusColor}
         getStatusTone={getStatusTone}
-        openStatusAssignment={openStatusAssignment}
-        openChannelAssignment={openChannelAssignment}
+        todaySchedule={todaySchedule}
       />
 
       <AnimatePresence>
@@ -907,7 +906,7 @@ function EmployeeChannelAssignModal({ employee, channels, saving, error, onClose
   );
 }
 
-function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, openStatusAssignment, openChannelAssignment }) {
+function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, todaySchedule }) {
   const showToast = useToast();
   const [period, setPeriod] = useState('two_weeks');
   const [schedule, setSchedule] = useState({});
@@ -1174,9 +1173,11 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                       <Avatar name={employee.name} />
                       <div className="employee-schedule-name-info">
                         <strong>{employee.name}</strong>
-                        <span>{employee.role}</span>
+                        <div className="employee-schedule-name-sub">
+                          <StatusBadge name={displayStatus} statusTone={fallbackTone} color={customColor} />
+                          <TodayScheduleBadge entry={todaySchedule[employee.id]} />
+                        </div>
                       </div>
-                      <StatusBadge name={displayStatus} statusTone={fallbackTone} color={customColor} />
                       <button
                         type="button"
                         className="employee-delete"
