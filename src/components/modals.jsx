@@ -728,7 +728,7 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
               </motion.div>
             )}
 
-            {/* Evidence — цитаты из диалога, исключаем внутренние служебные записи */}
+            {/* Evidence — цитаты из диалога с переводом и идеальным ответом */}
             {(() => {
               const evidenceItems = (report.evidence ?? []).filter(
                 (e) => e && e.type !== 'sales_department_regulation' && e.type !== 'batch_summary'
@@ -739,15 +739,36 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
                     Цитаты из диалога
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {evidenceItems.map((e, i) => {
-                      const text = e.quote || e.text || e.message || e.excerpt || e.description || '';
+                      const origQuote = e.quote || e.text || e.message || e.excerpt || e.description || '';
+                      const ruQuote = e.quote_ru || '';
+                      const showTranslation = ruQuote && ruQuote !== origQuote;
                       const label = e.rule || e.title || e.context || '';
-                      if (!text) return null;
+                      const idealResponse = e.ideal_response || '';
+                      if (!origQuote) return null;
                       return (
-                        <div key={i} style={{ padding: '10px 14px', borderRadius: 13, background: 'rgba(119,101,227,0.05)', border: '1px solid rgba(119,101,227,0.10)', borderLeft: '3px solid var(--accent)' }}>
-                          {label && <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>}
-                          <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.6, fontStyle: 'italic' }}>«{text}»</div>
+                        <div key={i} style={{ borderRadius: 13, border: '1px solid rgba(119,101,227,0.15)', overflow: 'hidden' }}>
+                          {label && (
+                            <div style={{ padding: '7px 14px', fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid rgba(119,101,227,0.10)', background: 'rgba(119,101,227,0.04)' }}>
+                              {label}
+                            </div>
+                          )}
+                          <div style={{ padding: '10px 14px', borderBottom: idealResponse ? '1px solid rgba(119,101,227,0.10)' : 'none' }}>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.6, fontStyle: 'italic' }}>«{origQuote}»</div>
+                            {showTranslation && (
+                              <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 4, lineHeight: 1.5 }}>
+                                Перевод: {ruQuote}
+                              </div>
+                            )}
+                            {e.comment && <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 5, lineHeight: 1.5 }}>{e.comment}</div>}
+                          </div>
+                          {idealResponse && (
+                            <div style={{ padding: '10px 14px', background: 'rgba(119,101,227,0.04)' }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Как надо было</div>
+                              <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.6 }}>{idealResponse}</div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

@@ -161,7 +161,7 @@ function EmployeeReportModal({ group, onClose, onOpenReport }) {
                 <span className="employee-report-section-label">Общий вывод</span>
                 {group.aggregateReport ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {(group.aggregateReport.management_summary || '').split(/\n\n+/).filter(Boolean).map((block, bi) => {
+                    {(group.aggregateReport.summary || group.aggregateReport.management_summary || '').split(/\n\n+/).filter(Boolean).map((block, bi) => {
                       const isWhatToImprove = block.trimStart().startsWith('Что бы я усилил');
                       const lines = block.split(/\n/).filter(Boolean);
                       return (
@@ -182,10 +182,16 @@ function EmployeeReportModal({ group, onClose, onOpenReport }) {
                               <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
                                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', marginBottom: 3 }}>КЛИЕНТ</div>
                                 <div style={{ fontSize: '0.82rem', color: 'var(--text)', fontStyle: 'italic' }}>«{ex.client_message}»</div>
+                                {ex.client_message_ru && ex.client_message_ru !== ex.client_message && (
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 3 }}>Перевод: {ex.client_message_ru}</div>
+                                )}
                               </div>
                               <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)', background: 'rgba(190,60,68,0.03)' }}>
                                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', marginBottom: 3 }}>КАК ОТВЕТИЛА</div>
                                 <div style={{ fontSize: '0.82rem', color: 'var(--text)', fontStyle: 'italic' }}>«{ex.employee_response}»</div>
+                                {ex.employee_response_ru && ex.employee_response_ru !== ex.employee_response && (
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 3 }}>Перевод: {ex.employee_response_ru}</div>
+                                )}
                               </div>
                               <div style={{ padding: '10px 14px', background: 'rgba(119,101,227,0.04)' }}>
                                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', marginBottom: 3 }}>КАК НАДО</div>
