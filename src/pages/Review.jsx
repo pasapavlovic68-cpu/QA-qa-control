@@ -482,6 +482,45 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       const aggregateReport = buildAggregatePreviewReport(analyzedReports, selectedEmployeeName);
       const criticalCount = aggregateReport.mistakes.filter((m) => m.severity === 'critical').length;
 
+      // ── Generate aggregate summary ────────────────────────────────────────
+      let aggregateAiData = null;
+      try {
+        const mistakeCounts = analyzedReports
+          .flatMap((r) => r.mistakes ?? [])
+          .reduce((acc, m) => {
+            const key = m.title || 'Замечание';
+            if (!acc[key]) acc[key] = { title: key, severity: m.severity, count: 0 };
+            acc[key].count += 1;
+            return acc;
+          }, {});
+        const topMistakesForAgg = Object.values(mistakeCounts)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 6);
+        const evidenceForAgg = analyzedReports
+          .flatMap((r) => (r.evidence ?? []).filter((e) => e.quote && e.type !== 'sales_department_regulation' && e.type !== 'batch_summary'))
+          .slice(0, 12);
+        const summariesForAgg = analyzedReports.map((r) => r.management_summary).filter(Boolean);
+
+        const aggResponse = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mode: 'aggregate',
+            employeeName: selectedEmployeeName,
+            summaries: summariesForAgg,
+            topMistakes: topMistakesForAgg,
+            evidenceItems: evidenceForAgg,
+          }),
+          signal: AbortSignal.timeout(60000),
+        });
+        if (aggResponse.ok) {
+          const aggJson = await aggResponse.json();
+          aggregateAiData = aggJson.aggregate ?? null;
+        }
+      } catch (aggErr) {
+        console.warn('[Aggregate] failed, skipping:', aggErr?.message);
+      }
+
       setAnalysisStage('saving_report');
       const { error: reportError } = await supabase
         .from('reports')
@@ -499,6 +538,22 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         })));
 
       if (reportError) throw new Error('Не удалось сохранить отчёт в базе данных.');
+
+      // Save aggregate report as special record
+      if (aggregateAiData) {
+        await supabase.from('reports').insert({
+          check_id: currentCheckId,
+          employee_id: selectedEmployee.id,
+          organization_id: organizationId,
+          score: aggregateReport.score,
+          title: '__aggregate__',
+          management_summary: aggregateAiData.overall_summary ?? '',
+          mistakes: [],
+          positives: [],
+          recommendations: [],
+          evidence: aggregateAiData.dialogue_examples ?? [],
+        });
+      }
 
       const { error: checkUpdateError } = await supabase
         .from('qa_checks')

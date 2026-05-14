@@ -65,7 +65,9 @@ function buildEmployeeReports(reports) {
 
   return Array.from(groups.values())
     .map((group) => {
-      const sortedReports = [...group.reports].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+      const allSorted = [...group.reports].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+      const aggregateReport = allSorted.find((r) => r.title === '__aggregate__') ?? null;
+      const sortedReports = allSorted.filter((r) => r.title !== '__aggregate__');
       const reportCount = sortedReports.length;
       const dialogs = sortedReports.reduce((sum, report) => sum + (report.dialogs || 0), 0);
       const avgScore = reportCount
@@ -98,6 +100,7 @@ function buildEmployeeReports(reports) {
         recommendations,
         date: latest?.date || '',
         summary: latest?.summary || '',
+        aggregateReport,
       };
     })
     .sort((a, b) => new Date(b.latest?.createdAt || b.latest?.date) - new Date(a.latest?.createdAt || a.latest?.date));
@@ -153,10 +156,51 @@ function EmployeeReportModal({ group, onClose, onOpenReport }) {
               </div>
             </motion.div>
 
-            {group.summary && (
+            {(group.aggregateReport || group.summary) && (
               <motion.div className="employee-report-section" variants={modalSectionVariants}>
-                <span className="employee-report-section-label">Последний вывод</span>
-                <p>{group.summary}</p>
+                <span className="employee-report-section-label">Общий вывод</span>
+                {group.aggregateReport ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {(group.aggregateReport.management_summary || '').split(/\n\n+/).filter(Boolean).map((block, bi) => {
+                      const isWhatToImprove = block.trimStart().startsWith('Что бы я усилил');
+                      const lines = block.split(/\n/).filter(Boolean);
+                      return (
+                        <div key={bi} style={isWhatToImprove ? { background: 'rgba(119,101,227,0.05)', border: '1px solid rgba(119,101,227,0.12)', borderRadius: 14, padding: '12px 16px' } : undefined}>
+                          {lines.map((line, li) => (
+                            <p key={li} style={{ margin: li === 0 ? 0 : '4px 0 0', fontSize: '0.875rem', lineHeight: 1.65, color: 'var(--text)', fontWeight: li === 0 && isWhatToImprove ? 600 : 400 }}>{line}</p>
+                          ))}
+                        </div>
+                      );
+                    })}
+                    {Array.isArray(group.aggregateReport.evidence) && group.aggregateReport.evidence.filter((e) => e.client_message).length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>Примеры из диалогов</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {group.aggregateReport.evidence.filter((e) => e.client_message).slice(0, 3).map((ex, i) => (
+                            <div key={i} style={{ borderRadius: 14, border: '1px solid var(--line)', overflow: 'hidden' }}>
+                              {ex.context && <div style={{ padding: '8px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--line)' }}>{ex.context}</div>}
+                              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', marginBottom: 3 }}>КЛИЕНТ</div>
+                                <div style={{ fontSize: '0.82rem', color: 'var(--text)', fontStyle: 'italic' }}>«{ex.client_message}»</div>
+                              </div>
+                              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)', background: 'rgba(190,60,68,0.03)' }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', marginBottom: 3 }}>КАК ОТВЕТИЛА</div>
+                                <div style={{ fontSize: '0.82rem', color: 'var(--text)', fontStyle: 'italic' }}>«{ex.employee_response}»</div>
+                              </div>
+                              <div style={{ padding: '10px 14px', background: 'rgba(119,101,227,0.04)' }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', marginBottom: 3 }}>КАК НАДО</div>
+                                <div style={{ fontSize: '0.82rem', color: 'var(--text)' }}>{ex.ideal_response}</div>
+                                {ex.why && <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 4 }}>{ex.why}</div>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.65 }}>{group.summary}</p>
+                )}
               </motion.div>
             )}
 

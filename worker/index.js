@@ -36,6 +36,111 @@ export default {
     const ctx = payload.analysisContext || {};
     const reg = payload.salesDepartmentRegulation || {};
 
+    // ── Aggregate summary mode ───────────────────────────────────────────────
+    if (payload.mode === 'aggregate') {
+      const aggEmployeeName = String(payload.employeeName || 'Сотрудник');
+      const aggFirstName = aggEmployeeName.trim().split(/\s+/)[0];
+      const aggIsFemale = /[аяАЯ]$/u.test(aggFirstName);
+      const aggGenderNote = aggIsFemale
+        ? `Имя сотрудника «${aggEmployeeName}» — женское. Используй женский род: «ты сделала», «ты пропустила», «ты справилась».`
+        : `Имя сотрудника «${aggEmployeeName}» — мужское. Используй мужской род: «ты сделал», «ты пропустил», «ты справился».`;
+
+      const summaries = Array.isArray(payload.summaries) ? payload.summaries : [];
+      const topMistakes = Array.isArray(payload.topMistakes) ? payload.topMistakes : [];
+      const evidenceItems = Array.isArray(payload.evidenceItems) ? payload.evidenceItems : [];
+
+      const aggSystemPrompt = `
+Ты — руководитель отдела продаж. Ты прочитал все диалоги сотрудника за этот период и теперь даёшь итоговую обратную связь.
+
+${aggGenderNote}
+Это не рекомендация — это требование. Проверяй каждый глагол.
+
+Твоя задача — написать живой итоговый разбор. Не повторяй каждый диалог. Найди паттерны, которые повторяются, и скажи об этом честно.
+
+ФОРМАТ ОТВЕТА:
+Верни ТОЛЬКО валидный JSON. Никакого markdown, никаких \`\`\`json.
+
+{
+  "overall_summary": string,
+  "dialogue_examples": [
+    {
+      "context": string,
+      "client_message": string,
+      "employee_response": string,
+      "ideal_response": string,
+      "why": string
+    }
+  ]
+}
+
+ТРЕБОВАНИЯ:
+
+overall_summary — итоговый разбор, 150-250 слов, три абзаца разделённых \\n\\n:
+  Абзац 1: общая картина — что за сотрудник, какой паттерн поведения повторяется во всех диалогах.
+  Абзац 2: конкретные наблюдения через тире — что хорошо, что плохо, с примерами из диалогов.
+  Абзац 3: начни с «Что бы я усилил[а]:» — 3-4 пункта через тире, конкретные действия на «ты».
+
+dialogue_examples — ровно 2-3 примера реальных моментов из диалогов:
+  context — в какой ситуации это произошло (1 предложение)
+  client_message — дословная или близкая к тексту реплика клиента
+  employee_response — что сотрудник ответил (дословно или близко)
+  ideal_response — как надо было ответить (напиши сам, живо, как настоящий менеджер)
+  why — почему этот ответ лучше (1 предложение)
+
+Бери примеры из реальных цитат которые тебе дали. Не выдумывай то чего не было.
+`.trim();
+
+      const aggUserPrompt = `
+Сотрудник: ${aggEmployeeName}
+
+ЧАСТЫЕ ОШИБКИ:
+${topMistakes.map((m, i) => `${i + 1}. ${m.title} [${m.severity}] — встречается ${m.count || 1} раз`).join('\n')}
+
+РАЗБОРЫ ДИАЛОГОВ:
+${summaries.map((s, i) => `--- Диалог ${i + 1} ---\n${s}`).join('\n\n')}
+
+ЦИТАТЫ ИЗ ДИАЛОГОВ:
+${evidenceItems.slice(0, 10).map((e) => `• "${e.quote}" — ${e.comment || e.rule || ''}`).join('\n')}
+`.trim();
+
+      try {
+        const aggResponse = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4.1-mini',
+            input: [
+              { role: 'system', content: aggSystemPrompt },
+              { role: 'user', content: aggUserPrompt },
+            ],
+            temperature: 0.4,
+          }),
+        });
+
+        const aggData = await aggResponse.json();
+        if (!aggResponse.ok) {
+          return jsonResponse({ error: 'OpenAI aggregate request failed', details: aggData }, aggResponse.status);
+        }
+
+        const aggRaw = aggData.output_text || aggData.output?.[0]?.content?.[0]?.text || '';
+        const aggClean = aggRaw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+        let aggResult;
+        try {
+          aggResult = JSON.parse(aggClean);
+        } catch {
+          return jsonResponse({ error: 'OpenAI returned non-JSON aggregate response', raw: aggRaw }, 502);
+        }
+
+        return jsonResponse({ aggregate: aggResult });
+      } catch (error) {
+        return jsonResponse({ error: 'Aggregate worker request failed', details: String(error?.message || error) }, 500);
+      }
+    }
+
     if (!dialogues.length) {
       return jsonResponse({ error: "No dialogues provided" }, 400);
     }
