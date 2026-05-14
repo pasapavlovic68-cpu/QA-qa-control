@@ -619,12 +619,45 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
             {/* Summary */}
             {summaryText && (
               <motion.div variants={modalSectionVariants} style={{ padding: '16px 0', borderBottom: '1px solid var(--line)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 12 }}>
                   Резюме
                 </div>
-                <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.65, color: 'var(--text)' }}>
-                  {summaryText}
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {summaryText.split(/\n\n+/).map((block, bi) => {
+                    const isWhatToImprove = block.trimStart().startsWith('Что бы я усилил');
+                    const lines = block.split(/\n/).filter(Boolean);
+                    return (
+                      <div
+                        key={bi}
+                        style={isWhatToImprove ? {
+                          background: 'rgba(119,101,227,0.05)',
+                          border: '1px solid rgba(119,101,227,0.12)',
+                          borderRadius: 14,
+                          padding: '12px 16px',
+                        } : undefined}
+                      >
+                        {lines.map((line, li) => {
+                          const isBullet = line.trimStart().startsWith('—');
+                          return (
+                            <p
+                              key={li}
+                              style={{
+                                margin: isBullet ? '4px 0 0' : '0',
+                                fontSize: '0.875rem',
+                                lineHeight: 1.65,
+                                color: 'var(--text)',
+                                paddingLeft: isBullet ? 4 : 0,
+                                fontWeight: li === 0 && isWhatToImprove ? 600 : 400,
+                              }}
+                            >
+                              {line}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
               </motion.div>
             )}
 
