@@ -710,6 +710,10 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
             onClose={() => setChannelMgmtOpen(false)}
             onAdd={handleAddChannel}
             onDelete={handleDeleteChannel}
+            employees={employees}
+            onAssignEmployee={(employeeId, channelName) => {
+              setChannelOverrides((prev) => ({ ...prev, [employeeId]: channelName ?? '' }));
+            }}
           />
         )}
       </AnimatePresence>

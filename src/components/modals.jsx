@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BadgeDollarSign, Plus, Trash2, X } from 'lucide-react';
+import { BadgeDollarSign, Check, ChevronDown, ChevronUp, Plus, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { runModalSuccessFlow } from '../lib/modalSuccess.js';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from './modal.jsx';
@@ -1071,7 +1071,7 @@ export function StatusManagementModal({ statuses, organizationId, onClose, onAdd
 }
 
 // ── ChannelManagementModal ────────────────────────────────────────────────────
-export function ChannelManagementModal({ channels, organizationId, onClose, onAdd, onDelete }) {
+export function ChannelManagementModal({ channels, organizationId, onClose, onAdd, onDelete, employees = [], onAssignEmployee }) {
   useModalScrollLock();
   const showToast = useToast();
   const [name, setName] = useState('');
@@ -1079,6 +1079,8 @@ export function ChannelManagementModal({ channels, organizationId, onClose, onAd
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [expandedChannel, setExpandedChannel] = useState(null);
+  const [assigningSaving, setAssigningSaving] = useState(null);
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -1141,6 +1143,24 @@ export function ChannelManagementModal({ channels, organizationId, onClose, onAd
     });
   };
 
+  const handleToggleEmployee = async (employee, channelName) => {
+    const key = `${employee.id}:${channelName}`;
+    if (assigningSaving === key) return;
+    const isInChannel = employee.channel === channelName;
+    const newChannel = isInChannel ? null : channelName;
+    setAssigningSaving(key);
+    const { error } = await supabase
+      .from('employees')
+      .update({ channel: newChannel })
+      .eq('id', employee.id)
+      .eq('organization_id', organizationId);
+    setAssigningSaving(null);
+    if (!error) {
+      onAssignEmployee?.(employee.id, newChannel);
+      showToast?.(isInChannel ? 'Сотрудник удалён из канала' : 'Сотрудник добавлен в канал');
+    }
+  };
+
   return (
     <ModalPortal>
       <motion.div
@@ -1177,22 +1197,57 @@ export function ChannelManagementModal({ channels, organizationId, onClose, onAd
                 <p className="status-mgmt-empty">Пока нет каналов. Создайте первый ниже.</p>
               ) : (
                 <div className="status-mgmt-list">
-                  {channels.map((channel) => (
-                    <div key={channel.id} className="status-mgmt-row">
-                      <span className="status-mgmt-dot" style={{ background: channel.color }} />
-                      <span className="status-mgmt-name">{channel.name}</span>
-                      <motion.button
-                        className="status-mgmt-delete"
-                        type="button"
-                        whileTap={{ scale: 0.88 }}
-                        disabled={deletingId === channel.id}
-                        onClick={() => handleDelete(channel)}
-                        aria-label={`Удалить канал ${channel.name}`}
-                      >
-                        <Trash2 size={13} />
-                      </motion.button>
-                    </div>
-                  ))}
+                  {channels.map((channel) => {
+                    const isExpanded = expandedChannel === channel.id;
+                    const memberCount = employees.filter((e) => e.channel === channel.name).length;
+                    return (
+                      <div key={channel.id} className="channel-mgmt-card">
+                        <div className="status-mgmt-row" style={{ cursor: 'pointer' }} onClick={() => setExpandedChannel(isExpanded ? null : channel.id)}>
+                          <span className="status-mgmt-dot" style={{ background: channel.color }} />
+                          <span className="status-mgmt-name">{channel.name}</span>
+                          <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginLeft: 4 }}>{memberCount} чел.</span>
+                          <span style={{ marginLeft: 'auto', color: 'var(--muted)', display: 'flex' }}>
+                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </span>
+                          <motion.button
+                            className="status-mgmt-delete"
+                            type="button"
+                            whileTap={{ scale: 0.88 }}
+                            disabled={deletingId === channel.id}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(channel); }}
+                            aria-label={`Удалить канал ${channel.name}`}
+                          >
+                            <Trash2 size={13} />
+                          </motion.button>
+                        </div>
+                        {isExpanded && (
+                          <div className="channel-mgmt-members">
+                            {employees.length === 0 ? (
+                              <p style={{ fontSize: 12, color: 'var(--muted)', padding: '8px 12px' }}>Нет сотрудников</p>
+                            ) : (
+                              employees.map((employee) => {
+                                const inChannel = employee.channel === channel.name;
+                                const saving = assigningSaving === `${employee.id}:${channel.name}`;
+                                return (
+                                  <button
+                                    key={employee.id}
+                                    type="button"
+                                    className={`channel-mgmt-member ${inChannel ? 'active' : ''}`}
+                                    disabled={saving}
+                                    onClick={() => handleToggleEmployee(employee, channel.name)}
+                                  >
+                                    <Avatar name={employee.name} size={24} />
+                                    <span>{employee.name}</span>
+                                    {inChannel && <Check size={13} style={{ marginLeft: 'auto', color: channel.color }} />}
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </motion.div>
