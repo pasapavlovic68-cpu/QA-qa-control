@@ -376,9 +376,12 @@ h1 {
 }
 
 .kpi-card {
-  min-height: 166px;
+  height: 166px;
   padding: 20px;
   border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .kpi-icon,
@@ -395,7 +398,7 @@ h1 {
 }
 
 .kpi-card span {
-  margin-top: 17px;
+  margin-top: auto;
   color: var(--muted);
   font-size: 14px;
 }

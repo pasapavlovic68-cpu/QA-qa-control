@@ -400,9 +400,9 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
   );
 
   const avgScore = useMemo(() => {
-    if (reports.length === 0) return null;
-    const sum = reports.reduce((acc, r) => acc + (r.score ?? 0), 0);
-    return Math.round(sum / reports.length);
+    const valid = reports.filter((r) => r.score != null);
+    if (valid.length === 0) return null;
+    return Math.round(valid.reduce((acc, r) => acc + r.score, 0) / valid.length);
   }, [reports]);
 
   const totalCritical = useMemo(
