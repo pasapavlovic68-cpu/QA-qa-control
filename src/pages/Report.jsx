@@ -125,7 +125,7 @@ function EmployeeReportModal({ group, onClose, onOpenReport }) {
                 <div>
                   <span className="eyebrow">Отчёты сотрудника</span>
                   <h2>{group.employee}</h2>
-                  <p>{group.reportCount} проверок · {group.dialogs} диалогов</p>
+                  <p>{group.reportCount} проверок</p>
                 </div>
               </div>
               <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
@@ -139,10 +139,6 @@ function EmployeeReportModal({ group, onClose, onOpenReport }) {
               <div>
                 <span>Проверок</span>
                 <strong>{group.reportCount}</strong>
-              </div>
-              <div>
-                <span>Диалогов</span>
-                <strong>{group.dialogs}</strong>
               </div>
               <div>
                 <span>Критично</span>
@@ -180,7 +176,7 @@ function EmployeeReportModal({ group, onClose, onOpenReport }) {
                   >
                     <span>
                       <strong>{report.title}</strong>
-                      <small>{report.date} · {report.dialogs} диал.</small>
+                      <small>{report.date}</small>
                     </span>
                     <b>{report.score}</b>
                   </button>
@@ -473,7 +469,6 @@ export function Report({ organizationId }) {
                 </div>
               </div>
               <div className="report-metrics">
-                <span><b>{report.dialogs}</b> диалогов</span>
                 <span><b>{report.avgScore}</b> средняя</span>
                 <span><b>{report.critical}</b> критич.</span>
               </div>
