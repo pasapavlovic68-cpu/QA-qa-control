@@ -231,9 +231,8 @@ export function RuleToggle({ active, onClick }) {
   );
 }
 
-export function PremiumDropdown({ value, options, onChange, dropDown = false }) {
+export function PremiumDropdown({ value, options, onChange }) {
   const [open, setOpen] = useState(false);
-  const displayOptions = dropDown ? options : [...options].reverse();
 
   return (
     <div className="premium-select">
@@ -252,9 +251,9 @@ export function PremiumDropdown({ value, options, onChange, dropDown = false }) 
         {open && (
           <motion.div
             className="premium-select-menu"
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
             {displayOptions.map((option) => (

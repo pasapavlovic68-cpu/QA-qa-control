@@ -1894,7 +1894,7 @@ select {
 
 .premium-select-menu {
   position: absolute;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
   z-index: 12;
@@ -3359,8 +3359,6 @@ select {
 }
 
 .qtc-employee-select .premium-select-menu {
-  bottom: unset;
-  top: calc(100% + 6px);
   z-index: 120;
   min-width: 220px;
   max-height: 238px;
@@ -5327,7 +5325,7 @@ select {
 
 .datepicker-popup {
   position: absolute;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 6px);
   right: 0;
   z-index: 200;
   width: 260px;
@@ -5467,7 +5465,7 @@ select {
 
 .custom-select-menu {
   position: absolute;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
   z-index: 200;
