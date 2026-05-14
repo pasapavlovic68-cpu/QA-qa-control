@@ -551,9 +551,16 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
+          style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 64px)' }}
           {...shellMotionProps}
         >
-          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+          <motion.div
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            style={{ overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none', flexShrink: 1 }}
+          >
 
             {/* Header */}
             <motion.div className="modal-title" variants={modalSectionVariants}>
