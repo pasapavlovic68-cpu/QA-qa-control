@@ -429,11 +429,16 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         upsellStrategy: settings.upsell_strategy || '',
         criticalMoments: parseList(settings.critical_moments)
       };
-      const rulePayload = (rules ?? []).map((r) => ({
-        title: r.title,
-        description: r.description,
-        category: r.category || ''
-      }));
+      const rulePayload = (rules ?? []).map((r) => {
+        // category field stores "Category · Weight" (e.g. "Процесс · Критичная")
+        const [category, weight] = (r.category || '').split(' · ');
+        return {
+          title: r.title,
+          description: r.description,
+          category: category || '',
+          weight: weight || 'Средняя',
+        };
+      });
       const dialoguePayloads = dialogues.map((dialogue, index) => {
         const meta = parseDialogue(dialogue.raw_text);
         return {
@@ -536,8 +541,18 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
 
       if (checkUpdateError) throw checkUpdateError;
 
-      // Update employee checks_count: read current value, add analyzed dialogue count
-      console.log(`[PostAnalysisDataFlow] updating employee id=${selectedEmployee.id}: checks_count +${dialogueCount}, score=${aggregateReport.score}`);
+      // Recalculate employee score as true average across ALL their reports (not just this batch)
+      const { data: allEmployeeReports, error: allReportsErr } = await supabase
+        .from('reports')
+        .select('score')
+        .eq('employee_id', selectedEmployee.id)
+        .eq('organization_id', organizationId);
+
+      const trueAvgScore = (!allReportsErr && allEmployeeReports && allEmployeeReports.length > 0)
+        ? Math.round(allEmployeeReports.reduce((sum, r) => sum + (r.score || 0), 0) / allEmployeeReports.length)
+        : aggregateReport.score;
+
+      console.log(`[PostAnalysisDataFlow] updating employee id=${selectedEmployee.id}: checks_count +${dialogueCount}, score=${trueAvgScore} (avg of ${allEmployeeReports?.length ?? 1} reports)`);
       const { data: empRow, error: empFetchErr } = await supabase
         .from('employees')
         .select('checks_count')
@@ -550,15 +565,14 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         const newCount = (empRow.checks_count ?? 0) + dialogueCount;
         const { error: empUpdateErr } = await supabase
           .from('employees')
-          .update({ checks_count: newCount, score: aggregateReport.score })
+          .update({ checks_count: newCount, score: trueAvgScore })
           .eq('id', selectedEmployee.id);
 
         if (empUpdateErr) {
           console.error(`[PostAnalysisDataFlow] failed to update employee id=${selectedEmployee.id}:`, empUpdateErr);
         } else {
-          console.log(`[PostAnalysisDataFlow] employee updated: id=${selectedEmployee.id} checks_count=${newCount} score=${aggregateReport.score}`);
-          // Sync local state (score + dialogs) without page reload
-          onDialogueAnalyzed?.(selectedEmployee.id, dialogueCount, aggregateReport.score);
+          console.log(`[PostAnalysisDataFlow] employee updated: id=${selectedEmployee.id} checks_count=${newCount} score=${trueAvgScore}`);
+          onDialogueAnalyzed?.(selectedEmployee.id, dialogueCount, trueAvgScore);
         }
       }
 

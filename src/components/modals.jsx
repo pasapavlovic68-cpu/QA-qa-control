@@ -688,6 +688,34 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
               </motion.div>
             )}
 
+            {/* Evidence — цитаты из диалога, исключаем внутренние служебные записи */}
+            {(() => {
+              const evidenceItems = (report.evidence ?? []).filter(
+                (e) => e && e.type !== 'sales_department_regulation' && e.type !== 'batch_summary'
+              );
+              if (!evidenceItems.length) return null;
+              return (
+                <motion.div variants={modalSectionVariants} style={{ padding: '16px 0', borderTop: '1px solid var(--line)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
+                    Цитаты из диалога
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {evidenceItems.map((e, i) => {
+                      const text = e.quote || e.text || e.message || e.excerpt || e.description || '';
+                      const label = e.rule || e.title || e.context || '';
+                      if (!text) return null;
+                      return (
+                        <div key={i} style={{ padding: '10px 14px', borderRadius: 13, background: 'rgba(119,101,227,0.05)', border: '1px solid rgba(119,101,227,0.10)', borderLeft: '3px solid var(--accent)' }}>
+                          {label && <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>}
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.6, fontStyle: 'italic' }}>«{text}»</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              );
+            })()}
+
             {/* Empty state */}
             {!hasContent && (
               <motion.p
