@@ -134,9 +134,12 @@ function monthLabel(date) {
   return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 }
 
+// Funnel conversions: % Рег = reg/dialogs, % ФД = fd/reg, % РД = rd/fd
+// Always sum raw numbers first, then calculate — never average daily percentages.
 function pct(num, denom) {
-  if (!denom) return null;
-  return Math.round((num / denom) * 100);
+  if (!denom) return null; // shows "—" when denominator is 0 / null / undefined
+  const result = Math.round(((num ?? 0) / denom) * 100);
+  return isFinite(result) ? result : null;
 }
 
 function PctCell({ value }) {
@@ -325,9 +328,10 @@ export function Stats({ employees, employeesLoading, organizationId }) {
     { label: 'Регистрации', value: loading ? '…' : totals.registrations },
     { label: 'ФД', value: loading ? '…' : totals.first_deposits },
     { label: 'РД', value: loading ? '…' : totals.repeat_deposits },
-    { label: '% Рег', pctVal: pct(totals.registrations, totals.dialogs) },
-    { label: '% ФД', pctVal: pct(totals.first_deposits, totals.registrations) },
-    { label: '% РД', pctVal: pct(totals.repeat_deposits, totals.first_deposits) },
+    // Percentages from period totals — sum raw numbers first, then divide
+    { label: '% Рег', pctVal: loading ? null : pct(totals.registrations, totals.dialogs) },
+    { label: '% ФД', pctVal: loading ? null : pct(totals.first_deposits, totals.registrations) },
+    { label: '% РД', pctVal: loading ? null : pct(totals.repeat_deposits, totals.first_deposits) },
   ];
 
   return (
