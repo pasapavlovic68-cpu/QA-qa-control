@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, CalendarDays, Check, Plus, Radio, Tag, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
-import { Avatar, AnimatedProgress } from '../components/shared.jsx';
+import { Avatar } from '../components/shared.jsx';
 import { employeeCardTransition, EmployeeFormModal, DeleteEmployeeModal, StatusManagementModal, ChannelManagementModal } from '../components/modals.jsx';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -691,37 +691,6 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
                         <div className="employee-badge-row">
                           <ChannelBadge name={displayChannel} color={channelColor} />
                           <TodayScheduleBadge entry={todaySchedule[employee.id]} />
-                        </div>
-                        <div className="employee-assignment-actions">
-                          <motion.button
-                            type="button"
-                            className="employee-status-button"
-                            whileTap={{ scale: 0.97 }}
-                            onClick={(event) => openStatusAssignment(displayEmployee, event)}
-                          >
-                            Изменить статус
-                          </motion.button>
-                          <motion.button
-                            type="button"
-                            className="employee-status-button"
-                            whileTap={{ scale: 0.97 }}
-                            onClick={(event) => openChannelAssignment(displayEmployee, event)}
-                          >
-                            Изменить канал
-                          </motion.button>
-                        </div>
-                        <div className="score-line">
-                          <div>
-                            <strong>{employee.score}</strong>
-                            <span style={{ display: 'block', fontSize: 11, color: 'var(--muted)', marginTop: 2, fontWeight: 500, letterSpacing: 0.2 }}>/ 100</span>
-                          </div>
-                          <AnimatedProgress value={employee.score} />
-                        </div>
-                        <div className="employee-meta">
-                          <span><b style={{ color: 'var(--text)', marginRight: 3 }}>{employee.dialogs}</b>диалогов</span>
-                          <span style={{ color: employee.trend > 0 ? 'var(--success)' : employee.trend < 0 ? 'var(--danger)' : 'var(--muted)', fontWeight: 600 }}>
-                            {employee.trend > 0 ? '+' : ''}{employee.trend}
-                          </span>
                         </div>
                       </motion.article>
                     );
