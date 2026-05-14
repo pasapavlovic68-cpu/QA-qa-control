@@ -1009,11 +1009,23 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
     return groups;
   }, {});
 
+  const todayKey = getMoscowDateKey();
+
   const groups = Object.values(groupedEmployees).sort((a, b) => {
     if (a.name === 'Без канала') return 1;
     if (b.name === 'Без канала') return -1;
     return a.name.localeCompare(b.name, 'ru');
-  });
+  }).map((group) => ({
+    ...group,
+    employees: [...group.employees].sort((a, b) => {
+      const aStatus = schedule[`${a.id}:${todayKey}`]?.status ?? schedule[`${a.id}:${todayKey}`];
+      const bStatus = schedule[`${b.id}:${todayKey}`]?.status ?? schedule[`${b.id}:${todayKey}`];
+      const aWorking = aStatus === 'work' ? 0 : aStatus ? 1 : 2;
+      const bWorking = bStatus === 'work' ? 0 : bStatus ? 1 : 2;
+      if (aWorking !== bWorking) return aWorking - bWorking;
+      return a.name.localeCompare(b.name, 'ru');
+    }),
+  }));
 
   const handleCellChange = async (employee, dateKey, nextStatus, shift = {}) => {
     const cellKey = `${employee.id}:${dateKey}`;
