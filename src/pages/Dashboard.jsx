@@ -665,6 +665,7 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
                 value={trendEmployeeValue}
                 options={trendEmployeeOptions}
                 onChange={handleTrendEmployeeChange}
+                dropDown={true}
               />
             </div>
             <div className="qtc-filter-group qtc-filter-group--right">

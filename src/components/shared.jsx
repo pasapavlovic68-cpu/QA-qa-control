@@ -82,6 +82,7 @@ export function CustomSelect({ value, options, onChange, placeholder = 'Выбр
   }, [open]);
 
   const selected = options.find((o) => o.value === value);
+  const displayOptions = [...options].reverse();
 
   return (
     <div ref={ref} className="custom-select">
@@ -104,7 +105,7 @@ export function CustomSelect({ value, options, onChange, placeholder = 'Выбр
             exit={{ opacity: 0, y: 6, scale: 0.98 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
-            {options.map((opt) => (
+            {displayOptions.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
