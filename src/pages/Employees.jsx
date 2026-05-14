@@ -1149,12 +1149,17 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
           <div className="employee-schedule-table" style={{ '--schedule-days': dates.length }}>
             <div className="employee-schedule-header-row">
               <div className="employee-schedule-name-cell sticky">Сотрудник</div>
-              {dates.map((date) => (
-                <div key={formatDateKey(date)} className="employee-schedule-date-cell">
-                  <strong>{formatScheduleDay(date)}</strong>
-                  <span>{formatScheduleWeekday(date)}</span>
-                </div>
-              ))}
+              {dates.map((date, index) => {
+                const isFirstOfMonth = index === 0 || date.getMonth() !== dates[index - 1].getMonth();
+                const monthLabel = isFirstOfMonth ? date.toLocaleDateString('ru-RU', { month: 'long' }) : null;
+                return (
+                  <div key={formatDateKey(date)} className="employee-schedule-date-cell">
+                    {monthLabel && <em className="schedule-month-label">{monthLabel}</em>}
+                    <strong>{formatScheduleDay(date)}</strong>
+                    <span>{formatScheduleWeekday(date)}</span>
+                  </div>
+                );
+              })}
             </div>
 
             {groups.map((group) => (
@@ -1168,7 +1173,8 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                   const customColor = getStatusColor(displayStatus, statuses);
                   const fallbackTone = getStatusTone(displayStatus);
                   return (
-                  <div className="employee-schedule-row" key={employee.id}>
+                  <div className="employee-schedule-row-wrap" key={employee.id}>
+                  <div className="employee-schedule-row">
                     <div className="employee-schedule-name-cell sticky">
                       <Avatar name={employee.name} />
                       <div className="employee-schedule-name-info">
@@ -1276,6 +1282,7 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                             );
                           })}
                     </div>
+                  </div>
                   );
                 })}
               </div>

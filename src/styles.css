@@ -4180,7 +4180,10 @@ select {
   z-index: 5;
   background: rgba(252,252,253,0.92);
   backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(122,108,92,0.1);
+  border: 1px solid rgba(122, 108, 92, 0.12);
+  border-radius: 16px;
+  margin-bottom: 4px;
+  overflow: hidden;
 }
 
 .employee-schedule-name-cell,
@@ -4191,9 +4194,47 @@ select {
   border-bottom: 1px solid rgba(122,108,92,0.08);
 }
 
+.employee-schedule-header-row .employee-schedule-name-cell,
+.employee-schedule-header-row .employee-schedule-date-cell {
+  border-bottom: none;
+}
+
+.employee-schedule-row-wrap {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(122, 108, 92, 0.07);
+}
+
+.employee-schedule-row-wrap:last-child {
+  border-bottom: none;
+}
+
+.employee-schedule-row {
+  border: 1px solid rgba(122, 108, 92, 0.11);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.7);
+}
+
 .employee-schedule-group .employee-schedule-row:last-child .employee-schedule-name-cell,
 .employee-schedule-group .employee-schedule-row:last-child .employee-schedule-cell-wrap {
   border-bottom: none;
+}
+
+.schedule-month-label {
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: capitalize;
+  letter-spacing: 0.3px;
+  line-height: 1;
+}
+
+.employee-schedule-date-cell {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
 }
 
 .employee-schedule-name-cell {
@@ -4249,10 +4290,6 @@ select {
 }
 
 .employee-schedule-date-cell {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 2px;
   color: var(--text);
 }
 
