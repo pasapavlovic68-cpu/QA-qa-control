@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Check, Plus, Radio, Tag, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Check, Pencil, Plus, Radio, Tag, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { Avatar } from '../components/shared.jsx';
 import { EmployeeFormModal, DeleteEmployeeModal, StatusManagementModal, ChannelManagementModal } from '../components/modals.jsx';
@@ -206,8 +206,14 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   const [channels, setChannels] = useState([]);
   const [channelMgmtOpen, setChannelMgmtOpen] = useState(false);
   const [channelTarget, setChannelTarget] = useState(null);
-  const [channelOverrides, setChannelOverrides] = useState({}); // {employeeId: channelName}
+  const [channelOverrides, setChannelOverrides] = useState({}); // {employeeId: "Chan1,Chan2"}
   const [todaySchedule, setTodaySchedule] = useState({});
+
+  // Name editing
+  const [nameOverrides, setNameOverrides] = useState({}); // {employeeId: newName}
+  const [editingNameId, setEditingNameId] = useState(null);
+  const [editingNameValue, setEditingNameValue] = useState('');
+  const [nameSaving, setNameSaving] = useState(false);
   const todayDateKey = getMoscowDateKey();
 
   useEffect(() => {
@@ -284,7 +290,28 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   }, [organizationId, todayDateKey]);
 
   const getDisplayStatus = (employee) => statusOverrides[employee.id] ?? employee.status;
+  // Returns comma-separated string of channels (e.g. "Канада,Латам")
   const getDisplayChannel = (employee) => channelOverrides[employee.id] ?? employee.channel ?? '';
+  const getDisplayName = (employee) => nameOverrides[employee.id] ?? employee.name;
+
+  const handleNameSave = async (employee) => {
+    const newName = editingNameValue.trim();
+    setEditingNameId(null);
+    if (!newName || newName === getDisplayName(employee) || nameSaving) return;
+    setNameSaving(true);
+    const { error } = await supabase
+      .from('employees')
+      .update({ name: newName })
+      .eq('id', employee.id)
+      .eq('organization_id', organizationId);
+    setNameSaving(false);
+    if (error) {
+      showToast('Не удалось обновить имя', 'error');
+    } else {
+      setNameOverrides((prev) => ({ ...prev, [employee.id]: newName }));
+      showToast('Имя обновлено');
+    }
+  };
 
   const openStatusAssignment = (employee, event) => {
     event.stopPropagation();
@@ -619,6 +646,14 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         getStatusTone={getStatusTone}
         todaySchedule={todaySchedule}
         openStatusAssignment={openStatusAssignment}
+        getDisplayName={getDisplayName}
+        editingNameId={editingNameId}
+        editingNameValue={editingNameValue}
+        nameSaving={nameSaving}
+        onStartEditName={(emp) => { setEditingNameId(emp.id); setEditingNameValue(getDisplayName(emp)); }}
+        onNameChange={setEditingNameValue}
+        onNameSave={handleNameSave}
+        onNameCancel={() => setEditingNameId(null)}
       />
 
       <AnimatePresence>
@@ -816,18 +851,25 @@ function EmployeeStatusAssignModal({ employee, statuses, saving, error, onClose,
 }
 
 function EmployeeChannelAssignModal({ employee, channels, saving, error, onClose, onManage, onAssign }) {
-  const currentColor = getChannelColor(employee.channel, channels);
+  // Support comma-separated multi-channel: "Канада,Латам"
+  const currentChannels = employee.channel
+    ? employee.channel.split(',').map((s) => s.trim()).filter(Boolean)
+    : [];
+  const [selected, setSelected] = useState(currentChannels);
 
   useModalScrollLock();
 
   useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose();
-    };
-
+    const handleKeyDown = (event) => { if (event.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  const toggle = (name) => setSelected((prev) =>
+    prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+  );
+
+  const handleSave = () => onAssign(selected.join(','));
 
   return (
     <ModalPortal>
@@ -845,65 +887,75 @@ function EmployeeChannelAssignModal({ employee, channels, saving, error, onClose
         <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
           <motion.div className="status-popover-title" variants={modalSectionVariants}>
             <div className="status-modal-person">
-              <div className="status-modal-avatar">
-                <Avatar name={employee.name} />
-              </div>
+              <div className="status-modal-avatar"><Avatar name={employee.name} /></div>
               <div className="status-modal-heading">
-                <span className="eyebrow">Канал сотрудника</span>
+                <span className="eyebrow">Каналы сотрудника</span>
                 <h3>{employee.name}</h3>
-                <p>Сотрудник</p>
+                <p>Можно выбрать несколько</p>
               </div>
             </div>
             <button className="icon-button" type="button" onClick={onClose}><X size={16} /></button>
           </motion.div>
 
           <motion.div className="status-current status-current--hero" variants={modalSectionVariants}>
-            <span>Текущий канал</span>
-            {employee.channel ? (
-              <ChannelBadge name={employee.channel} color={currentColor} />
-            ) : (
-              <ChannelBadge name="Без канала" color="#8a8fa8" />
-            )}
+            <span>Текущие каналы</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {currentChannels.length > 0
+                ? currentChannels.map((ch) => (
+                    <ChannelBadge key={ch} name={ch} color={getChannelColor(ch, channels)} />
+                  ))
+                : <ChannelBadge name="Без канала" color="#8a8fa8" />
+              }
+            </div>
           </motion.div>
 
           <motion.div variants={modalSectionVariants}>
             {channels.length === 0 ? (
               <div className="status-empty">
                 <strong>Сначала создайте канал</strong>
-                <p>После создания каналы появятся здесь, и их можно будет назначать сотруднику одним кликом.</p>
+                <p>После создания каналы появятся здесь.</p>
                 <button className="ghost-button" type="button" onClick={onManage}>Управление каналами</button>
               </div>
             ) : (
               <div className="status-options-panel">
-                <span className="status-options-label">Выберите новый канал</span>
+                <span className="status-options-label">Выберите каналы</span>
                 <div className="status-choice-list">
                   {channels.map((channel) => {
-                    const selected = channel.name === employee.channel;
+                    const isSelected = selected.includes(channel.name);
                     return (
                       <button
                         key={channel.id}
                         type="button"
-                        className={`status-choice ${selected ? 'selected' : ''}`}
+                        className={`status-choice ${isSelected ? 'selected' : ''}`}
                         disabled={saving}
-                        onClick={() => onAssign(channel.name)}
+                        onClick={() => toggle(channel.name)}
                       >
                         <span className="status-choice-main">
                           <span className="status-choice-dot" style={{ background: channel.color }} />
                           <span>{channel.name}</span>
                         </span>
                         <span className="status-choice-check" aria-hidden="true">
-                          {selected && <Check size={16} />}
+                          {isSelected && <Check size={16} />}
                         </span>
                       </button>
                     );
                   })}
                 </div>
+                <motion.button
+                  className="primary-button"
+                  type="button"
+                  style={{ marginTop: 12, width: '100%' }}
+                  whileTap={{ scale: 0.97 }}
+                  disabled={saving}
+                  onClick={handleSave}
+                >
+                  Сохранить
+                </motion.button>
               </div>
             )}
           </motion.div>
 
           {error && <motion.p className="status-error" variants={modalSectionVariants}>{error}</motion.p>}
-          <motion.p className="status-save-hint" variants={modalSectionVariants}>Изменение сохранится сразу</motion.p>
         </motion.div>
       </motion.div>
       </motion.div>
@@ -911,7 +963,7 @@ function EmployeeChannelAssignModal({ employee, channels, saving, error, onClose
   );
 }
 
-function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, todaySchedule, openStatusAssignment }) {
+function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, todaySchedule, openStatusAssignment, getDisplayName, editingNameId, editingNameValue, nameSaving, onStartEditName, onNameChange, onNameSave, onNameCancel }) {
   const showToast = useToast();
   const [period, setPeriod] = useState('two_weeks');
   const [schedule, setSchedule] = useState({});
@@ -1002,15 +1054,21 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
 
   const groupedEmployees = employees.reduce((groups, employee) => {
     const displayChannel = getDisplayChannel(employee);
-    const groupName = displayChannel || 'Без канала';
-    if (!groups[groupName]) {
-      groups[groupName] = {
-        name: groupName,
-        color: displayChannel ? getChannelColor(displayChannel, channels) : '#8a8fa8',
-        employees: [],
-      };
-    }
-    groups[groupName].employees.push(employee);
+    const channelNames = displayChannel
+      ? displayChannel.split(',').map((s) => s.trim()).filter(Boolean)
+      : ['Без канала'];
+    channelNames.forEach((channelName) => {
+      if (!groups[channelName]) {
+        groups[channelName] = {
+          name: channelName,
+          color: channelName !== 'Без канала' ? getChannelColor(channelName, channels) : '#8a8fa8',
+          employees: [],
+        };
+      }
+      if (!groups[channelName].employees.find((e) => e.id === employee.id)) {
+        groups[channelName].employees.push(employee);
+      }
+    });
     return groups;
   }, {});
 
@@ -1193,9 +1251,37 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                   <div className="employee-schedule-row-wrap" key={employee.id}>
                   <div className="employee-schedule-row">
                     <div className="employee-schedule-name-cell sticky">
-                      <Avatar name={employee.name} />
+                      <Avatar name={getDisplayName ? getDisplayName(employee) : employee.name} />
                       <div className="employee-schedule-name-info">
-                        <strong>{employee.name}</strong>
+                        {editingNameId === employee.id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input
+                              autoFocus
+                              className="inline-name-input"
+                              value={editingNameValue}
+                              onChange={(e) => onNameChange(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') onNameSave(employee);
+                                if (e.key === 'Escape') onNameCancel();
+                              }}
+                              disabled={nameSaving}
+                              style={{ fontSize: '0.85rem', fontWeight: 600, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--surface)', color: 'var(--text)', width: 120 }}
+                            />
+                            <button type="button" className="ghost-icon-btn" onClick={() => onNameSave(employee)} disabled={nameSaving} style={{ color: 'var(--accent)', padding: 2 }}>
+                              <Check size={14} />
+                            </button>
+                            <button type="button" className="ghost-icon-btn" onClick={onNameCancel} disabled={nameSaving} style={{ padding: 2 }}>
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <strong>{getDisplayName ? getDisplayName(employee) : employee.name}</strong>
+                            <button type="button" className="ghost-icon-btn" onClick={(e) => { e.stopPropagation(); onStartEditName(employee); }} style={{ opacity: 0.4, padding: 2 }}>
+                              <Pencil size={12} />
+                            </button>
+                          </div>
+                        )}
                         <div className="employee-schedule-name-sub">
                           <button
                             type="button"
