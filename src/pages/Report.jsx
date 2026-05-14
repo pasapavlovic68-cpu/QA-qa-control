@@ -473,11 +473,6 @@ export function Report({ organizationId }) {
                 </div>
               </div>
               <p className="report-summary">{report.summary}</p>
-              <div className="report-card-recent-list">
-                {report.reports.slice(0, 3).map((item) => (
-                  <span key={item.id}>{item.date} · {item.dialogs} диал. · {item.score}</span>
-                ))}
-              </div>
               <div className="report-metrics">
                 <span><b>{report.dialogs}</b> диалогов</span>
                 <span><b>{report.avgScore}</b> средняя</span>
