@@ -472,7 +472,6 @@ export function Report({ organizationId }) {
                   <p>Последняя проверка: {report.date || '—'}</p>
                 </div>
               </div>
-              <p className="report-summary">{report.summary}</p>
               <div className="report-metrics">
                 <span><b>{report.dialogs}</b> диалогов</span>
                 <span><b>{report.avgScore}</b> средняя</span>
