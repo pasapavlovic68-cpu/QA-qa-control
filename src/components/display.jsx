@@ -256,7 +256,7 @@ export function PremiumDropdown({ value, options, onChange }) {
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
-            {displayOptions.map((option) => (
+            {options.map((option) => (
               <motion.button
                 type="button"
                 className={`premium-select-option ${option === value ? 'selected' : ''}`}
