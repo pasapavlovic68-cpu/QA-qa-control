@@ -592,10 +592,9 @@ h1 {
 }
 
 .employee-card {
-  display: grid;
-  grid-template-rows: 66px 54px 32px 92px 20px;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  min-height: 320px;
   padding: 22px;
   border-radius: var(--radius);
   color: var(--text);
@@ -4388,8 +4387,6 @@ select {
 
 @media (max-width: 640px) {
   .employee-card {
-    grid-template-rows: 66px 54px 72px 92px 20px;
-    min-height: 360px;
   }
 
   .employee-assignment-actions {
