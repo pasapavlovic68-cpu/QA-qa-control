@@ -803,7 +803,7 @@ h1 {
 /* Status picker dropdown */
 .status-picker {
   position: absolute;
-  top: calc(100% + 6px);
+  bottom: calc(100% + 6px);
   right: 0;
   z-index: 100;
   background: rgba(253, 252, 255, 0.98);
@@ -1894,7 +1894,7 @@ select {
 
 .premium-select-menu {
   position: absolute;
-  top: 100%;
+  bottom: calc(100% + 6px);
   left: 0;
   right: 0;
   z-index: 12;
@@ -3359,6 +3359,8 @@ select {
 }
 
 .qtc-employee-select .premium-select-menu {
+  bottom: unset;
+  top: calc(100% + 6px);
   z-index: 120;
   min-width: 220px;
   max-height: 238px;
@@ -5325,7 +5327,7 @@ select {
 
 .datepicker-popup {
   position: absolute;
-  top: calc(100% + 6px);
+  bottom: calc(100% + 6px);
   left: 0;
   z-index: 200;
   width: 260px;
