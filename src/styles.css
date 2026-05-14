@@ -5058,3 +5058,238 @@ select {
     font-size: 28px;
   }
 }
+
+/* ── Stats page ─────────────────────────────────────────── */
+
+.stats-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stats-head h2 {
+  margin: 2px 0 0;
+  font-size: 1.55rem;
+  font-weight: 800;
+}
+
+.stats-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.stats-mode-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.stats-period-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stats-period-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 130px;
+  text-align: center;
+}
+
+.stats-kpi-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.stats-kpi-card {
+  flex: 1;
+  min-width: 90px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 18px rgba(81, 71, 54, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stats-kpi-card span {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.stats-kpi-card strong {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stats-table-wrap {
+  overflow-x: auto;
+}
+
+.stats-table {
+  min-width: 700px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stats-header-row {
+  display: grid;
+  grid-template-columns: 220px repeat(7, 1fr);
+  padding: 10px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--line);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stats-header-row > div {
+  text-align: center;
+}
+
+.stats-header-row > .stats-name-col {
+  text-align: left;
+}
+
+.stats-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stats-group {
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(122, 108, 92, 0.13);
+  background: rgba(255, 255, 255, 0.52);
+  box-shadow: 0 4px 20px rgba(81, 71, 54, 0.07);
+}
+
+.stats-group-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(246, 244, 255, 0.5);
+  border-bottom: 1px solid rgba(119, 101, 227, 0.08);
+}
+
+.stats-group-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: 220px repeat(7, 1fr);
+  padding: 12px 16px;
+  align-items: center;
+  border-bottom: 1px solid rgba(122, 108, 92, 0.07);
+  transition: background 0.15s;
+  cursor: default;
+}
+
+.stats-row:last-child {
+  border-bottom: none;
+}
+
+.stats-row > div {
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.stats-name-col {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left !important;
+}
+
+.stats-name-col > span {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.stats-row b {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stats-zero {
+  color: var(--muted);
+  opacity: 0.45;
+}
+
+.stats-empty {
+  text-align: center;
+  color: var(--muted);
+  opacity: 0.55;
+  font-size: 0.875rem;
+  padding: 40px 0;
+}
+
+.stats-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.stats-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stats-form-field span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stats-form-field input,
+.stats-form-field select {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--text);
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.stats-form-field input:focus,
+.stats-form-field select:focus {
+  border-color: rgba(119, 101, 227, 0.45);
+  box-shadow: 0 0 0 3px rgba(119, 101, 227, 0.1);
+}

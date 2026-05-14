@@ -19,6 +19,7 @@ import { Report } from './pages/Report.jsx';
 import { Rules } from './pages/Rules.jsx';
 import { Sales } from './pages/Sales.jsx';
 import { Settings } from './pages/Settings.jsx';
+import { Stats } from './pages/Stats.jsx';
 import { EmployeeDrawer } from './components/modals.jsx';
 
 function LeadProofLogoMark({ className = '' }) {
@@ -1035,6 +1036,13 @@ function App({ session }) {
                 />
               )}
               {active === 'report' && <Report organizationId={organizationId} />}
+              {active === 'stats' && (
+                <Stats
+                  employees={employeesData}
+                  employeesLoading={employeesLoading}
+                  organizationId={organizationId}
+                />
+              )}
               {active === 'rules' && <Rules organizationId={organizationId} />}
               {active === 'settings' && <Settings organizationId={organizationId} />}
             </motion.section>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BarChart3,
   Building2,
   ChevronDown,
   ClipboardCheck,
@@ -27,6 +28,7 @@ export const tabs = [
   { id: 'sales', label: 'Продажи', icon: DollarSign },
   { id: 'review', label: 'Проверка', icon: ClipboardCheck },
   { id: 'report', label: 'Отчёт', icon: FileText },
+  { id: 'stats', label: 'Статистика', icon: BarChart3 },
   { id: 'rules', label: 'Правила', icon: Settings2 },
   { id: 'settings', label: 'Настройки', icon: SlidersHorizontal }
 ];
