@@ -1439,7 +1439,7 @@ h1 {
   position: relative;
   width: min(100%, 1080px);
   max-height: calc(100vh - 64px);
-  overflow: auto;
+  overflow: visible;
   border-radius: 36px;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(246, 243, 255, 0.9)),
@@ -1475,6 +1475,8 @@ h1 {
 .modal-shell-lg {
   max-width: 1080px;
   padding: clamp(32px, 4vw, 44px);
+  overflow-y: auto;
+  overflow-x: visible;
 }
 
 .delete-modal {
