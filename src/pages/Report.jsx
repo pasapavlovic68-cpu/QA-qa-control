@@ -74,9 +74,16 @@ function buildEmployeeReports(reports) {
       const mistakes = sortedReports.flatMap((report) => report.mistakes ?? []);
       const critical = mistakes.filter((item) => item.severity === 'critical' || item.severity === 'high').length;
       const latest = sortedReports[0];
-      const topMistakes = [...mistakes]
-        .sort((a, b) => severityRank(b.severity) - severityRank(a.severity))
-        .slice(0, 4);
+      const mistakeCounts = mistakes.reduce((acc, m) => {
+        const key = m.title || m.description || 'Замечание';
+        if (!acc[key]) acc[key] = { title: key, severity: m.severity, count: 0 };
+        if (severityRank(m.severity) > severityRank(acc[key].severity)) acc[key].severity = m.severity;
+        acc[key].count += 1;
+        return acc;
+      }, {});
+      const topMistakes = Object.values(mistakeCounts)
+        .sort((a, b) => severityRank(b.severity) - severityRank(a.severity) || b.count - a.count)
+        .slice(0, 5);
       const recommendations = sortedReports.flatMap((report) => report.recommendations ?? []).slice(0, 4);
 
       return {
@@ -156,9 +163,16 @@ function EmployeeReportModal({ group, onClose, onOpenReport }) {
             {group.topMistakes.length > 0 && (
               <motion.div className="employee-report-section" variants={modalSectionVariants}>
                 <span className="employee-report-section-label">Частые ошибки</span>
-                <div className="employee-report-chip-list">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {group.topMistakes.map((mistake, index) => (
-                    <span key={`${mistake.title}-${index}`}>{mistake.title || mistake.description || 'Замечание'}</span>
+                    <div key={`${mistake.title}-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--line)' }}>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text)' }}>{mistake.title}</span>
+                      {mistake.count > 1 && (
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: mistake.severity === 'critical' || mistake.severity === 'high' ? 'var(--danger)' : 'var(--muted)', background: mistake.severity === 'critical' || mistake.severity === 'high' ? 'rgba(190,60,68,0.08)' : 'rgba(0,0,0,0.05)', padding: '2px 8px', borderRadius: 20, flexShrink: 0, marginLeft: 8 }}>
+                          ×{mistake.count}
+                        </span>
+                      )}
+                    </div>
                   ))}
                 </div>
               </motion.div>

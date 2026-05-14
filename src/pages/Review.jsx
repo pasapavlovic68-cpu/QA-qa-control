@@ -387,6 +387,25 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       setAnalysisStage('contacting_ai');
       setAnalysisTotalDlg(dialoguePayloads.length);
       setAnalysisCurrentDlg(0);
+
+      // Fetch previous mistakes for context
+      let previousMistakes = [];
+      if (selectedEmployee) {
+        const { data: prevReports } = await supabase
+          .from('employee_reports')
+          .select('mistakes')
+          .eq('employee_id', selectedEmployee.id)
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+          .limit(3);
+        if (prevReports?.length) {
+          previousMistakes = prevReports
+            .flatMap((r) => Array.isArray(r.mistakes) ? r.mistakes : [])
+            .filter((m) => m?.title)
+            .slice(0, 8);
+        }
+      }
+
       for (let index = 0; index < dialoguePayloads.length; index += 1) {
         const dialogue = dialoguePayloads[index];
         setAnalysisCurrentDlg(index);
@@ -404,6 +423,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
               dialogues: [dialogue],
               rules: rulePayload,
               salesDepartmentRegulation: SALES_DEPARTMENT_REGULATION,
+              previousMistakes,
               analysisContext: {
                 ...analysisContext,
                 batch: {
