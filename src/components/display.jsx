@@ -72,7 +72,7 @@ const STEP_CURRENT_LABEL = {
   completed:         'Счётчики обновлены',
 };
 
-export function AnalysisState({ status, stage, filesCount = 0, dialogueCount = 0, employeeName = '', errorMessage = null }) {
+export function AnalysisState({ status, stage, filesCount = 0, dialogueCount = 0, employeeName = '', errorMessage = null, currentDialogue = 0, totalDialogues = 0 }) {
   const lastActiveStageRef = useRef(null);
 
   useEffect(() => {
@@ -99,10 +99,11 @@ export function AnalysisState({ status, stage, filesCount = 0, dialogueCount = 0
     return 'pending';
   };
 
-  const progress =
-    !stage || status === 'idle' ? 0
-    : status === 'complete' ? 100
-    : STAGE_PROGRESS[effectiveStage] ?? 0;
+  const baseProgress = !stage || status === 'idle' ? 0 : status === 'complete' ? 100 : STAGE_PROGRESS[effectiveStage] ?? 0;
+  // During AI analysis interpolate progress per dialogue: 65% → 85%
+  const progress = effectiveStage === 'contacting_ai' && totalDialogues > 0
+    ? Math.round(65 + (currentDialogue / totalDialogues) * 20)
+    : baseProgress;
 
   const currentStepLabel = effectiveStage ? (STEP_CURRENT_LABEL[effectiveStage] ?? '') : null;
   const isIdle     = !stage || status === 'idle';

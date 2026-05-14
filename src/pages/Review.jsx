@@ -171,6 +171,8 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
   const [analysisMessage, setAnalysisMessage] = useState(null);
   const [analysisStage, setAnalysisStage] = useState(null);
   const [analysisDlgCount, setAnalysisDlgCount] = useState(0);
+  const [analysisCurrentDlg, setAnalysisCurrentDlg] = useState(0);
+  const [analysisTotalDlg, setAnalysisTotalDlg] = useState(0);
   const [previewReport, setPreviewReport] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -383,8 +385,11 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       const failedDialogues = [];
 
       setAnalysisStage('contacting_ai');
+      setAnalysisTotalDlg(dialoguePayloads.length);
+      setAnalysisCurrentDlg(0);
       for (let index = 0; index < dialoguePayloads.length; index += 1) {
         const dialogue = dialoguePayloads[index];
+        setAnalysisCurrentDlg(index);
         setAnalysisMessage({ type: 'success', text: `Анализируем диалог ${index + 1} из ${dialoguePayloads.length}: ${dialogue.fileName}` });
         const workerController = new AbortController();
         const workerAbortTimer = setTimeout(() => workerController.abort(), 45000);
@@ -674,13 +679,14 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <motion.button
-            className="primary-button large"
-            style={{ flex: 1 }}
+            className={`primary-button large${analyzing ? ' analyzing-pulse' : ''}`}
+            style={{ flex: 1, position: 'relative', overflow: 'hidden' }}
             whileTap={{ scale: 0.97 }}
-            whileHover={{ y: -2 }}
+            whileHover={analyzing ? {} : { y: -2 }}
             disabled={analyzing || uploading}
             onClick={handleStartAnalysis}
           >
+            {analyzing && <span className="analyzing-shimmer" aria-hidden="true" />}
             <Play size={18} />
             {analyzing ? 'Анализируем…' : 'Начать анализ'}
           </motion.button>
@@ -714,6 +720,8 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           dialogueCount={analysisDlgCount}
           employeeName={selectedEmployeeName}
           errorMessage={analysisMessage?.type === 'error' ? analysisMessage.text : null}
+          currentDialogue={analysisCurrentDlg}
+          totalDialogues={analysisTotalDlg}
         />
       </PremiumCard>
 
