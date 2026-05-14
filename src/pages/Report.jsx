@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Search, Trash2, X } from 'lucide-react';
+import { Search, Trash2, X } from 'lucide-react';
 import { supabase, fetchWithTimeout } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
-import { isCheckedEmployee } from '../lib/employees.js';
-import { runModalSuccessFlow } from '../lib/modalSuccess.js';
 import { AnimatedProgress, Avatar } from '../components/shared.jsx';
 import { reportCardTransition, ReviewReportModal } from '../components/modals.jsx';
 import { ModalPortal, modalContentVariants, modalMotion, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
@@ -96,331 +94,6 @@ function buildEmployeeReports(reports) {
       };
     })
     .sort((a, b) => new Date(b.latest?.createdAt || b.latest?.date) - new Date(a.latest?.createdAt || a.latest?.date));
-}
-
-function padDatePart(value) {
-  return String(value).padStart(2, '0');
-}
-
-function toDateKey(date) {
-  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
-}
-
-function getWeekBounds(baseDate = new Date()) {
-  const date = new Date(baseDate);
-  date.setHours(0, 0, 0, 0);
-  const mondayOffset = (date.getDay() + 6) % 7;
-  const start = new Date(date);
-  start.setDate(date.getDate() - mondayOffset);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  return { start, end, startKey: toDateKey(start), endKey: toDateKey(end) };
-}
-
-function shiftWeek(bounds, direction) {
-  const next = new Date(bounds.start);
-  next.setDate(bounds.start.getDate() + direction * 7);
-  return getWeekBounds(next);
-}
-
-function formatShortDate(dateValue) {
-  if (!dateValue) return '';
-  return new Date(dateValue).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
-}
-
-function formatManualPeriod(start, end) {
-  return `${formatShortDate(start)}-${formatShortDate(end)}`;
-}
-
-function calculateL2D(dialogues, fd) {
-  const dialogueCount = Number(dialogues) || 0;
-  const fdCount = Number(fd) || 0;
-  if (fdCount <= 0) return 0;
-  return dialogueCount / fdCount * 100;
-}
-
-function formatPercent(value) {
-  return `${Number(value || 0).toFixed(2)}%`;
-}
-
-function toManualReport(row, employeeMap) {
-  const employee = employeeMap[row.employee_id] ?? {};
-  const dialogues = Number(row.dialogues_count) || 0;
-  const fd = Number(row.fd_count) || 0;
-  return {
-    id: row.id,
-    employeeId: row.employee_id,
-    employee: employee.name || 'Сотрудник',
-    role: employee.role || 'Сотрудник',
-    channel: employee.channel || '',
-    periodStart: row.period_start,
-    periodEnd: row.period_end,
-    dialogues,
-    fd,
-    rd: Number(row.rd_count) || 0,
-    fdAmount: Number(row.fd_amount) || 0,
-    rdAmount: Number(row.rd_amount) || 0,
-    avgResponseTime: row.avg_response_time || '',
-    notes: row.notes || '',
-    recommendations: row.recommendations || '',
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    l2d: calculateL2D(dialogues, fd),
-  };
-}
-
-function buildManualReportText(report) {
-  const lines = [
-    'Доброе утро.',
-    `${report.channel ? `${report.channel} ` : ''}${report.employee}`,
-    `Период: ${formatManualPeriod(report.periodStart, report.periodEnd)}`,
-    '',
-    `${report.employee}:`,
-    `${report.dialogues} диалогов`,
-    `фд-${report.fd}`,
-    `рд-${report.rd}`,
-    `l2d-${formatPercent(report.l2d)}`,
-  ];
-
-  if (report.avgResponseTime) lines.push(`среднее время ответа: ${report.avgResponseTime}`);
-  if (report.fdAmount) lines.push(`сумма ФД: ${report.fdAmount}`);
-  if (report.rdAmount) lines.push(`сумма РД: ${report.rdAmount}`);
-  if (report.notes) lines.push('', report.notes);
-  if (report.recommendations) lines.push('', 'Рекомендации:', report.recommendations);
-
-  return lines.join('\n');
-}
-
-function ManualReportFormModal({ employees, period, organizationId, onClose, onSaved }) {
-  useModalScrollLock();
-
-  const showToast = useToast();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [form, setForm] = useState({
-    employeeId: employees[0]?.id ?? '',
-    dialogues: '',
-    fd: '',
-    rd: '',
-    fdAmount: '',
-    rdAmount: '',
-    avgResponseTime: '',
-    notes: '',
-    recommendations: '',
-  });
-
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
-
-  const updateField = (field) => (event) => {
-    setForm((current) => ({ ...current, [field]: event.target.value }));
-  };
-
-  const resetForm = () => {
-    setForm({
-      employeeId: employees[0]?.id ?? '',
-      dialogues: '',
-      fd: '',
-      rd: '',
-      fdAmount: '',
-      rdAmount: '',
-      avgResponseTime: '',
-      notes: '',
-      recommendations: '',
-    });
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    const employeeId = form.employeeId;
-    const dialogues = Number(form.dialogues);
-    const fd = Number(form.fd);
-
-    if (!employeeId) {
-      setError('Выберите сотрудника.');
-      return;
-    }
-
-    if (!Number.isFinite(dialogues) || dialogues < 0 || !Number.isFinite(fd) || fd < 0) {
-      setError('Диалоги и ФД должны быть числами от 0.');
-      return;
-    }
-
-    setError('');
-    const payload = {
-      organization_id: organizationId,
-      employee_id: employeeId,
-      period_start: period.startKey,
-      period_end: period.endKey,
-      dialogues_count: dialogues,
-      fd_count: fd,
-      rd_count: Number(form.rd) || 0,
-      fd_amount: Number(form.fdAmount) || 0,
-      rd_amount: Number(form.rdAmount) || 0,
-      avg_response_time: form.avgResponseTime.trim() || null,
-      notes: form.notes.trim() || null,
-      recommendations: form.recommendations.trim() || null,
-      updated_at: new Date().toISOString(),
-    };
-
-    await runModalSuccessFlow({
-      setSaving,
-      action: async () => {
-        const { data, error: saveError } = await supabase
-          .from('manual_employee_reports')
-          .upsert(payload, { onConflict: 'organization_id,employee_id,period_start' })
-          .select('*')
-          .maybeSingle();
-        if (saveError) throw saveError;
-        return data;
-      },
-      reload: onSaved,
-      reset: resetForm,
-      toast: () => showToast?.('Отчёт сохранён'),
-      close: onClose,
-      onError: (saveError) => {
-        console.error('[ManualReports] save error:', saveError);
-        setError(saveError?.message || 'Не удалось сохранить отчёт.');
-      },
-    });
-  };
-
-  return (
-    <ModalPortal>
-      <motion.div className="modal-backdrop employee-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-        <motion.form
-          className="modal-shell modal-shell--large manual-report-modal"
-          onClick={(event) => event.stopPropagation()}
-          onSubmit={handleSubmit}
-          role="dialog"
-          aria-modal="true"
-          initial={modalMotion.initial}
-          animate={modalMotion.animate}
-          exit={modalMotion.exit}
-          transition={modalMotion.transition}
-        >
-          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
-            <motion.div className="modal-title" variants={modalSectionVariants}>
-              <div>
-                <span className="eyebrow">Ручной отчёт</span>
-                <h2>Добавить отчёт</h2>
-                <p>{formatManualPeriod(period.start, period.end)} · L2D считается автоматически</p>
-              </div>
-              <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
-            </motion.div>
-
-            <motion.div className="manual-report-form-grid" variants={modalSectionVariants}>
-              <label>
-                <span>Сотрудник</span>
-                <select value={form.employeeId} onChange={updateField('employeeId')} autoFocus>
-                  {employees.map((employee) => (
-                    <option key={employee.id} value={employee.id}>{employee.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Диалоги</span>
-                <input type="number" min="0" value={form.dialogues} onChange={updateField('dialogues')} placeholder="221" />
-              </label>
-              <label>
-                <span>ФД</span>
-                <input type="number" min="0" value={form.fd} onChange={updateField('fd')} placeholder="8" />
-              </label>
-              <label>
-                <span>РД</span>
-                <input type="number" min="0" value={form.rd} onChange={updateField('rd')} placeholder="3" />
-              </label>
-              <label>
-                <span>Сумма ФД</span>
-                <input type="number" min="0" step="0.01" value={form.fdAmount} onChange={updateField('fdAmount')} placeholder="386.90" />
-              </label>
-              <label>
-                <span>Сумма РД</span>
-                <input type="number" min="0" step="0.01" value={form.rdAmount} onChange={updateField('rdAmount')} placeholder="263.94" />
-              </label>
-              <label>
-                <span>Среднее время ответа</span>
-                <input value={form.avgResponseTime} onChange={updateField('avgResponseTime')} placeholder="00:13" />
-              </label>
-              <div className="manual-report-calculated">
-                <span>L2D</span>
-                <strong>{formatPercent(calculateL2D(form.dialogues, form.fd))}</strong>
-                <small>Диалоги / ФД × 100</small>
-              </div>
-              <label className="manual-report-wide">
-                <span>Наблюдения</span>
-                <textarea value={form.notes} onChange={updateField('notes')} placeholder="Что заметили по сотруднику за неделю" />
-              </label>
-              <label className="manual-report-wide">
-                <span>Рекомендации</span>
-                <textarea value={form.recommendations} onChange={updateField('recommendations')} placeholder="Что нужно улучшить" />
-              </label>
-            </motion.div>
-
-            {error && <motion.p className="status-error" variants={modalSectionVariants}>{error}</motion.p>}
-
-            <motion.div className="modal-actions" variants={modalSectionVariants}>
-              <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose} disabled={saving}>Отмена</motion.button>
-              <motion.button className="primary-button" type="submit" whileTap={{ scale: saving ? 1 : 0.97 }} disabled={saving}>
-                {saving ? 'Сохраняем…' : 'Сохранить отчёт'}
-              </motion.button>
-            </motion.div>
-          </motion.div>
-        </motion.form>
-      </motion.div>
-    </ModalPortal>
-  );
-}
-
-function ManualReportTextModal({ report, onClose }) {
-  useModalScrollLock();
-  const showToast = useToast();
-  const reportText = buildManualReportText(report);
-
-  const copyText = async () => {
-    await navigator.clipboard.writeText(reportText);
-    showToast?.('Отчёт скопирован');
-  };
-
-  return (
-    <ModalPortal>
-      <motion.div className="modal-backdrop employee-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-        <motion.div
-          className="modal-shell modal-shell--medium manual-report-copy-modal"
-          onClick={(event) => event.stopPropagation()}
-          role="dialog"
-          aria-modal="true"
-          initial={modalMotion.initial}
-          animate={modalMotion.animate}
-          exit={modalMotion.exit}
-          transition={modalMotion.transition}
-        >
-          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
-            <motion.div className="modal-title" variants={modalSectionVariants}>
-              <div>
-                <span className="eyebrow">Готовый текст</span>
-                <h2>Отчёт {report.employee}</h2>
-              </div>
-              <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
-            </motion.div>
-            <motion.pre className="manual-report-text" variants={modalSectionVariants}>{reportText}</motion.pre>
-            <motion.div className="modal-actions" variants={modalSectionVariants}>
-              <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>Закрыть</motion.button>
-              <motion.button className="primary-button" type="button" whileTap={{ scale: 0.97 }} onClick={copyText}>
-                <Copy size={16} />
-                Скопировать
-              </motion.button>
-            </motion.div>
-          </motion.div>
-        </motion.div>
-      </motion.div>
-    </ModalPortal>
-  );
 }
 
 function EmployeeReportModal({ group, onClose, onOpenReport }) {
@@ -571,16 +244,8 @@ function DeleteReportGroupModal({ group, saving, error, onCancel, onConfirm }) {
 
 export function Report({ organizationId }) {
   const showToast = useToast();
-  const [reportMode, setReportMode] = useState('manual');
   const [reports, setReports] = useState([]);
-  const [manualReports, setManualReports] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [week, setWeek] = useState(() => getWeekBounds());
   const [loading, setLoading] = useState(true);
-  const [manualLoading, setManualLoading] = useState(true);
-  const [manualError, setManualError] = useState('');
-  const [manualFormOpen, setManualFormOpen] = useState(false);
-  const [manualTextReport, setManualTextReport] = useState(null);
   const [selectedEmployeeReport, setSelectedEmployeeReport] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -630,62 +295,6 @@ export function Report({ organizationId }) {
     setLoading(false);
   };
 
-  const loadManualReports = async ({ showLoader = false } = {}) => {
-    if (!organizationId) return;
-    if (showLoader) setManualLoading(true);
-    setManualError('');
-
-    const [employeesResult, manualResult] = await Promise.all([
-      fetchWithTimeout(
-        supabase
-          .from('employees')
-          .select('id, name, role, channel, auth_user_id')
-          .eq('organization_id', organizationId)
-          .order('created_at', { ascending: false }),
-        'ManualReports:employees'
-      ),
-      fetchWithTimeout(
-        supabase
-          .from('manual_employee_reports')
-          .select('*')
-          .eq('organization_id', organizationId)
-          .eq('period_start', week.startKey)
-          .order('created_at', { ascending: false }),
-        'ManualReports'
-      ),
-    ]);
-
-    if (employeesResult.error) {
-      console.error('[ManualReports] employees fetch error:', employeesResult.error);
-      setManualError('Не удалось загрузить сотрудников.');
-      setManualLoading(false);
-      return;
-    }
-
-    const checkedEmployees = (employeesResult.data ?? []).filter(isCheckedEmployee);
-    setEmployees(checkedEmployees);
-
-    if (manualResult.error) {
-      console.error('[ManualReports] reports fetch error:', manualResult.error);
-      setManualError(
-        manualResult.error.code === '42P01'
-          ? 'Таблица manual_employee_reports ещё не создана в Supabase.'
-          : 'Не удалось загрузить ручные отчёты.'
-      );
-      setManualReports([]);
-      setManualLoading(false);
-      return;
-    }
-
-    const employeeMap = {};
-    checkedEmployees.forEach((employee) => {
-      employeeMap[employee.id] = employee;
-    });
-
-    setManualReports((manualResult.data ?? []).map((row) => toManualReport(row, employeeMap)));
-    setManualLoading(false);
-  };
-
   useEffect(() => {
     loadReports({ showLoader: true }).catch((error) => {
       console.error('[Report] load error:', error);
@@ -693,19 +302,7 @@ export function Report({ organizationId }) {
     });
   }, [organizationId]);
 
-  useEffect(() => {
-    loadManualReports({ showLoader: true }).catch((error) => {
-      console.error('[ManualReports] load error:', error);
-      setManualError(error?.message || 'Не удалось загрузить ручные отчёты.');
-      setManualLoading(false);
-    });
-  }, [organizationId, week.startKey]);
-
   const employeeReports = buildEmployeeReports(reports);
-  const filteredManualReports = manualReports.filter((report) => {
-    const searchValue = `${report.employee} ${report.channel} ${report.notes} ${report.recommendations}`.toLowerCase();
-    return searchValue.includes(query.toLowerCase());
-  });
 
   const filteredReports = employeeReports.filter((group) => {
     const reportText = group.reports.map((report) => `${report.title} ${report.summary}`).join(' ');
@@ -813,96 +410,16 @@ export function Report({ organizationId }) {
     <>
       <div className="reports-head">
         <div>
-          <span className="eyebrow">{reportMode === 'manual' ? 'Ручная статистика' : 'История проверок'}</span>
-          <h2>{reportMode === 'manual' ? 'Отчёты сотрудников' : 'Сформированные отчёты'}</h2>
+          <span className="eyebrow">История проверок</span>
+          <h2>Сформированные отчёты</h2>
         </div>
-        <div className="reports-head-actions">
-          <div className="reports-mode-switch">
-            <button className={reportMode === 'manual' ? 'active' : ''} type="button" onClick={() => setReportMode('manual')}>Ручные</button>
-            <button className={reportMode === 'ai' ? 'active' : ''} type="button" onClick={() => setReportMode('ai')}>AI</button>
-          </div>
-          <label className="report-search">
-            <Search size={17} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти отчёт или сотрудника" />
-          </label>
-          {reportMode === 'manual' && (
-            <motion.button className="primary-button" type="button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={() => setManualFormOpen(true)}>
-              <Plus size={17} />
-              Добавить отчёт
-            </motion.button>
-          )}
-        </div>
+        <label className="report-search">
+          <Search size={17} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти отчёт, сотрудника или статус" />
+        </label>
       </div>
 
-      {reportMode === 'manual' && (
-        <div className="manual-report-period-bar">
-          <div>
-            <span className="eyebrow">Период</span>
-            <strong>{formatManualPeriod(week.start, week.end)}</strong>
-            <small>Понедельник-воскресенье</small>
-          </div>
-          <div className="manual-report-week-actions">
-            <button type="button" onClick={() => setWeek((current) => shiftWeek(current, -1))}><ChevronLeft size={16} /></button>
-            <button type="button" onClick={() => setWeek(getWeekBounds())}><CalendarDays size={16} /> Текущая</button>
-            <button type="button" onClick={() => setWeek((current) => shiftWeek(current, 1))}><ChevronRight size={16} /></button>
-          </div>
-        </div>
-      )}
-
-      {reportMode === 'manual' ? (
-        manualLoading ? (
-          <div className="reports-grid" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
-            <p style={{ opacity: 0.4, fontSize: '0.875rem' }}>Загружаем ручные отчёты…</p>
-          </div>
-        ) : manualError ? (
-          <div className="reports-grid" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 220, gap: 8, textAlign: 'center' }}>
-            <p style={{ fontWeight: 700, color: 'var(--danger)', fontSize: '1rem' }}>{manualError}</p>
-            <p style={{ opacity: 0.45, fontSize: '0.875rem', maxWidth: 420 }}>Нужно выполнить SQL из файла Supabase, который я добавлю в проект.</p>
-          </div>
-        ) : filteredManualReports.length === 0 ? (
-          <div className="reports-grid" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 10, textAlign: 'center' }}>
-            <p style={{ fontWeight: 700, opacity: 0.68, fontSize: '1rem' }}>За эту неделю отчётов пока нет</p>
-            <p style={{ opacity: 0.42, fontSize: '0.875rem', maxWidth: 420 }}>Карточки сотрудников появятся только после добавления ручного отчёта.</p>
-            <button className="primary-button" type="button" onClick={() => setManualFormOpen(true)}><Plus size={17} /> Добавить отчёт</button>
-          </div>
-        ) : (
-          <motion.div className="reports-grid" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}>
-            {filteredManualReports.map((report) => (
-              <motion.div
-                layout
-                className="report-card manual-report-card"
-                key={report.id}
-                variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } }}
-                transition={reportCardTransition}
-                whileHover={{ y: -5, scale: 1.008 }}
-              >
-                <div className="report-card-top">
-                  <span className="report-number">{formatManualPeriod(report.periodStart, report.periodEnd)}</span>
-                  <span className="report-status good">L2D {formatPercent(report.l2d)}</span>
-                </div>
-                <div className="report-person">
-                  <Avatar name={report.employee} />
-                  <div>
-                    <h3>{report.employee}</h3>
-                    <p>{report.channel || report.role}</p>
-                  </div>
-                </div>
-                <div className="manual-report-metrics">
-                  <div><span>Диалоги</span><strong>{report.dialogues}</strong></div>
-                  <div><span>ФД</span><strong>{report.fd}</strong></div>
-                  <div><span>РД</span><strong>{report.rd}</strong></div>
-                  <div><span>Ответ</span><strong>{report.avgResponseTime || '—'}</strong></div>
-                </div>
-                <p className="report-summary">{report.notes || 'Наблюдения не добавлены.'}</p>
-                <button className="manual-report-copy-button" type="button" onClick={() => setManualTextReport(report)}>
-                  <Copy size={15} />
-                  Сделать отчёт
-                </button>
-              </motion.div>
-            ))}
-          </motion.div>
-        )
-      ) : loading ? (
+      {loading ? (
         <div className="reports-grid" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
           <p style={{ opacity: 0.4, fontSize: '0.875rem' }}>Загружаем отчёты…</p>
         </div>
@@ -1004,27 +521,6 @@ export function Report({ organizationId }) {
               if (!deleteSaving) setDeleteTarget(null);
             }}
             onConfirm={handleDeleteReportGroup}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {manualFormOpen && (
-          <ManualReportFormModal
-            employees={employees}
-            period={week}
-            organizationId={organizationId}
-            onClose={() => setManualFormOpen(false)}
-            onSaved={() => loadManualReports()}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {manualTextReport && (
-          <ManualReportTextModal
-            report={manualTextReport}
-            onClose={() => setManualTextReport(null)}
           />
         )}
       </AnimatePresence>
