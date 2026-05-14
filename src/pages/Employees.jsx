@@ -618,6 +618,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         getStatusColor={getStatusColor}
         getStatusTone={getStatusTone}
         todaySchedule={todaySchedule}
+        openStatusAssignment={openStatusAssignment}
       />
 
       <AnimatePresence>
@@ -910,7 +911,7 @@ function EmployeeChannelAssignModal({ employee, channels, saving, error, onClose
   );
 }
 
-function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, todaySchedule }) {
+function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, todaySchedule, openStatusAssignment }) {
   const showToast = useToast();
   const [period, setPeriod] = useState('two_weeks');
   const [schedule, setSchedule] = useState({});
@@ -1196,7 +1197,13 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                       <div className="employee-schedule-name-info">
                         <strong>{employee.name}</strong>
                         <div className="employee-schedule-name-sub">
-                          <StatusBadge name={displayStatus} statusTone={fallbackTone} color={customColor} />
+                          <button
+                            type="button"
+                            className="status-badge-clickable"
+                            onClick={(e) => { e.stopPropagation(); openStatusAssignment({ ...employee, status: displayStatus, statusTone: fallbackTone }, e); }}
+                          >
+                            <StatusBadge name={displayStatus} statusTone={fallbackTone} color={customColor} />
+                          </button>
                           <TodayScheduleBadge entry={todaySchedule[employee.id]} />
                         </div>
                       </div>
