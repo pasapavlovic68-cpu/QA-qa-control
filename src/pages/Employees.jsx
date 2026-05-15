@@ -1233,6 +1233,7 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                   </div>
                 );
               })}
+              <div />
             </div>
 
             {groups.map((group) => (
@@ -1388,6 +1389,7 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                               </div>
                             );
                           })}
+                      <div />
                     </div>
                   </div>
                   );

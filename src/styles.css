@@ -4269,7 +4269,7 @@ select {
 }
 
 .employee-schedule-table {
-  min-width: calc(320px + var(--schedule-days) * 58px + 24px);
+  min-width: calc(320px + var(--schedule-days) * 58px + 20px);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -4281,13 +4281,12 @@ select {
   overflow: hidden;
   background: rgba(255, 255, 255, 0.52);
   box-shadow: 0 2px 12px rgba(35, 31, 58, 0.05);
-  padding-right: 24px;
 }
 
 .employee-schedule-header-row,
 .employee-schedule-row {
   display: grid;
-  grid-template-columns: 320px repeat(var(--schedule-days), 58px);
+  grid-template-columns: 320px repeat(var(--schedule-days), 58px) 20px;
 }
 
 .employee-schedule-header-row {
@@ -4300,7 +4299,6 @@ select {
   border-radius: 16px;
   margin-bottom: 4px;
   overflow: hidden;
-  padding-right: 24px;
 }
 
 .employee-schedule-name-cell,
