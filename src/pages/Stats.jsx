@@ -484,9 +484,12 @@ export function Stats({ employees, employeesLoading, organizationId }) {
   const channelGroups = useMemo(() => {
     const groups = {};
     employees.forEach((emp) => {
-      const ch = emp.channel || 'Без канала';
-      if (!groups[ch]) groups[ch] = [];
-      groups[ch].push(emp);
+      const raw = emp.channel || '';
+      const channels = raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : ['Без канала'];
+      channels.forEach((ch) => {
+        if (!groups[ch]) groups[ch] = [];
+        if (!groups[ch].find((e) => e.id === emp.id)) groups[ch].push(emp);
+      });
     });
     return groups;
   }, [employees]);
