@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, X, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2, X, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
 import { Avatar, CustomSelect } from '../components/shared.jsx';
@@ -408,12 +408,24 @@ function EditStatsModal({ employee, rows, organizationId, periodLabel, onClose, 
 }
 
 export function Stats({ employees, employeesLoading, organizationId }) {
+  const showToast = useToast();
   const [viewMode, setViewMode] = useState('week');
   const [periodOffset, setPeriodOffset] = useState(0);
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
+  const [activeMenu, setActiveMenu] = useState(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!activeMenu) return;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setActiveMenu(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [activeMenu]);
 
   const { rangeStart, rangeEnd, label } = useMemo(() => {
     const today = new Date();
@@ -560,7 +572,6 @@ export function Stats({ employees, employeesLoading, organizationId }) {
             <div>% Рег</div>
             <div>% ФД</div>
             <div>% РД</div>
-            <div />
           </div>
 
           {employeesLoading || loading ? (
@@ -578,6 +589,7 @@ export function Stats({ employees, employeesLoading, organizationId }) {
                   {channelEmps.map((emp) => {
                     const s = employeeStatsMap[emp.id] ?? { dialogs: 0, registrations: 0, first_deposits: 0, repeat_deposits: 0 };
                     const hasData = s.dialogs > 0 || s.registrations > 0 || s.first_deposits > 0 || s.repeat_deposits > 0;
+                    const menuOpen = activeMenu === emp.id;
                     return (
                       <motion.div
                         key={emp.id}
@@ -585,9 +597,54 @@ export function Stats({ employees, employeesLoading, organizationId }) {
                         whileHover={{ backgroundColor: 'rgba(119,101,227,0.04)' }}
                         transition={{ duration: 0.15 }}
                       >
-                        <div className="stats-name-col">
+                        <div className="stats-name-col" style={{ position: 'relative' }}>
                           <Avatar name={emp.name} />
                           <span>{emp.name}</span>
+                          {hasData && (
+                            <div style={{ marginLeft: 'auto', position: 'relative' }} ref={menuOpen ? menuRef : null}>
+                              <button
+                                type="button"
+                                className="icon-button stats-row-menu-btn"
+                                onClick={() => setActiveMenu(menuOpen ? null : emp.id)}
+                              >
+                                <MoreHorizontal size={15} />
+                              </button>
+                              <AnimatePresence>
+                                {menuOpen && (
+                                  <motion.div
+                                    className="stats-row-menu"
+                                    initial={{ opacity: 0, y: -6, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                                    transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => { setActiveMenu(null); setEditTarget(emp); }}
+                                    >
+                                      <Pencil size={13} />
+                                      Редактировать
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="danger"
+                                      onClick={async () => {
+                                        setActiveMenu(null);
+                                        const ids = (employeeStatsMap[emp.id]?.rows ?? []).map((r) => r.id);
+                                        if (!ids.length) return;
+                                        const { error } = await supabase.from('employee_stats').delete().in('id', ids);
+                                        if (error) showToast?.(`Ошибка: ${error.message}`, 'error');
+                                        else { showToast?.('Данные удалены'); loadStats(); }
+                                      }}
+                                    >
+                                      <Trash2 size={13} />
+                                      Удалить
+                                    </button>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          )}
                         </div>
                         <div>{hasData ? <b>{s.dialogs}</b> : <span className="stats-zero">—</span>}</div>
                         <div>{hasData ? <b>{s.registrations}</b> : <span className="stats-zero">—</span>}</div>
@@ -596,18 +653,6 @@ export function Stats({ employees, employeesLoading, organizationId }) {
                         <div><PctCell value={hasData ? pct(s.registrations, s.dialogs) : null} /></div>
                         <div><PctCell value={hasData ? pct(s.first_deposits, s.registrations) : null} /></div>
                         <div><PctCell value={hasData ? pct(s.repeat_deposits, s.first_deposits) : null} /></div>
-                        <div>
-                          {hasData && (
-                            <button
-                              type="button"
-                              className="icon-button"
-                              title="Редактировать"
-                              onClick={() => setEditTarget(emp)}
-                            >
-                              <Pencil size={14} />
-                            </button>
-                          )}
-                        </div>
                       </motion.div>
                     );
                   })}
