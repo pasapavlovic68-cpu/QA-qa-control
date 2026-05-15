@@ -740,10 +740,15 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
               </motion.div>
             )}
 
-            {/* Примеры — как сделала и как надо было */}
+            {/* Примеры — как сделал/а и как надо было */}
             {(() => {
               const exampleItems = (report.evidence ?? []).filter((e) => e && e.type === 'dialogue_example');
               if (!exampleItems.length) return null;
+              const MALE_NAMES_A = new Set(['гриша','миша','саша','коля','серёжа','сережа','лёша','леша','витя','петя','федя','дима','стёпа','степа','сеня','тёма','тема','женя','слава','ваня','паша','вася','лёня','леня','гена','толя','тима','боря','яша','сёма','сема','кеша','лёва','лева','митя','вова','никита','данила','кирюша','андрюша']);
+              const empFirst = (employeeName || '').trim().split(/\s+/)[0].toLowerCase();
+              const empEndsAya = /[аяАЯ]$/u.test((employeeName || '').trim().split(/\s+/)[0]);
+              const empIsFemale = empEndsAya && !MALE_NAMES_A.has(empFirst);
+              const howAnswered = empIsFemale ? 'Как ответила' : 'Как ответил';
               return (
                 <motion.div variants={modalSectionVariants} style={{ padding: '16px 0', borderTop: '1px solid var(--line)' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 12 }}>
@@ -774,7 +779,7 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
                           )}
                           {empMsg && (
                             <div style={{ padding: '10px 14px', borderBottom: idealMsg ? '1px solid rgba(119,101,227,0.10)' : 'none' }}>
-                              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Как ответила</div>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{howAnswered}</div>
                               <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.6, fontStyle: 'italic' }}>«{empMsg}»</div>
                               {showEmpRu && <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 3 }}>Перевод: {empRu}</div>}
                             </div>
