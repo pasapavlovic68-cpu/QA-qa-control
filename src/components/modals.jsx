@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BadgeDollarSign, Check, ChevronDown, ChevronUp, Plus, Trash2, X } from 'lucide-react';
+import { BadgeDollarSign, Check, ChevronDown, ChevronUp, Download, Plus, Trash2, X } from 'lucide-react';
+import { downloadDialoguePdf } from '../lib/generatePdf.js';
 import { supabase } from '../lib/supabase.js';
 import { runModalSuccessFlow } from '../lib/modalSuccess.js';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from './modal.jsx';
@@ -479,6 +480,17 @@ export function DeleteRuleModal({ rule, onCancel, onConfirm, saving = false }) {
 
 export function ReviewReportModal({ report, onClose, layoutId }) {
   useModalScrollLock();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!report || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadDialoguePdf(report);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (!report) {
     return (
@@ -841,16 +853,28 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
               </motion.p>
             )}
 
-            {/* Close */}
+            {/* Close / Download */}
             <motion.div
               variants={modalSectionVariants}
-              style={{ paddingTop: 8, borderTop: '1px solid var(--line)', marginTop: 4 }}
+              style={{ paddingTop: 8, borderTop: '1px solid var(--line)', marginTop: 4, display: 'flex', gap: 10 }}
             >
               <motion.button
-                className="ghost-button full"
+                className="ghost-button"
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={handleDownload}
+                disabled={downloading}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+              >
+                <Download size={15} />
+                {downloading ? 'Генерируем…' : 'Скачать PDF'}
+              </motion.button>
+              <motion.button
+                className="ghost-button"
                 type="button"
                 whileTap={{ scale: 0.98 }}
                 onClick={onClose}
+                style={{ flex: 1 }}
               >
                 Закрыть
               </motion.button>

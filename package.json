@@ -12,6 +12,7 @@
     "@e965/xlsx": "^0.20.3",
     "@supabase/supabase-js": "^2.105.4",
     "framer-motion": "^12.23.24",
+    "html2pdf.js": "^0.14.0",
     "lucide-react": "^0.468.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

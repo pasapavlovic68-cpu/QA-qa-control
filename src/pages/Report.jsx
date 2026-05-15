@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Trash2, X } from 'lucide-react';
+import { Download, Search, Trash2, X } from 'lucide-react';
+import { downloadAggregatePdf } from '../lib/generatePdf.js';
 import { supabase, fetchWithTimeout } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
 import { AnimatedProgress, Avatar } from '../components/shared.jsx';
@@ -108,8 +109,19 @@ function buildEmployeeReports(reports) {
 
 function EmployeeReportModal({ group, onClose, onOpenReport }) {
   useModalScrollLock();
+  const [downloading, setDownloading] = useState(false);
 
   if (!group) return null;
+
+  const handleDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await downloadAggregatePdf(group);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <ModalPortal>
@@ -246,6 +258,29 @@ function EmployeeReportModal({ group, onClose, onOpenReport }) {
                   </button>
                 ))}
               </div>
+            </motion.div>
+
+            <motion.div variants={modalSectionVariants} style={{ padding: '12px 0 4px', borderTop: '1px solid var(--line)', display: 'flex', gap: 10 }}>
+              <motion.button
+                className="ghost-button"
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={handleDownload}
+                disabled={downloading}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+              >
+                <Download size={15} />
+                {downloading ? 'Генерируем…' : 'Скачать PDF'}
+              </motion.button>
+              <motion.button
+                className="ghost-button"
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={onClose}
+                style={{ flex: 1 }}
+              >
+                Закрыть
+              </motion.button>
             </motion.div>
           </motion.div>
         </motion.div>
