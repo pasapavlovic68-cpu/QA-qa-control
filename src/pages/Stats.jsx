@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, X, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, X, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
 import { Avatar, CustomSelect } from '../components/shared.jsx';
@@ -253,12 +253,167 @@ function AddStatsModal({ employees, organizationId, onClose, onSaved }) {
   );
 }
 
+function EditStatsModal({ employee, rows, organizationId, periodLabel, onClose, onSaved }) {
+  useModalScrollLock();
+  const showToast = useToast();
+  const [entries, setEntries] = useState(() =>
+    [...rows].sort((a, b) => a.date.localeCompare(b.date)).map((r) => ({ ...r, editing: false, saving: false }))
+  );
+  const [deleting, setDeleting] = useState(null);
+
+  const updateField = (id, field, val) =>
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: val } : e)));
+
+  const saveRow = async (entry) => {
+    setEntries((prev) => prev.map((e) => (e.id === entry.id ? { ...e, saving: true } : e)));
+    const { error } = await supabase.from('employee_stats').update({
+      dialogs: parseInt(entry.dialogs) || 0,
+      registrations: parseInt(entry.registrations) || 0,
+      first_deposits: parseInt(entry.first_deposits) || 0,
+      repeat_deposits: parseInt(entry.repeat_deposits) || 0,
+    }).eq('id', entry.id);
+    if (error) {
+      showToast?.(`Ошибка: ${error.message}`, 'error');
+      setEntries((prev) => prev.map((e) => (e.id === entry.id ? { ...e, saving: false } : e)));
+    } else {
+      setEntries((prev) => prev.map((e) => (e.id === entry.id ? { ...e, editing: false, saving: false } : e)));
+      onSaved();
+    }
+  };
+
+  const deleteRow = async (id) => {
+    setDeleting(id);
+    const { error } = await supabase.from('employee_stats').delete().eq('id', id);
+    setDeleting(null);
+    if (error) { showToast?.(`Ошибка: ${error.message}`, 'error'); return; }
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    onSaved();
+  };
+
+  const numInput = (entry, field) => (
+    <input
+      type="number" min="0"
+      value={entry[field] ?? ''}
+      onChange={(e) => updateField(entry.id, field, e.target.value)}
+      style={{ width: 56, textAlign: 'center', padding: '2px 4px', fontSize: 13 }}
+    />
+  );
+
+  return (
+    <ModalPortal>
+      <motion.div
+        className="modal-backdrop employee-modal-backdrop"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="modal-shell modal-shell--medium"
+          role="dialog" aria-modal="true"
+          onClick={(e) => e.stopPropagation()}
+          initial={{ opacity: 0, y: 18, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.97 }}
+          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+            <motion.div className="modal-title" variants={modalSectionVariants}>
+              <div>
+                <span className="eyebrow">{periodLabel}</span>
+                <h2>{employee.name}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
+            </motion.div>
+
+            <motion.div variants={modalSectionVariants} style={{ overflowX: 'auto' }}>
+              {entries.length === 0 ? (
+                <p style={{ color: 'var(--muted)', textAlign: 'center', padding: '24px 0' }}>Нет записей за период</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
+                      {['Дата', 'Диалоги', 'Рег', 'ФД', 'РД', ''].map((h) => (
+                        <th key={h} style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'center' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entries.map((entry) => (
+                      <tr key={entry.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          {new Date(entry.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                        </td>
+                        {entry.editing ? (
+                          <>
+                            <td style={{ padding: '4px 4px', textAlign: 'center' }}>{numInput(entry, 'dialogs')}</td>
+                            <td style={{ padding: '4px 4px', textAlign: 'center' }}>{numInput(entry, 'registrations')}</td>
+                            <td style={{ padding: '4px 4px', textAlign: 'center' }}>{numInput(entry, 'first_deposits')}</td>
+                            <td style={{ padding: '4px 4px', textAlign: 'center' }}>{numInput(entry, 'repeat_deposits')}</td>
+                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className="primary-button"
+                                style={{ padding: '3px 10px', fontSize: 12 }}
+                                disabled={entry.saving}
+                                onClick={() => saveRow(entry)}
+                              >
+                                {entry.saving ? '…' : 'OK'}
+                              </button>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td style={{ padding: '6px 8px', textAlign: 'center' }}>{entry.dialogs}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'center' }}>{entry.registrations}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'center' }}>{entry.first_deposits}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'center' }}>{entry.repeat_deposits}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                                <button
+                                  type="button"
+                                  className="icon-button"
+                                  title="Редактировать"
+                                  onClick={() => updateField(entry.id, 'editing', true)}
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="icon-button"
+                                  title="Удалить"
+                                  style={{ color: 'var(--danger)' }}
+                                  disabled={deleting === entry.id}
+                                  onClick={() => deleteRow(entry.id)}
+                                >
+                                  {deleting === entry.id ? '…' : <Trash2 size={14} />}
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </motion.div>
+
+            <motion.div className="modal-actions" variants={modalSectionVariants}>
+              <motion.button className="ghost-button" type="button" whileTap={{ scale: 0.97 }} onClick={onClose}>Закрыть</motion.button>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </ModalPortal>
+  );
+}
+
 export function Stats({ employees, employeesLoading, organizationId }) {
   const [viewMode, setViewMode] = useState('week');
   const [periodOffset, setPeriodOffset] = useState(0);
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
 
   const { rangeStart, rangeEnd, label } = useMemo(() => {
     const today = new Date();
@@ -280,7 +435,7 @@ export function Stats({ employees, employeesLoading, organizationId }) {
     setLoading(true);
     const { data, error } = await supabase
       .from('employee_stats')
-      .select('employee_id, date, dialogs, registrations, first_deposits, repeat_deposits')
+      .select('id, employee_id, date, dialogs, registrations, first_deposits, repeat_deposits')
       .eq('organization_id', organizationId)
       .gte('date', rangeStart)
       .lte('date', rangeEnd);
@@ -293,11 +448,12 @@ export function Stats({ employees, employeesLoading, organizationId }) {
   const employeeStatsMap = useMemo(() => {
     const map = {};
     stats.forEach((row) => {
-      if (!map[row.employee_id]) map[row.employee_id] = { dialogs: 0, registrations: 0, first_deposits: 0, repeat_deposits: 0 };
+      if (!map[row.employee_id]) map[row.employee_id] = { dialogs: 0, registrations: 0, first_deposits: 0, repeat_deposits: 0, rows: [] };
       map[row.employee_id].dialogs += row.dialogs || 0;
       map[row.employee_id].registrations += row.registrations || 0;
       map[row.employee_id].first_deposits += row.first_deposits || 0;
       map[row.employee_id].repeat_deposits += row.repeat_deposits || 0;
+      map[row.employee_id].rows.push(row);
     });
     return map;
   }, [stats]);
@@ -404,6 +560,7 @@ export function Stats({ employees, employeesLoading, organizationId }) {
             <div>% Рег</div>
             <div>% ФД</div>
             <div>% РД</div>
+            <div />
           </div>
 
           {employeesLoading || loading ? (
@@ -439,6 +596,18 @@ export function Stats({ employees, employeesLoading, organizationId }) {
                         <div><PctCell value={hasData ? pct(s.registrations, s.dialogs) : null} /></div>
                         <div><PctCell value={hasData ? pct(s.first_deposits, s.registrations) : null} /></div>
                         <div><PctCell value={hasData ? pct(s.repeat_deposits, s.first_deposits) : null} /></div>
+                        <div>
+                          {hasData && (
+                            <button
+                              type="button"
+                              className="icon-button"
+                              title="Редактировать"
+                              onClick={() => setEditTarget(emp)}
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          )}
+                        </div>
                       </motion.div>
                     );
                   })}
@@ -455,6 +624,16 @@ export function Stats({ employees, employeesLoading, organizationId }) {
             employees={employees}
             organizationId={organizationId}
             onClose={() => setAddOpen(false)}
+            onSaved={loadStats}
+          />
+        )}
+        {editTarget && (
+          <EditStatsModal
+            employee={editTarget}
+            rows={employeeStatsMap[editTarget.id]?.rows ?? []}
+            organizationId={organizationId}
+            periodLabel={label}
+            onClose={() => setEditTarget(null)}
             onSaved={loadStats}
           />
         )}
