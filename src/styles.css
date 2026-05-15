@@ -4460,6 +4460,28 @@ select {
   background: rgba(255,255,255,0.34);
 }
 
+.employee-schedule-date-cell.is-today {
+  background: linear-gradient(160deg, #22c55e 0%, #16a34a 100%);
+  border-radius: 12px;
+  margin: 4px 4px;
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
+}
+
+.employee-schedule-date-cell.is-today strong {
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.employee-schedule-date-cell.is-today span,
+.employee-schedule-date-cell.is-today .schedule-month-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.employee-schedule-cell-wrap.is-today {
+  background: rgba(34, 197, 94, 0.06);
+  border-right-color: rgba(34, 197, 94, 0.12) !important;
+}
+
 .employee-schedule-cell {
   width: 38px;
   height: 38px;

@@ -1073,7 +1073,7 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
     return groups;
   }, {});
 
-  const todayKey = getMoscowDateKey();
+  const todayKey = formatDateKey(new Date());
 
   const groups = Object.values(groupedEmployees).sort((a, b) => {
     if (a.name === 'Без канала') return 1;
@@ -1223,10 +1223,12 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
             <div className="employee-schedule-header-row">
               <div className="employee-schedule-name-cell sticky">Сотрудник</div>
               {dates.map((date, index) => {
+                const dateKey = formatDateKey(date);
+                const isToday = dateKey === todayKey;
                 const isFirstOfMonth = index === 0 || date.getMonth() !== dates[index - 1].getMonth();
                 const monthLabel = isFirstOfMonth ? date.toLocaleDateString('ru-RU', { month: 'long' }) : null;
                 return (
-                  <div key={formatDateKey(date)} className="employee-schedule-date-cell">
+                  <div key={dateKey} className={`employee-schedule-date-cell${isToday ? ' is-today' : ''}`}>
                     {monthLabel && <em className="schedule-month-label">{monthLabel}</em>}
                     <strong>{formatScheduleDay(date)}</strong>
                     <span>{formatScheduleWeekday(date)}</span>
@@ -1305,8 +1307,9 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                             const statusKey = typeof scheduleEntry === 'string' ? scheduleEntry : scheduleEntry?.status;
                             const statusMeta = SCHEDULE_STATUSES[statusKey];
                             const selectorOpen = selector?.cellKey === cellKey;
+                            const isToday = dateKey === todayKey;
                             return (
-                              <div key={cellKey} className="employee-schedule-cell-wrap">
+                              <div key={cellKey} className={`employee-schedule-cell-wrap${isToday ? ' is-today' : ''}`}>
                                 <button
                                   type="button"
                                   className={`employee-schedule-cell ${statusKey ? 'filled' : 'unset'}`}
