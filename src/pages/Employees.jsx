@@ -564,7 +564,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
   return (
     <>
-      <motion.div className="employees-page-head" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}>
+      <div className="employees-page-head">
         <div>
           <span className="eyebrow">Команда / смены</span>
           <h2>График сотрудников</h2>
@@ -598,7 +598,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
             Добавить сотрудника
           </motion.button>
         </div>
-      </motion.div>
+      </div>
 
       {/* Inline delete/block error banner */}
       <AnimatePresence>
@@ -1201,7 +1201,7 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
   };
 
   return (
-    <motion.div className="employee-schedule-panel" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}>
+    <div className="employee-schedule-panel">
       <div className="employee-schedule-toolbar">
         <span className="employee-schedule-month-label">{getMonthLabel()}</span>
         <div className="employee-schedule-legend">
@@ -1402,6 +1402,6 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }

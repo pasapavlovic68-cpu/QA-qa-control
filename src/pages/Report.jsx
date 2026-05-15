@@ -605,7 +605,7 @@ export function Report({ organizationId }) {
 
   return (
     <>
-      <motion.div className="reports-head" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}>
+      <div className="reports-head">
         <div>
           <span className="eyebrow">История проверок</span>
           <h2>Сформированные отчёты</h2>
@@ -614,7 +614,7 @@ export function Report({ organizationId }) {
           <Search size={17} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти отчёт, сотрудника или статус" />
         </label>
-      </motion.div>
+      </div>
 
       {loading ? (
         <div className="reports-grid" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
