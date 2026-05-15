@@ -125,6 +125,9 @@ function normalizeAiReport(rawReport, fallbackTitle) {
     evidence: Array.isArray(rawReport.evidence)
       ? [...rawReport.evidence, regulationEvidence]
       : [regulationEvidence],
+    examples: Array.isArray(rawReport.examples)
+      ? rawReport.examples.map((ex) => ({ ...ex, type: 'dialogue_example' }))
+      : [],
   };
 }
 
@@ -534,7 +537,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           mistakes: report.mistakes,
           positives: report.positives,
           recommendations: report.recommendations,
-          evidence: report.evidence
+          evidence: [...(report.evidence ?? []), ...(report.examples ?? [])],
         })));
 
       if (reportError) throw new Error('Не удалось сохранить отчёт в базе данных.');

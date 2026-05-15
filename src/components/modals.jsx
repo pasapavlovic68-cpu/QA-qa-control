@@ -728,10 +728,64 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
               </motion.div>
             )}
 
+            {/* Примеры — как сделала и как надо было */}
+            {(() => {
+              const exampleItems = (report.evidence ?? []).filter((e) => e && e.type === 'dialogue_example');
+              if (!exampleItems.length) return null;
+              return (
+                <motion.div variants={modalSectionVariants} style={{ padding: '16px 0', borderTop: '1px solid var(--line)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 12 }}>
+                    Примеры
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {exampleItems.map((ex, i) => {
+                      const clientMsg = ex.client_message || '';
+                      const clientRu = ex.client_message_ru || '';
+                      const empMsg = ex.employee_response || '';
+                      const empRu = ex.employee_response_ru || '';
+                      const idealMsg = ex.ideal_response || '';
+                      const showClientRu = clientRu && clientRu !== clientMsg;
+                      const showEmpRu = empRu && empRu !== empMsg;
+                      return (
+                        <div key={i} style={{ borderRadius: 14, border: '1px solid rgba(119,101,227,0.15)', overflow: 'hidden' }}>
+                          {ex.context && (
+                            <div style={{ padding: '7px 14px', fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid rgba(119,101,227,0.10)', background: 'rgba(119,101,227,0.04)' }}>
+                              {ex.context}
+                            </div>
+                          )}
+                          {clientMsg && (
+                            <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(119,101,227,0.08)', background: 'rgba(0,0,0,0.01)' }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Клиент</div>
+                              <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.6, fontStyle: 'italic' }}>«{clientMsg}»</div>
+                              {showClientRu && <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 3 }}>Перевод: {clientRu}</div>}
+                            </div>
+                          )}
+                          {empMsg && (
+                            <div style={{ padding: '10px 14px', borderBottom: idealMsg ? '1px solid rgba(119,101,227,0.10)' : 'none' }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Как ответила</div>
+                              <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.6, fontStyle: 'italic' }}>«{empMsg}»</div>
+                              {showEmpRu && <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 3 }}>Перевод: {empRu}</div>}
+                            </div>
+                          )}
+                          {idealMsg && (
+                            <div style={{ padding: '10px 14px', background: 'rgba(119,101,227,0.04)' }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Как надо было</div>
+                              <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.6 }}>{idealMsg}</div>
+                              {ex.why && <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 5, lineHeight: 1.5 }}>{ex.why}</div>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              );
+            })()}
+
             {/* Evidence — цитаты из диалога с переводом и идеальным ответом */}
             {(() => {
               const evidenceItems = (report.evidence ?? []).filter(
-                (e) => e && e.type !== 'sales_department_regulation' && e.type !== 'batch_summary'
+                (e) => e && e.type !== 'sales_department_regulation' && e.type !== 'batch_summary' && e.type !== 'dialogue_example'
               );
               if (!evidenceItems.length) return null;
               return (
