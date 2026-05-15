@@ -4326,8 +4326,8 @@ select {
 
 .employee-schedule-row {
   border: 1px solid rgba(122, 108, 92, 0.11);
-  border-radius: 14px;
-  overflow: hidden;
+  border-radius: 10px;
+  overflow: visible;
   background: rgba(255, 255, 255, 0.7);
 }
 
@@ -4340,6 +4340,14 @@ select {
 .employee-schedule-row .employee-schedule-cell-wrap:last-child,
 .employee-schedule-name-cell:last-child {
   border-right: none;
+}
+
+.employee-schedule-row .employee-schedule-name-cell {
+  border-radius: 10px 0 0 10px;
+}
+
+.employee-schedule-row .employee-schedule-cell-wrap:last-child {
+  border-radius: 0 10px 10px 0;
 }
 
 .schedule-month-label {
