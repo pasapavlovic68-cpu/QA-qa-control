@@ -539,6 +539,14 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
   const mediumMistakes = allMistakes.filter((m) => m.severity === 'medium');
   const minorMistakes = allMistakes.filter((m) => !['critical', 'high', 'medium'].includes(m.severity));
 
+  // violations & funnel_check: direct on report (in-memory) or packed into evidence (from DB)
+  const allEvidence = report.evidence ?? [];
+  const violations = report.violations?.length
+    ? report.violations
+    : (allEvidence.find((e) => e.type === 'violations_summary')?.items ?? []);
+  const funnelCheck = report.funnel_check
+    ?? (allEvidence.find((e) => e.type === 'funnel_check') ?? null);
+
   const hasContent = summaryText || (report.recommendations ?? []).length > 0 || allMistakes.length > 0;
   const shellMotionProps = layoutId
     ? { layoutId, transition: reportCardTransition }
@@ -627,6 +635,81 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
                 </div>
               )}
             </motion.div>
+
+            {/* Funnel check */}
+            {funnelCheck && (
+              <motion.div variants={modalSectionVariants} style={{ padding: '14px 0', borderBottom: '1px solid var(--line)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
+                  Воронка продаж
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                  {(funnelCheck.stages_completed ?? []).map((s, i) => (
+                    <span key={i} style={{ fontSize: '0.78rem', fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(34,197,94,0.10)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.20)' }}>
+                      ✓ {s}
+                    </span>
+                  ))}
+                  {(funnelCheck.stages_missed ?? []).map((s, i) => (
+                    <span key={i} style={{ fontSize: '0.78rem', fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(190,60,68,0.08)', color: 'var(--danger)', border: '1px solid rgba(190,60,68,0.18)' }}>
+                      ✗ {s}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  {funnelCheck.response_time_minutes != null && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '5px 12px', borderRadius: 10,
+                      background: funnelCheck.response_time_minutes > 10 ? 'rgba(190,60,68,0.08)' : 'rgba(34,197,94,0.08)',
+                      border: `1px solid ${funnelCheck.response_time_minutes > 10 ? 'rgba(190,60,68,0.18)' : 'rgba(34,197,94,0.18)'}`,
+                    }}>
+                      <span style={{ fontSize: 11, color: 'var(--muted)' }}>Скорость ответа</span>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: funnelCheck.response_time_minutes > 10 ? 'var(--danger)' : 'var(--success)' }}>
+                        {funnelCheck.response_time_minutes} мин
+                        {funnelCheck.response_time_minutes > 10 && ' ⚠'}
+                      </span>
+                    </div>
+                  )}
+                  {funnelCheck.initiative_rating && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '5px 12px', borderRadius: 10,
+                      background: 'rgba(119,101,227,0.06)',
+                      border: '1px solid rgba(119,101,227,0.14)',
+                    }}>
+                      <span style={{ fontSize: 11, color: 'var(--muted)' }}>Инициатива</span>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent)' }}>
+                        {funnelCheck.initiative_rating === 'high' ? 'Высокая' : funnelCheck.initiative_rating === 'medium' ? 'Средняя' : 'Низкая'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {funnelCheck.initiative_comment && (
+                  <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--muted)', lineHeight: 1.5 }}>{funnelCheck.initiative_comment}</div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Violations — strict company rule breaches */}
+            {violations.length > 0 && (
+              <motion.div variants={modalSectionVariants} style={{ padding: '14px 0', borderBottom: '1px solid var(--line)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
+                  🚫 Нарушения правил компании
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {violations.map((v, i) => (
+                    <div key={i} style={{ padding: '10px 14px', borderRadius: 13, background: 'rgba(190,60,68,0.09)', border: '1.5px solid rgba(190,60,68,0.25)' }}>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--danger)', marginBottom: 4 }}>{v.rule}</div>
+                      {v.quote && (
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.55, fontStyle: 'italic', marginBottom: 4 }}>«{v.quote}»</div>
+                      )}
+                      {v.explanation && (
+                        <div style={{ fontSize: '0.78rem', color: 'var(--muted)', lineHeight: 1.5 }}>{v.explanation}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
 
             {/* Summary */}
             {summaryText && (

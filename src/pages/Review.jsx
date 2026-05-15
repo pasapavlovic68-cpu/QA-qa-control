@@ -128,6 +128,8 @@ function normalizeAiReport(rawReport, fallbackTitle) {
     examples: Array.isArray(rawReport.examples)
       ? rawReport.examples.map((ex) => ({ ...ex, type: 'dialogue_example' }))
       : [],
+    violations: Array.isArray(rawReport.violations) ? rawReport.violations : [],
+    funnel_check: rawReport.funnel_check || null,
   };
 }
 
@@ -537,7 +539,12 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           mistakes: report.mistakes,
           positives: report.positives,
           recommendations: report.recommendations,
-          evidence: [...(report.evidence ?? []), ...(report.examples ?? [])],
+          evidence: [
+            ...(report.evidence ?? []),
+            ...(report.examples ?? []),
+            ...(report.violations?.length ? [{ type: 'violations_summary', items: report.violations }] : []),
+            ...(report.funnel_check ? [{ type: 'funnel_check', ...report.funnel_check }] : []),
+          ],
         })));
 
       if (reportError) throw new Error('Не удалось сохранить отчёт в базе данных.');
