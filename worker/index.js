@@ -532,6 +532,7 @@ ${dialogueText}
             { role: "user", content: userPrompt },
           ],
           temperature: 0.1,
+          max_output_tokens: 3000,
         }),
       });
 

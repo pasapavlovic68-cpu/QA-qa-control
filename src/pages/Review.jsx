@@ -416,7 +416,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         setAnalysisCurrentDlg(index);
         setAnalysisMessage({ type: 'success', text: `Анализируем диалог ${index + 1} из ${dialoguePayloads.length}: ${dialogue.fileName}` });
         const workerController = new AbortController();
-        const workerAbortTimer = setTimeout(() => workerController.abort(), 45000);
+        const workerAbortTimer = setTimeout(() => workerController.abort(), 90000);
         const workerStartedAt = performance.now();
 
         try {
@@ -462,7 +462,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           analyzedReports.push(normalizeAiReport(rawReport, dialogue.fallbackTitle));
         } catch (dialogueErr) {
           // Don't abort entire batch — save successful dialogues, report failures separately
-          const errMsg = dialogueErr.name === 'AbortError' ? 'Timeout (45s)' : dialogueErr.message;
+          const errMsg = dialogueErr.name === 'AbortError' ? 'Timeout (90s): AI не ответил, попробуй ещё раз' : dialogueErr.message;
           failedDialogues.push({ fileName: dialogue.fileName, error: errMsg });
           console.error(`[Review] dialogue ${index + 1}/${dialoguePayloads.length} failed (${dialogue.fileName}):`, dialogueErr);
         } finally {
@@ -621,7 +621,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       showToast('Отчёт сформирован и сохранён');
     } catch (err) {
       const userMessage = err.name === 'AbortError'
-        ? 'AI timeout: сервер не ответил за 45 секунд.'
+        ? 'AI timeout: сервер не ответил за 90 секунд.'
         : err.message || 'Неизвестная ошибка анализа.';
       console.error('[Review] analysis error:', err);
       setAnalysisStage('failed');
