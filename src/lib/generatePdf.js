@@ -242,6 +242,96 @@ async function renderPdf(innerHtml, filename) {
   }
 }
 
+function buildCheckHtml(checkGroup, employeeName) {
+  const sc = scoreColor(checkGroup.avgScore);
+  const date = checkGroup.date
+    ? new Date(checkGroup.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+  const aggText = checkGroup.aggregateReport?.summary || checkGroup.aggregateReport?.management_summary || '';
+  const aggExamples = (checkGroup.aggregateReport?.evidence ?? []).filter((e) => e.client_message);
+  const topMistakes = checkGroup.topMistakes ?? [];
+  const criticalM = topMistakes.filter((m) => m.severity === 'critical' || m.severity === 'high');
+  const mediumM = topMistakes.filter((m) => m.severity === 'medium');
+  const minorM = topMistakes.filter((m) => !['critical', 'high', 'medium'].includes(m.severity));
+
+  const dialogsHtml = (checkGroup.reports ?? []).map((r, i) => {
+    const rSc = scoreColor(r.score);
+    const firstPara = (r.management_summary || r.summary || '').split(/\n\n/)[0] || '';
+    const critMistakes = (r.mistakes ?? []).filter((m) => m.severity === 'critical' || m.severity === 'high').slice(0, 3);
+    return `
+      <div style="border-radius:12px;border:1px solid ${LINE};overflow:hidden;margin-bottom:10px;page-break-inside:avoid">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:#fafafa;border-bottom:1px solid ${LINE}">
+          <div style="width:38px;height:38px;border-radius:10px;background:${rSc}18;border:1.5px solid ${rSc}44;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:${rSc};flex-shrink:0">${r.score}</div>
+          <div style="min-width:0">
+            <div style="font-size:13px;font-weight:700;color:${TEXT};line-height:1.3">${r.title || `Диалог ${i + 1}`}</div>
+            ${r.date ? `<div style="font-size:11px;color:${MUTED}">${r.date}</div>` : ''}
+          </div>
+        </div>
+        ${firstPara ? `<div style="padding:10px 14px;font-size:12px;color:${TEXT};line-height:1.55${critMistakes.length ? ';border-bottom:1px solid ' + LINE : ''}">${firstPara}</div>` : ''}
+        ${critMistakes.length ? `<div style="padding:8px 14px;background:rgba(190,60,68,0.03)">
+          ${critMistakes.map((m) => `<div style="font-size:11px;color:${DANGER};padding:2px 0;font-weight:500">⚠ ${m.title}</div>`).join('')}
+        </div>` : ''}
+      </div>`;
+  }).join('');
+
+  return `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:#ffffff;color:${TEXT};padding:36px 40px;width:794px;box-sizing:border-box">
+
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:22px;padding-bottom:18px;border-bottom:2px solid ${LINE}">
+    <div style="width:48px;height:48px;border-radius:14px;background:${ACCENT};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <span style="font-size:20px;font-weight:800;color:#fff">${(employeeName || '?')[0].toUpperCase()}</span>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:${MUTED};text-transform:uppercase;letter-spacing:0.6px">Отчёт за проверку</div>
+      <div style="font-size:20px;font-weight:800;color:${TEXT};margin-top:2px">${employeeName}</div>
+      ${date ? `<div style="font-size:11px;color:${MUTED};margin-top:2px">${date}</div>` : ''}
+    </div>
+    <div style="margin-left:auto;text-align:right">
+      <div style="font-size:30px;font-weight:800;color:${sc};line-height:1">${checkGroup.avgScore}</div>
+      <div style="font-size:10px;color:${MUTED};margin-top:3px">средняя оценка</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:4px">
+    <div style="flex:1;padding:12px;border-radius:10px;background:#f8f7ff;border:1px solid rgba(119,101,227,0.14);text-align:center">
+      <div style="font-size:20px;font-weight:800;color:${ACCENT}">${checkGroup.count}</div>
+      <div style="font-size:10px;color:${MUTED};margin-top:3px">Диалогов</div>
+    </div>
+    <div style="flex:1;padding:12px;border-radius:10px;background:#f8f7ff;border:1px solid rgba(119,101,227,0.14);text-align:center">
+      <div style="font-size:20px;font-weight:800;color:${sc}">${checkGroup.avgScore}</div>
+      <div style="font-size:10px;color:${MUTED};margin-top:3px">Средняя оценка</div>
+    </div>
+    <div style="flex:1;padding:12px;border-radius:10px;background:#fff0f1;border:1px solid rgba(190,60,68,0.16);text-align:center">
+      <div style="font-size:20px;font-weight:800;color:${DANGER}">${checkGroup.critical}</div>
+      <div style="font-size:10px;color:${MUTED};margin-top:3px">Критичных</div>
+    </div>
+  </div>
+
+  ${aggText ? `${sectionTitle('Общий анализ')}${summaryBlocks(aggText)}` : ''}
+
+  ${topMistakes.length ? `
+    ${sectionTitle('Частые ошибки')}
+    ${criticalM.map((m) => mistakeCard(m, DANGER, 'rgba(190,60,68,0.06)', 'rgba(190,60,68,0.16)')).join('')}
+    ${mediumM.map((m) => mistakeCard(m, WARNING, 'rgba(185,120,18,0.06)', 'rgba(185,120,18,0.16)')).join('')}
+    ${minorM.map((m) => mistakeCard(m, ACCENT, 'rgba(119,101,227,0.05)', 'rgba(119,101,227,0.14)')).join('')}
+  ` : ''}
+
+  ${aggExamples.length ? `${sectionTitle('Примеры из диалогов')}${aggExamples.slice(0, 2).map(exampleCard).join('')}` : ''}
+
+  ${sectionTitle(`Диалоги (${checkGroup.count})`)}
+  ${dialogsHtml}
+
+</div>`;
+}
+
+export async function downloadCheckPdf(checkGroup, employeeName) {
+  const safeName = (employeeName || 'Отчёт').replace(/\s+/g, '_');
+  const dateStr = checkGroup.date
+    ? new Date(checkGroup.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '-')
+    : new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '-');
+  await renderPdf(buildCheckHtml(checkGroup, employeeName), `${safeName}_${dateStr}.pdf`);
+}
+
 export async function downloadAggregatePdf(group) {
   const safeName = (group.employee || 'Отчёт').replace(/\s+/g, '_');
   const date = new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '-');

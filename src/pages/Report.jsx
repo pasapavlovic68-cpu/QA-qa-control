@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Search, Trash2, X } from 'lucide-react';
-import { downloadAggregatePdf } from '../lib/generatePdf.js';
+import { ChevronLeft, ChevronRight, Download, Search, Trash2, X } from 'lucide-react';
+import { downloadCheckPdf } from '../lib/generatePdf.js';
 import { supabase, fetchWithTimeout } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
 import { AnimatedProgress, Avatar } from '../components/shared.jsx';
@@ -67,7 +67,7 @@ function buildEmployeeReports(reports) {
   return Array.from(groups.values())
     .map((group) => {
       const allSorted = [...group.reports].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
-      const aggregateReport = allSorted.find((r) => r.title === '__aggregate__') ?? null;
+      const allAggregates = allSorted.filter((r) => r.title === '__aggregate__');
       const sortedReports = allSorted.filter((r) => r.title !== '__aggregate__');
       const reportCount = sortedReports.length;
       const dialogs = sortedReports.reduce((sum, report) => sum + (report.dialogs || 0), 0);
@@ -89,6 +89,41 @@ function buildEmployeeReports(reports) {
         .slice(0, 5);
       const recommendations = sortedReports.flatMap((report) => report.recommendations ?? []).slice(0, 4);
 
+      // Group individual reports by checkId → date folders
+      const byCheckId = {};
+      sortedReports.forEach((r) => {
+        const cid = r.checkId || 'unknown';
+        if (!byCheckId[cid]) byCheckId[cid] = [];
+        byCheckId[cid].push(r);
+      });
+      const checkGroups = Object.entries(byCheckId).map(([checkId, cReports]) => {
+        const cAgg = allAggregates.find((a) => a.checkId === checkId) ?? null;
+        const cAvg = cReports.length
+          ? Math.round(cReports.reduce((s, r) => s + (r.score || 0), 0) / cReports.length)
+          : 0;
+        const cCritical = cReports.flatMap((r) => r.mistakes ?? []).filter((m) => m.severity === 'critical' || m.severity === 'high').length;
+        const cMistakeCounts = cReports.flatMap((r) => r.mistakes ?? []).reduce((acc, m) => {
+          const key = m.title || 'Замечание';
+          if (!acc[key]) acc[key] = { title: key, severity: m.severity, count: 0 };
+          if (severityRank(m.severity) > severityRank(acc[key].severity)) acc[key].severity = m.severity;
+          acc[key].count += 1;
+          return acc;
+        }, {});
+        const cTopMistakes = Object.values(cMistakeCounts)
+          .sort((a, b) => severityRank(b.severity) - severityRank(a.severity) || b.count - a.count)
+          .slice(0, 6);
+        return {
+          checkId,
+          date: cReports[0]?.createdAt || '',
+          reports: cReports,
+          aggregateReport: cAgg,
+          avgScore: cAvg,
+          count: cReports.length,
+          critical: cCritical,
+          topMistakes: cTopMistakes,
+        };
+      }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
       return {
         ...group,
         reports: sortedReports,
@@ -101,23 +136,139 @@ function buildEmployeeReports(reports) {
         recommendations,
         date: latest?.date || '',
         summary: latest?.summary || '',
-        aggregateReport,
+        aggregateReport: allAggregates[0] ?? null,
+        checkGroups,
       };
     })
     .sort((a, b) => new Date(b.latest?.createdAt || b.latest?.date) - new Date(a.latest?.createdAt || a.latest?.date));
 }
 
+function severityColor(s) {
+  return s === 'critical' || s === 'high' ? 'var(--danger)' : s === 'medium' ? 'var(--warning)' : 'var(--accent)';
+}
+function severityBg(s) {
+  return s === 'critical' || s === 'high' ? 'rgba(190,60,68,0.07)' : s === 'medium' ? 'rgba(185,120,18,0.07)' : 'rgba(119,101,227,0.06)';
+}
+function severityBorder(s) {
+  return s === 'critical' || s === 'high' ? 'rgba(190,60,68,0.18)' : s === 'medium' ? 'rgba(185,120,18,0.18)' : 'rgba(119,101,227,0.14)';
+}
+function scoreCol(s) {
+  return s >= 85 ? 'var(--success)' : s >= 70 ? 'var(--warning)' : 'var(--danger)';
+}
+function pluralDialogs(n) {
+  if (n % 10 === 1 && n % 100 !== 11) return `${n} диалог`;
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return `${n} диалога`;
+  return `${n} диалогов`;
+}
+function formatCheckDate(dateStr) {
+  if (!dateStr) return 'Без даты';
+  return new Date(dateStr).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function ExampleCard({ ex }) {
+  return (
+    <div style={{ borderRadius: 14, border: '1px solid var(--line)', overflow: 'hidden' }}>
+      {ex.context && <div style={{ padding: '8px 14px', fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--line)', background: 'rgba(119,101,227,0.04)' }}>{ex.context}</div>}
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', marginBottom: 3 }}>КЛИЕНТ</div>
+        <div style={{ fontSize: '0.82rem', color: 'var(--text)', fontStyle: 'italic' }}>«{ex.client_message}»</div>
+        {ex.client_message_ru && ex.client_message_ru !== ex.client_message && <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 3 }}>Перевод: {ex.client_message_ru}</div>}
+      </div>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)', background: 'rgba(190,60,68,0.03)' }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', marginBottom: 3 }}>КАК ОТВЕТИЛА</div>
+        <div style={{ fontSize: '0.82rem', color: 'var(--text)', fontStyle: 'italic' }}>«{ex.employee_response}»</div>
+        {ex.employee_response_ru && ex.employee_response_ru !== ex.employee_response && <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 3 }}>Перевод: {ex.employee_response_ru}</div>}
+      </div>
+      <div style={{ padding: '10px 14px', background: 'rgba(119,101,227,0.04)' }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', marginBottom: 3 }}>КАК НАДО</div>
+        <div style={{ fontSize: '0.82rem', color: 'var(--text)' }}>{ex.ideal_response}</div>
+        {ex.why && <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 4 }}>{ex.why}</div>}
+      </div>
+    </div>
+  );
+}
+
+function CheckGroupContent({ checkGroup, onOpenReport }) {
+  const aggText = checkGroup.aggregateReport?.summary || checkGroup.aggregateReport?.management_summary || '';
+  const aggExamples = (checkGroup.aggregateReport?.evidence ?? []).filter((e) => e.client_message);
+  const topMistakes = checkGroup.topMistakes ?? [];
+
+  return (
+    <>
+      {aggText && (
+        <div className="employee-report-section">
+          <span className="employee-report-section-label">Общий вывод</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {aggText.split(/\n\n+/).filter(Boolean).map((block, bi) => {
+              const isImprove = block.trimStart().startsWith('Что бы я усилил');
+              const lines = block.split(/\n/).filter(Boolean);
+              return (
+                <div key={bi} style={isImprove ? { background: 'rgba(119,101,227,0.05)', border: '1px solid rgba(119,101,227,0.12)', borderRadius: 14, padding: '12px 16px' } : undefined}>
+                  {lines.map((line, li) => (
+                    <p key={li} style={{ margin: li === 0 ? 0 : '4px 0 0', fontSize: '0.875rem', lineHeight: 1.65, color: 'var(--text)', fontWeight: li === 0 && isImprove ? 600 : 400 }}>{line}</p>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {aggExamples.length > 0 && (
+        <div className="employee-report-section">
+          <span className="employee-report-section-label">Примеры из диалогов</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {aggExamples.slice(0, 3).map((ex, i) => <ExampleCard key={i} ex={ex} />)}
+          </div>
+        </div>
+      )}
+
+      {topMistakes.length > 0 && (
+        <div className="employee-report-section">
+          <span className="employee-report-section-label">Частые ошибки</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {topMistakes.map((m, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: severityBg(m.severity), border: `1px solid ${severityBorder(m.severity)}` }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text)' }}>{m.title}</span>
+                {m.count > 1 && <span style={{ fontSize: '0.78rem', fontWeight: 700, color: severityColor(m.severity), padding: '2px 9px', borderRadius: 20, flexShrink: 0, marginLeft: 8, background: 'rgba(0,0,0,0.05)' }}>×{m.count}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="employee-report-section">
+        <span className="employee-report-section-label">Диалоги ({checkGroup.count})</span>
+        <div className="employee-report-list">
+          {checkGroup.reports.map((report) => (
+            <button key={report.id} className="employee-report-row" type="button" onClick={() => onOpenReport(report)}>
+              <span>
+                <strong>{report.title}</strong>
+                <small>{report.date}</small>
+              </span>
+              <b style={{ color: scoreCol(report.score) }}>{report.score}</b>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function EmployeeReportModal({ group, onClose, onOpenReport }) {
   useModalScrollLock();
+  const [selectedCheck, setSelectedCheck] = useState(null);
   const [downloading, setDownloading] = useState(false);
 
   if (!group) return null;
 
+  const checkGroups = group.checkGroups ?? [];
+
   const handleDownload = async () => {
-    if (downloading) return;
+    if (!selectedCheck || downloading) return;
     setDownloading(true);
     try {
-      await downloadAggregatePdf(group);
+      await downloadCheckPdf(selectedCheck, group.employee);
     } finally {
       setDownloading(false);
     }
@@ -135,151 +286,102 @@ function EmployeeReportModal({ group, onClose, onOpenReport }) {
         <motion.div
           layoutId={`report-employee-${group.id}`}
           className="modal-shell modal-shell--large employee-report-modal"
-          onClick={(event) => event.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
           transition={reportCardTransition}
+          style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 64px)' }}
         >
-          <motion.div variants={modalContentVariants} initial="hidden" animate="show" exit="exit">
+          <motion.div
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            style={{ overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none', flex: 1 }}
+          >
+            {/* Header */}
             <motion.div className="modal-title" variants={modalSectionVariants}>
-              <div className="employee-report-title">
-                <Avatar name={group.employee} />
-                <div>
-                  <span className="eyebrow">Отчёты сотрудника</span>
-                  <h2>{group.employee}</h2>
-                  <p>{group.reportCount} проверок</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                {selectedCheck && (
+                  <button className="icon-button" type="button" onClick={() => setSelectedCheck(null)} title="Назад">
+                    <ChevronLeft size={18} />
+                  </button>
+                )}
+                <div className="employee-report-title">
+                  <Avatar name={group.employee} />
+                  <div>
+                    <span className="eyebrow">Отчёты сотрудника</span>
+                    <h2>{group.employee}</h2>
+                    <p>{selectedCheck ? formatCheckDate(selectedCheck.date) : `${checkGroups.length} проверок`}</p>
+                  </div>
                 </div>
               </div>
               <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
             </motion.div>
 
-            <motion.div className="employee-report-summary-grid" variants={modalSectionVariants}>
-              <div>
-                <span>Средняя оценка</span>
-                <strong>{group.avgScore}</strong>
-              </div>
-              <div>
-                <span>Проверок</span>
-                <strong>{group.reportCount}</strong>
-              </div>
-              <div>
-                <span>Критично</span>
-                <strong>{group.critical}</strong>
-              </div>
-            </motion.div>
+            {selectedCheck ? (
+              <CheckGroupContent checkGroup={selectedCheck} onOpenReport={onOpenReport} />
+            ) : (
+              <>
+                {/* Stats */}
+                <motion.div className="employee-report-summary-grid" variants={modalSectionVariants}>
+                  <div><span>Средняя оценка</span><strong>{group.avgScore}</strong></div>
+                  <div><span>Проверок</span><strong>{checkGroups.length}</strong></div>
+                  <div><span>Критично</span><strong>{group.critical}</strong></div>
+                </motion.div>
 
-            {(group.aggregateReport || group.summary) && (
-              <motion.div className="employee-report-section" variants={modalSectionVariants}>
-                <span className="employee-report-section-label">Общий вывод</span>
-                {group.aggregateReport ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {(group.aggregateReport.summary || group.aggregateReport.management_summary || '').split(/\n\n+/).filter(Boolean).map((block, bi) => {
-                      const isWhatToImprove = block.trimStart().startsWith('Что бы я усилил');
-                      const lines = block.split(/\n/).filter(Boolean);
-                      return (
-                        <div key={bi} style={isWhatToImprove ? { background: 'rgba(119,101,227,0.05)', border: '1px solid rgba(119,101,227,0.12)', borderRadius: 14, padding: '12px 16px' } : undefined}>
-                          {lines.map((line, li) => (
-                            <p key={li} style={{ margin: li === 0 ? 0 : '4px 0 0', fontSize: '0.875rem', lineHeight: 1.65, color: 'var(--text)', fontWeight: li === 0 && isWhatToImprove ? 600 : 400 }}>{line}</p>
-                          ))}
-                        </div>
-                      );
-                    })}
-                    {Array.isArray(group.aggregateReport.evidence) && group.aggregateReport.evidence.filter((e) => e.client_message).length > 0 && (
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>Примеры из диалогов</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          {group.aggregateReport.evidence.filter((e) => e.client_message).slice(0, 3).map((ex, i) => (
-                            <div key={i} style={{ borderRadius: 14, border: '1px solid var(--line)', overflow: 'hidden' }}>
-                              {ex.context && <div style={{ padding: '8px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--line)' }}>{ex.context}</div>}
-                              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', marginBottom: 3 }}>КЛИЕНТ</div>
-                                <div style={{ fontSize: '0.82rem', color: 'var(--text)', fontStyle: 'italic' }}>«{ex.client_message}»</div>
-                                {ex.client_message_ru && ex.client_message_ru !== ex.client_message && (
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 3 }}>Перевод: {ex.client_message_ru}</div>
-                                )}
-                              </div>
-                              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)', background: 'rgba(190,60,68,0.03)' }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', marginBottom: 3 }}>КАК ОТВЕТИЛА</div>
-                                <div style={{ fontSize: '0.82rem', color: 'var(--text)', fontStyle: 'italic' }}>«{ex.employee_response}»</div>
-                                {ex.employee_response_ru && ex.employee_response_ru !== ex.employee_response && (
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 3 }}>Перевод: {ex.employee_response_ru}</div>
-                                )}
-                              </div>
-                              <div style={{ padding: '10px 14px', background: 'rgba(119,101,227,0.04)' }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', marginBottom: 3 }}>КАК НАДО</div>
-                                <div style={{ fontSize: '0.82rem', color: 'var(--text)' }}>{ex.ideal_response}</div>
-                                {ex.why && <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 4 }}>{ex.why}</div>}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.65 }}>{group.summary}</p>
-                )}
-              </motion.div>
-            )}
-
-            {group.topMistakes.length > 0 && (
-              <motion.div className="employee-report-section" variants={modalSectionVariants}>
-                <span className="employee-report-section-label">Частые ошибки</span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {group.topMistakes.map((mistake, index) => (
-                    <div key={`${mistake.title}-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--line)' }}>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--text)' }}>{mistake.title}</span>
-                      {mistake.count > 1 && (
-                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: mistake.severity === 'critical' || mistake.severity === 'high' ? 'var(--danger)' : 'var(--muted)', background: mistake.severity === 'critical' || mistake.severity === 'high' ? 'rgba(190,60,68,0.08)' : 'rgba(0,0,0,0.05)', padding: '2px 8px', borderRadius: 20, flexShrink: 0, marginLeft: 8 }}>
-                          ×{mistake.count}
+                {/* Date folders */}
+                <motion.div className="employee-report-section" variants={modalSectionVariants}>
+                  <span className="employee-report-section-label">История проверок</span>
+                  <div className="employee-report-list">
+                    {checkGroups.map((cg) => (
+                      <button
+                        key={cg.checkId}
+                        className="employee-report-row"
+                        type="button"
+                        onClick={() => setSelectedCheck(cg)}
+                      >
+                        <span>
+                          <strong>{formatCheckDate(cg.date)}</strong>
+                          <small>{pluralDialogs(cg.count)}</small>
                         </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <b style={{ color: scoreCol(cg.avgScore) }}>{cg.avgScore}</b>
+                          <ChevronRight size={14} style={{ color: 'var(--muted)', flexShrink: 0 }} />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              </>
             )}
 
-            <motion.div className="employee-report-section" variants={modalSectionVariants}>
-              <span className="employee-report-section-label">Проверки</span>
-              <div className="employee-report-list">
-                {group.reports.map((report) => (
-                  <button
-                    key={report.id}
-                    className="employee-report-row"
-                    type="button"
-                    onClick={() => onOpenReport(report)}
-                  >
-                    <span>
-                      <strong>{report.title}</strong>
-                      <small>{report.date}</small>
-                    </span>
-                    <b>{report.score}</b>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-
-            <motion.div variants={modalSectionVariants} style={{ padding: '12px 0 4px', borderTop: '1px solid var(--line)', display: 'flex', gap: 10 }}>
+            {/* Bottom bar */}
+            <motion.div
+              variants={modalSectionVariants}
+              style={{ padding: '12px 0 4px', borderTop: '1px solid var(--line)', display: 'flex', gap: 10 }}
+            >
+              {selectedCheck && (
+                <motion.button
+                  className="ghost-button"
+                  type="button"
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+                >
+                  <Download size={15} />
+                  {downloading ? 'Генерируем…' : 'Скачать PDF'}
+                </motion.button>
+              )}
               <motion.button
                 className="ghost-button"
                 type="button"
                 whileTap={{ scale: 0.98 }}
-                onClick={handleDownload}
-                disabled={downloading}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
-              >
-                <Download size={15} />
-                {downloading ? 'Генерируем…' : 'Скачать PDF'}
-              </motion.button>
-              <motion.button
-                className="ghost-button"
-                type="button"
-                whileTap={{ scale: 0.98 }}
-                onClick={onClose}
+                onClick={selectedCheck ? () => setSelectedCheck(null) : onClose}
                 style={{ flex: 1 }}
               >
-                Закрыть
+                {selectedCheck ? 'Назад' : 'Закрыть'}
               </motion.button>
             </motion.div>
           </motion.div>
