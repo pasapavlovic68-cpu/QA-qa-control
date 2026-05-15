@@ -138,7 +138,7 @@ ${evidenceItems.slice(0, 10).map((e) => `• "${e.quote}" — ${e.comment || e.r
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4.1-mini',
+            model: 'gpt-4.1',
             input: [
               { role: 'system', content: aggSystemPrompt },
               { role: 'user', content: aggUserPrompt },
@@ -526,7 +526,7 @@ ${dialogueText}
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4.1-mini",
+          model: "gpt-4.1",
           input: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
