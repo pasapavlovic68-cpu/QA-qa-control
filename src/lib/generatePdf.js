@@ -64,14 +64,55 @@ function exampleCard(ex) {
   </div>`;
 }
 
+function timestampBadge(ts) {
+  if (!ts) return '';
+  return `<span style="font-size:9px;font-weight:700;color:${MUTED};background:#f0f0f5;border-radius:6px;padding:1px 6px;margin-left:7px;letter-spacing:0.3px">${ts}</span>`;
+}
+
 function mistakeCard(m, color, bg, border) {
   const countBadge = m.count > 1
     ? ` <span style="font-size:10px;font-weight:700;color:${color};background:${bg};padding:1px 7px;border-radius:20px;margin-left:6px">×${m.count}</span>`
     : '';
   return `<div style="padding:9px 12px;border-radius:10px;background:${bg};border:1px solid ${border};margin-bottom:7px">
-    ${m.title ? `<div style="font-size:12px;font-weight:600;color:${color};margin-bottom:${m.description ? '3px' : '0'}">${m.title}${countBadge}</div>` : ''}
+    ${m.title ? `<div style="font-size:12px;font-weight:600;color:${color};margin-bottom:${m.description ? '3px' : '0'}">${m.title}${countBadge}${timestampBadge(m.timestamp)}</div>` : ''}
     ${m.description ? `<div style="font-size:11px;color:${TEXT};line-height:1.5">${m.description}</div>` : ''}
   </div>`;
+}
+
+function violationCard(v) {
+  return `<div style="padding:10px 12px;border-radius:10px;background:rgba(190,60,68,0.08);border:1.5px solid rgba(190,60,68,0.24);margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:0;margin-bottom:${v.quote || v.explanation ? '5px' : '0'}">
+      <span style="font-size:12px;font-weight:700;color:${DANGER}">${v.rule}</span>
+      ${timestampBadge(v.timestamp)}
+    </div>
+    ${v.quote ? `<div style="font-size:11px;color:${TEXT};font-style:italic;line-height:1.5;margin-bottom:3px">«${v.quote}»</div>` : ''}
+    ${v.explanation ? `<div style="font-size:10px;color:${MUTED};line-height:1.4">${v.explanation}</div>` : ''}
+  </div>`;
+}
+
+function funnelCheckHtml(fc) {
+  if (!fc) return '';
+  const completed = fc.stages_completed ?? [];
+  const missed = fc.stages_missed ?? [];
+  const chips = [
+    ...completed.map((s) => `<span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(39,174,96,0.10);color:${SUCCESS};border:1px solid rgba(39,174,96,0.22)">✓ ${s}</span>`),
+    ...missed.map((s) => `<span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(190,60,68,0.08);color:${DANGER};border:1px solid rgba(190,60,68,0.20)">✗ ${s}</span>`),
+  ].join(' ');
+
+  const rtColor = fc.response_time_minutes > 10 ? DANGER : SUCCESS;
+  const initLabel = fc.initiative_rating === 'high' ? 'Высокая' : fc.initiative_rating === 'medium' ? 'Средняя' : 'Низкая';
+
+  return `${sectionTitle('Воронка продаж')}
+  <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${chips}</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    ${fc.response_time_minutes != null ? `<div style="padding:4px 11px;border-radius:8px;background:${fc.response_time_minutes > 10 ? 'rgba(190,60,68,0.07)' : 'rgba(39,174,96,0.07)'};border:1px solid ${rtColor}33;font-size:11px">
+      <span style="color:${MUTED}">Скорость ответа: </span><span style="font-weight:700;color:${rtColor}">${fc.response_time_minutes} мин${fc.response_time_minutes > 10 ? ' ⚠' : ''}</span>
+    </div>` : ''}
+    ${fc.initiative_rating ? `<div style="padding:4px 11px;border-radius:8px;background:rgba(119,101,227,0.06);border:1px solid rgba(119,101,227,0.15);font-size:11px">
+      <span style="color:${MUTED}">Инициатива: </span><span style="font-weight:700;color:${ACCENT}">${initLabel}</span>
+    </div>` : ''}
+  </div>
+  ${fc.initiative_comment ? `<div style="font-size:11px;color:${MUTED};margin-top:7px;line-height:1.5">${fc.initiative_comment}</div>` : ''}`;
 }
 
 function buildAggregateHtml(group) {
@@ -140,7 +181,15 @@ function buildDialogueHtml(report) {
   const recommendations = report.recommendations ?? [];
   const evidence = report.evidence ?? [];
   const examples = evidence.filter((e) => e.type === 'dialogue_example');
-  const quotes = evidence.filter((e) => e && e.type !== 'sales_department_regulation' && e.type !== 'batch_summary' && e.type !== 'dialogue_example' && (e.quote || e.text));
+  const quotes = evidence.filter((e) => e && e.type !== 'sales_department_regulation' && e.type !== 'batch_summary' && e.type !== 'dialogue_example' && e.type !== 'violations_summary' && e.type !== 'funnel_check' && (e.quote || e.text));
+
+  // violations & funnel_check: direct on report OR packed inside evidence (from DB)
+  const violations = report.violations?.length
+    ? report.violations
+    : (evidence.find((e) => e.type === 'violations_summary')?.items ?? []);
+  const funnelCheck = report.funnel_check
+    ?? (evidence.find((e) => e.type === 'funnel_check') ?? null);
+
   const formattedDate = report.createdAt
     ? new Date(report.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
     : (report.date || '');
@@ -162,8 +211,14 @@ function buildDialogueHtml(report) {
     </div>
   </div>
 
+  ${funnelCheckHtml(funnelCheck)}
+
+  ${violations.length ? `
+    ${sectionTitle('🚫 Нарушения правил компании', DANGER)}
+    ${violations.map(violationCard).join('')}
+  ` : ''}
+
   ${summaryText ? `${sectionTitle('Резюме')}${summaryBlocks(summaryText)}` : ''}
-  ${examples.length ? `${sectionTitle('Примеры')}${examples.map(exampleCard).join('')}` : ''}
 
   ${recommendations.length ? `
     ${sectionTitle('Рекомендации')}
@@ -175,6 +230,8 @@ function buildDialogueHtml(report) {
   ${critical.length ? `${sectionTitle('Критично', DANGER)}${critical.map((m) => mistakeCard(m, DANGER, 'rgba(190,60,68,0.06)', 'rgba(190,60,68,0.16)')).join('')}` : ''}
   ${medium.length ? `${sectionTitle('Требует внимания', WARNING)}${medium.map((m) => mistakeCard(m, WARNING, 'rgba(185,120,18,0.06)', 'rgba(185,120,18,0.16)')).join('')}` : ''}
   ${minor.length ? `${sectionTitle('Замечание', ACCENT)}${minor.map((m) => mistakeCard(m, ACCENT, 'rgba(119,101,227,0.05)', 'rgba(119,101,227,0.14)')).join('')}` : ''}
+
+  ${examples.length ? `${sectionTitle('Примеры — как было и как надо')}${examples.map(exampleCard).join('')}` : ''}
 
   ${quotes.length ? `
     ${sectionTitle('Цитаты из диалога')}

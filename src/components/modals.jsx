@@ -698,7 +698,10 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {violations.map((v, i) => (
                     <div key={i} style={{ padding: '10px 14px', borderRadius: 13, background: 'rgba(190,60,68,0.09)', border: '1.5px solid rgba(190,60,68,0.25)' }}>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--danger)', marginBottom: 4 }}>{v.rule}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: (v.quote || v.explanation) ? 4 : 0 }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--danger)' }}>{v.rule}</span>
+                        {v.timestamp && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', background: 'rgba(0,0,0,0.06)', borderRadius: 6, padding: '1px 6px' }}>{v.timestamp}</span>}
+                      </div>
                       {v.quote && (
                         <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.55, fontStyle: 'italic', marginBottom: 4 }}>«{v.quote}»</div>
                       )}
@@ -781,7 +784,10 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {criticalMistakes.map((m, i) => (
                     <div key={i} style={{ padding: '10px 14px', borderRadius: 13, background: 'rgba(190,60,68,0.07)', border: '1px solid rgba(190,60,68,0.16)' }}>
-                      {m.title && <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--danger)', marginBottom: m.description ? 4 : 0 }}>{m.title}</div>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: m.description ? 4 : 0 }}>
+                        {m.title && <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--danger)' }}>{m.title}</span>}
+                        {m.timestamp && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', background: 'rgba(0,0,0,0.06)', borderRadius: 6, padding: '1px 6px' }}>{m.timestamp}</span>}
+                      </div>
                       {m.description && <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.55 }}>{m.description}</div>}
                     </div>
                   ))}
@@ -798,7 +804,10 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {mediumMistakes.map((m, i) => (
                     <div key={i} style={{ padding: '10px 14px', borderRadius: 13, background: 'rgba(185,120,18,0.07)', border: '1px solid rgba(185,120,18,0.18)' }}>
-                      {m.title && <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--warning)', marginBottom: m.description ? 4 : 0 }}>{m.title}</div>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: m.description ? 4 : 0 }}>
+                        {m.title && <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--warning)' }}>{m.title}</span>}
+                        {m.timestamp && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', background: 'rgba(0,0,0,0.06)', borderRadius: 6, padding: '1px 6px' }}>{m.timestamp}</span>}
+                      </div>
                       {m.description && <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.55 }}>{m.description}</div>}
                     </div>
                   ))}
@@ -815,7 +824,10 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {minorMistakes.map((m, i) => (
                     <div key={i} style={{ padding: '10px 14px', borderRadius: 13, background: 'rgba(119,101,227,0.06)', border: '1px solid rgba(119,101,227,0.12)' }}>
-                      {m.title && <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--accent)', marginBottom: m.description ? 4 : 0 }}>{m.title}</div>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: m.description ? 4 : 0 }}>
+                        {m.title && <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--accent)' }}>{m.title}</span>}
+                        {m.timestamp && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', background: 'rgba(0,0,0,0.06)', borderRadius: 6, padding: '1px 6px' }}>{m.timestamp}</span>}
+                      </div>
                       {m.description && <div style={{ fontSize: '0.82rem', color: 'var(--muted)', lineHeight: 1.55 }}>{m.description}</div>}
                     </div>
                   ))}
