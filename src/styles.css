@@ -4218,30 +4218,12 @@ select {
   margin-bottom: 18px;
 }
 
-.employee-schedule-period {
-  display: inline-grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5px;
-  padding: 5px;
-  border: 1px solid rgba(119,101,227,0.12);
-  border-radius: 16px;
-  background: rgba(246,244,255,0.72);
-}
-
-.employee-schedule-period button {
-  height: 38px;
-  padding: 0 14px;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 13px;
+.employee-schedule-month-label {
+  font-size: 15px;
   font-weight: 800;
-}
-
-.employee-schedule-period button.active {
-  background: rgba(255,255,255,0.96);
   color: var(--text);
-  box-shadow: 0 10px 22px rgba(119,101,227,0.12);
+  text-transform: capitalize;
+  letter-spacing: -0.01em;
 }
 
 .employee-schedule-legend {

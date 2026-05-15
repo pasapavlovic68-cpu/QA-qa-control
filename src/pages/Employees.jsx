@@ -79,15 +79,16 @@ function getMoscowDateKey(date = new Date()) {
   return `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
 }
 
-function getScheduleDates(period) {
-  const count = period === 'month' ? 30 : 14;
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  return Array.from({ length: count }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    return date;
-  });
+function getMonthDates() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  return Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1));
+}
+
+function getMonthLabel() {
+  return new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 }
 
 function formatScheduleDay(date) {
@@ -966,14 +967,13 @@ function EmployeeChannelAssignModal({ employee, channels, saving, error, onClose
 
 function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, todaySchedule, openStatusAssignment, openChannelAssignment, getDisplayName, editingNameId, editingNameValue, nameSaving, onStartEditName, onNameChange, onNameSave, onNameCancel }) {
   const showToast = useToast();
-  const [period, setPeriod] = useState('two_weeks');
   const [schedule, setSchedule] = useState({});
   const [employeeShiftDefaults, setEmployeeShiftDefaults] = useState({});
   const [loading, setLoading] = useState(true);
   const [savingCell, setSavingCell] = useState(null);
   const [selector, setSelector] = useState(null);
   const [error, setError] = useState(null);
-  const dates = getScheduleDates(period);
+  const dates = getMonthDates();
 
   useEffect(() => {
     if (!organizationId || employees.length === 0) {
@@ -1051,7 +1051,7 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
     };
 
     loadSchedule();
-  }, [organizationId, employees, period]);
+  }, [organizationId, employees]);
 
   const groupedEmployees = employees.reduce((groups, employee) => {
     const displayChannel = getDisplayChannel(employee);
@@ -1203,10 +1203,7 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
   return (
     <div className="employee-schedule-panel">
       <div className="employee-schedule-toolbar">
-        <div className="employee-schedule-period">
-          <button className={period === 'two_weeks' ? 'active' : ''} type="button" onClick={() => setPeriod('two_weeks')}>2 недели</button>
-          <button className={period === 'month' ? 'active' : ''} type="button" onClick={() => setPeriod('month')}>Месяц</button>
-        </div>
+        <span className="employee-schedule-month-label">{getMonthLabel()}</span>
         <div className="employee-schedule-legend">
           {Object.entries(SCHEDULE_STATUSES).map(([key, item]) => (
             <span key={key}><i style={{ background: item.color }}>{item.short}</i> — {item.label}</span>
