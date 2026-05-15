@@ -203,13 +203,7 @@ function buildDialogueHtml(report) {
     ${(employeeName || formattedDate) ? `<div style="font-size:11px;color:${MUTED};margin-top:4px">${[employeeName, formattedDate].filter(Boolean).join(' · ')}</div>` : ''}
   </div>
 
-  <div style="display:flex;align-items:center;gap:14px">
-    <div style="width:52px;height:52px;border-radius:14px;background:${sc}18;border:1.5px solid ${sc}44;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:${sc};flex-shrink:0">${report.score}</div>
-    <div>
-      <div style="font-size:10px;color:${MUTED};margin-bottom:2px">Итоговая оценка</div>
-      <div style="font-size:14px;font-weight:600;color:${sc}">${report.score >= 85 ? 'Высокий уровень' : report.score >= 70 ? 'Средний уровень' : 'Низкий уровень'}</div>
-    </div>
-  </div>
+  <!-- score intentionally hidden from employee-facing PDF -->
 
   ${funnelCheckHtml(funnelCheck)}
 

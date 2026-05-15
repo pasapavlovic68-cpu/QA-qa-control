@@ -597,44 +597,15 @@ export function ReviewReportModal({ report, onClose, layoutId }) {
               <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
             </motion.div>
 
-            {/* Score row */}
-            <motion.div
-              variants={modalSectionVariants}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                padding: '16px 0',
-                borderBottom: '1px solid var(--line)',
-              }}
-            >
-              <div style={{
-                flexShrink: 0,
-                width: 60,
-                height: 60,
-                borderRadius: 18,
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(245,243,255,0.9))',
-                border: `1.5px solid ${scoreColor}44`,
-                boxShadow: `0 4px 18px ${scoreColor}22`,
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: 22,
-                fontWeight: 800,
-                color: scoreColor,
-              }}>
-                {report.score}
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>Итоговая оценка</div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: scoreColor }}>{scoreLabel}</div>
-              </div>
-              {dialogueCount > 0 && (
-                <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+            {/* Score row — hidden from employee view, kept in stats/report pages */}
+            {dialogueCount > 0 && (
+              <motion.div variants={modalSectionVariants} style={{ padding: '8px 0', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>{dialogueCount}</div>
                   <div style={{ fontSize: 11, color: 'var(--muted)' }}>диалогов</div>
                 </div>
-              )}
-            </motion.div>
+              </motion.div>
+            )}
 
             {/* Funnel check */}
             {funnelCheck && (
