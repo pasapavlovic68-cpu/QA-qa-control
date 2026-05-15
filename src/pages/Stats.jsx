@@ -176,7 +176,7 @@ function AddStatsModal({ employees, organizationId, onClose, onSaved }) {
       { onConflict: 'organization_id,employee_id,date' }
     );
     setSaving(false);
-    if (error) { showToast?.('Не удалось сохранить', 'error'); return; }
+    if (error) { console.error('[Stats] upsert error:', error); showToast?.(`Ошибка: ${error.message}`, 'error'); return; }
     showToast?.('Данные сохранены');
     onSaved();
     onClose();
