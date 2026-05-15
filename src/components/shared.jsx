@@ -2,9 +2,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Check } from 'lucide-react';
 
-export function PremiumCard({ title, action, children, className = '', compact = false }) {
+export function PremiumCard({ title, action, children, className = '', compact = false, initial, animate, transition, variants }) {
   return (
-    <motion.article className={`premium-card ${compact ? 'compact' : ''} ${className}`} whileHover={{ y: compact ? 0 : -3 }}>
+    <motion.article
+      className={`premium-card ${compact ? 'compact' : ''} ${className}`}
+      whileHover={{ y: compact ? 0 : -3 }}
+      {...(initial !== undefined ? { initial } : {})}
+      {...(animate !== undefined ? { animate } : {})}
+      {...(transition !== undefined ? { transition } : {})}
+      {...(variants !== undefined ? { variants } : {})}
+    >
       <div className="card-title">
         <h2>{title}</h2>
         {action && <span>{action}</span>}
