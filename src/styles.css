@@ -4265,12 +4265,11 @@ select {
 .employee-schedule-table-wrap {
   overflow-x: auto;
   overflow-y: visible;
-  padding-right: 16px;
   padding-bottom: 4px;
 }
 
 .employee-schedule-table {
-  min-width: calc(320px + var(--schedule-days) * 58px);
+  min-width: calc(320px + var(--schedule-days) * 58px + 24px);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -4282,6 +4281,7 @@ select {
   overflow: hidden;
   background: rgba(255, 255, 255, 0.52);
   box-shadow: 0 2px 12px rgba(35, 31, 58, 0.05);
+  padding-right: 24px;
 }
 
 .employee-schedule-header-row,
@@ -4300,6 +4300,7 @@ select {
   border-radius: 16px;
   margin-bottom: 4px;
   overflow: hidden;
+  padding-right: 24px;
 }
 
 .employee-schedule-name-cell,
@@ -4326,8 +4327,8 @@ select {
 
 .employee-schedule-row {
   border: 1px solid rgba(122, 108, 92, 0.11);
-  border-radius: 10px;
-  overflow: visible;
+  border-radius: 14px;
+  overflow: hidden;
   background: rgba(255, 255, 255, 0.7);
 }
 
@@ -4342,13 +4343,6 @@ select {
   border-right: none;
 }
 
-.employee-schedule-row .employee-schedule-name-cell {
-  border-radius: 10px 0 0 10px;
-}
-
-.employee-schedule-row .employee-schedule-cell-wrap:last-child {
-  border-radius: 0 10px 10px 0;
-}
 
 .schedule-month-label {
   font-style: normal;
