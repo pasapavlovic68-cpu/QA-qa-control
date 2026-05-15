@@ -4265,15 +4265,15 @@ select {
 .employee-schedule-table-wrap {
   overflow-x: auto;
   overflow-y: visible;
+  padding-right: 16px;
   padding-bottom: 4px;
 }
 
 .employee-schedule-table {
-  min-width: calc(320px + var(--schedule-days) * 58px + 16px);
+  min-width: calc(320px + var(--schedule-days) * 58px);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-right: 16px;
 }
 
 .employee-schedule-group {
