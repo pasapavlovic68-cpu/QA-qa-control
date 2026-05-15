@@ -564,7 +564,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
   return (
     <>
-      <div className="employees-page-head">
+      <motion.div className="employees-page-head" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}>
         <div>
           <span className="eyebrow">Команда / смены</span>
           <h2>График сотрудников</h2>
@@ -598,7 +598,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
             Добавить сотрудника
           </motion.button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Inline delete/block error banner */}
       <AnimatePresence>
@@ -634,6 +634,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         )}
       </AnimatePresence>
 
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}>
       <EmployeeSchedulePanel
         employees={employees}
         channels={channels}
@@ -657,6 +658,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         onNameSave={handleNameSave}
         onNameCancel={() => setEditingNameId(null)}
       />
+      </motion.div>
 
       <AnimatePresence>
         {addOpen && (

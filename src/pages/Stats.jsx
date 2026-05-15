@@ -507,7 +507,7 @@ export function Stats({ employees, employeesLoading, organizationId }) {
 
   return (
     <>
-      <div className="stats-head">
+      <motion.div className="stats-head" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}>
         <div>
           <span className="eyebrow">Показатели команды</span>
           <h2>Статистика продаж</h2>
@@ -516,9 +516,9 @@ export function Stats({ employees, employeesLoading, organizationId }) {
           <Plus size={16} />
           Добавить
         </button>
-      </div>
+      </motion.div>
 
-      <div className="stats-toolbar">
+      <motion.div className="stats-toolbar" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1], delay: 0.07 }}>
         <div className="stats-mode-pills">
           {[['week', 'Неделя'], ['month', 'Месяц']].map(([mode, lbl]) => (
             <button
@@ -545,9 +545,9 @@ export function Stats({ employees, employeesLoading, organizationId }) {
             <ChevronRight size={16} />
           </button>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="stats-kpi-row">
+      <motion.div className="stats-kpi-row" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1], delay: 0.13 }}>
         {kpis.map(({ label: kLabel, value, pctVal }) => {
           const isPct = pctVal !== undefined;
           const color = isPct
@@ -562,9 +562,9 @@ export function Stats({ employees, employeesLoading, organizationId }) {
             </div>
           );
         })}
-      </div>
+      </motion.div>
 
-      <div className="stats-table-wrap">
+      <motion.div className="stats-table-wrap" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1], delay: 0.19 }}>
         <div className="stats-table">
           <div className="stats-header-row">
             <div className="stats-name-col">Сотрудник</div>
@@ -664,7 +664,7 @@ export function Stats({ employees, employeesLoading, organizationId }) {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       <AnimatePresence>
         {addOpen && (

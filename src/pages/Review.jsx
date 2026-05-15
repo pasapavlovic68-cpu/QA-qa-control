@@ -654,6 +654,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
 
   return (
     <div className="review-layout">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}>
       <PremiumCard className="review-main" title="Новая проверка диалогов" action="Загрузка файлов">
         <div className="form-row">
           <label>
@@ -796,7 +797,9 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           </AnimatePresence>
         </div>
       </PremiumCard>
+      </motion.div>
 
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}>
       <PremiumCard title="Состояние анализа" action={analysisCardAction}>
         <AnalysisState
           status={analysis}
@@ -809,6 +812,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           totalDialogues={analysisTotalDlg}
         />
       </PremiumCard>
+      </motion.div>
 
       <AnimatePresence>
         {previewOpen && previewReport && (
