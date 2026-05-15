@@ -153,7 +153,10 @@ ${evidenceItems.slice(0, 10).map((e) => `• "${e.quote}" — ${e.comment || e.r
         }
 
         const aggRaw = aggData.output_text || aggData.output?.[0]?.content?.[0]?.text || '';
-        const aggClean = aggRaw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+        const aggStripped = aggRaw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+        const aggStart = aggStripped.indexOf('{');
+        const aggEnd = aggStripped.lastIndexOf('}');
+        const aggClean = aggStart !== -1 && aggEnd !== -1 ? aggStripped.slice(aggStart, aggEnd + 1) : aggStripped;
 
         let aggResult;
         try {
@@ -505,11 +508,16 @@ ${dialogueText}
         data.output?.[0]?.content?.[0]?.text ||
         "";
 
-      // Strip markdown fences if model wraps output in ```json ... ```
-      const clean = raw
+      // Strip markdown fences, then find the JSON object/array
+      const stripped = raw
         .replace(/^```(?:json)?\s*/i, "")
         .replace(/\s*```$/i, "")
         .trim();
+      const jsonStart = stripped.indexOf('{');
+      const jsonEnd = stripped.lastIndexOf('}');
+      const clean = jsonStart !== -1 && jsonEnd !== -1
+        ? stripped.slice(jsonStart, jsonEnd + 1)
+        : stripped;
 
       let report;
       try {
