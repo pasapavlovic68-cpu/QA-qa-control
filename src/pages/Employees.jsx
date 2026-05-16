@@ -1293,7 +1293,7 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                             const selectorOpen = selector?.cellKey === cellKey;
                             const isToday = dateKey === todayKey;
                             return (
-                              <div key={cellKey} className={`employee-schedule-cell-wrap${isToday ? ' is-today' : ''}`}>
+                              <div key={cellKey} className={`employee-schedule-cell-wrap${isToday ? ' is-today' : ''}`} style={selectorOpen ? { zIndex: 200 } : undefined}>
                                 <button
                                   type="button"
                                   className={`employee-schedule-cell ${statusKey ? 'filled' : 'unset'}`}
