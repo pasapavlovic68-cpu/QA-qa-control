@@ -270,22 +270,22 @@ button {
   justify-content: space-between;
   gap: 20px;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 
-  /* ── Sticky glass pill ── */
+  /* ── Sticky glass — верхняя часть объединённой плашки ── */
   position: sticky;
   top: 16px;
   z-index: 40;
-  padding: 16px 24px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.92);
+  padding: 16px 24px 14px;
+  border-radius: 22px 22px 0 0;
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(119, 101, 227, 0.14);
+  border-bottom: 1px solid rgba(119, 101, 227, 0.08);
   box-shadow:
-    0 2px 0 rgba(119, 101, 227, 0.08) inset,
-    0 8px 32px rgba(81, 71, 54, 0.10),
-    0 2px 8px rgba(119, 101, 227, 0.07);
+    0 2px 0 rgba(119, 101, 227, 0.07) inset,
+    0 -1px 0 rgba(255,255,255,0.6) inset;
 }
 
 .eyebrow {
@@ -660,22 +660,22 @@ h1 {
   justify-content: space-between;
   gap: 18px;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 
-  /* ── Sticky glass pill ── */
+  /* ── Sticky glass — нижняя часть объединённой плашки ── */
   position: sticky;
-  top: 110px;
+  top: calc(16px + 77px); /* = top topbar + topbar height */
   z-index: 30;
-  padding: 12px 20px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.90);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(119, 101, 227, 0.13);
+  padding: 12px 24px;
+  border-radius: 0 0 22px 22px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(119, 101, 227, 0.14);
+  border-top: none;
   box-shadow:
-    0 2px 0 rgba(119, 101, 227, 0.06) inset,
-    0 6px 24px rgba(81, 71, 54, 0.09),
-    0 1px 4px rgba(119, 101, 227, 0.06);
+    0 8px 32px rgba(81, 71, 54, 0.10),
+    0 2px 8px rgba(119, 101, 227, 0.07);
 }
 
 .employees-page-head h2 {
@@ -2093,22 +2093,22 @@ select {
   justify-content: space-between;
   gap: 18px;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 
-  /* ── Sticky glass pill ── */
+  /* ── Sticky glass — нижняя часть объединённой плашки ── */
   position: sticky;
-  top: 110px;
+  top: calc(16px + 77px);
   z-index: 30;
-  padding: 12px 20px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.90);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(119, 101, 227, 0.13);
+  padding: 12px 24px;
+  border-radius: 0 0 22px 22px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(119, 101, 227, 0.14);
+  border-top: none;
   box-shadow:
-    0 2px 0 rgba(119, 101, 227, 0.06) inset,
-    0 6px 24px rgba(81, 71, 54, 0.09),
-    0 1px 4px rgba(119, 101, 227, 0.06);
+    0 8px 32px rgba(81, 71, 54, 0.10),
+    0 2px 8px rgba(119, 101, 227, 0.07);
 }
 
 .reports-head h2 {
@@ -2607,22 +2607,22 @@ select {
   justify-content: space-between;
   gap: 18px;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 
-  /* ── Sticky glass pill ── */
+  /* ── Sticky glass — нижняя часть объединённой плашки ── */
   position: sticky;
-  top: 110px;
+  top: calc(16px + 77px);
   z-index: 30;
-  padding: 12px 20px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.90);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(119, 101, 227, 0.13);
+  padding: 12px 24px;
+  border-radius: 0 0 22px 22px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(119, 101, 227, 0.14);
+  border-top: none;
   box-shadow:
-    0 2px 0 rgba(119, 101, 227, 0.06) inset,
-    0 6px 24px rgba(81, 71, 54, 0.09),
-    0 1px 4px rgba(119, 101, 227, 0.06);
+    0 8px 32px rgba(81, 71, 54, 0.10),
+    0 2px 8px rgba(119, 101, 227, 0.07);
 }
 
 .rules-head h2 {
@@ -5213,22 +5213,22 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 
-  /* ── Sticky glass pill ── */
+  /* ── Sticky glass — нижняя часть объединённой плашки ── */
   position: sticky;
-  top: 110px;
+  top: calc(16px + 77px);
   z-index: 30;
-  padding: 12px 20px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.90);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(119, 101, 227, 0.13);
+  padding: 12px 24px;
+  border-radius: 0 0 22px 22px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(119, 101, 227, 0.14);
+  border-top: none;
   box-shadow:
-    0 2px 0 rgba(119, 101, 227, 0.06) inset,
-    0 6px 24px rgba(81, 71, 54, 0.09),
-    0 1px 4px rgba(119, 101, 227, 0.06);
+    0 8px 32px rgba(81, 71, 54, 0.10),
+    0 2px 8px rgba(119, 101, 227, 0.07);
 }
 
 .stats-head h2 {
