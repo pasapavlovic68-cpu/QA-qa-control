@@ -468,7 +468,10 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
       return;
     }
     // Успешно — обновляем локальный override из ответа базы
-    setGenderOverrides((prev) => ({ ...prev, [employee.id]: data.gender }));
+    const savedGender = data.gender;
+    setGenderOverrides((prev) => ({ ...prev, [employee.id]: savedGender }));
+    const label = savedGender === 'male' ? 'Мужской ♂' : savedGender === 'female' ? 'Женский ♀' : 'сброшен';
+    showToast(`Пол сохранён: ${label}`);
   };
 
   const handleAddEmployee = async (event) => {
