@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2, X, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, X, Calendar } from 'lucide-react';
+import { SpeedDial } from '../components/SpeedDial.jsx';
 import { supabase } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
 import { Avatar, CustomSelect, ScrollReveal } from '../components/shared.jsx';
@@ -415,18 +416,6 @@ export function Stats({ employees, employeesLoading, organizationId }) {
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
-  const [activeMenu, setActiveMenu] = useState(null);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    if (!activeMenu) return;
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setActiveMenu(null);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [activeMenu]);
-
   const { rangeStart, rangeEnd, label } = useMemo(() => {
     const today = new Date();
     if (viewMode === 'week') {
@@ -593,7 +582,6 @@ export function Stats({ employees, employeesLoading, organizationId }) {
                   {channelEmps.map((emp) => {
                     const s = employeeStatsMap[emp.id] ?? { dialogs: 0, registrations: 0, first_deposits: 0, repeat_deposits: 0 };
                     const hasData = s.dialogs > 0 || s.registrations > 0 || s.first_deposits > 0 || s.repeat_deposits > 0;
-                    const menuOpen = activeMenu === emp.id;
                     return (
                       <motion.div
                         key={emp.id}
@@ -608,48 +596,30 @@ export function Stats({ employees, employeesLoading, organizationId }) {
                           <Avatar name={emp.name} />
                           <span>{emp.name}</span>
                           {hasData && (
-                            <div style={{ marginLeft: 'auto', position: 'relative' }} ref={menuOpen ? menuRef : null}>
-                              <button
-                                type="button"
-                                className="icon-button stats-row-menu-btn"
-                                onClick={() => setActiveMenu(menuOpen ? null : emp.id)}
-                              >
-                                <MoreHorizontal size={15} />
-                              </button>
-                              <AnimatePresence>
-                                {menuOpen && (
-                                  <motion.div
-                                    className="stats-row-menu"
-                                    initial={{ opacity: 0, y: -6, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -4, scale: 0.95 }}
-                                    transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
-                                  >
-                                    <button
-                                      type="button"
-                                      onClick={() => { setActiveMenu(null); setEditTarget(emp); }}
-                                    >
-                                      <Pencil size={13} />
-                                      Редактировать
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="danger"
-                                      onClick={async () => {
-                                        setActiveMenu(null);
-                                        const ids = (employeeStatsMap[emp.id]?.rows ?? []).map((r) => r.id);
-                                        if (!ids.length) return;
-                                        const { error } = await supabase.from('employee_stats').delete().in('id', ids);
-                                        if (error) showToast?.(`Ошибка: ${error.message}`, 'error');
-                                        else { showToast?.('Данные удалены'); loadStats(); }
-                                      }}
-                                    >
-                                      <Trash2 size={13} />
-                                      Удалить
-                                    </button>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
+                            <div style={{ marginLeft: 'auto' }}>
+                              <SpeedDial
+                                actions={[
+                                  {
+                                    key: 'edit',
+                                    label: 'Редактировать',
+                                    icon: <Pencil size={14} />,
+                                    action: () => setEditTarget(emp),
+                                  },
+                                  {
+                                    key: 'delete',
+                                    label: 'Удалить',
+                                    icon: <Trash2 size={14} />,
+                                    danger: true,
+                                    action: async () => {
+                                      const ids = (employeeStatsMap[emp.id]?.rows ?? []).map((r) => r.id);
+                                      if (!ids.length) return;
+                                      const { error } = await supabase.from('employee_stats').delete().in('id', ids);
+                                      if (error) showToast?.(`Ошибка: ${error.message}`, 'error');
+                                      else { showToast?.('Данные удалены'); loadStats(); }
+                                    },
+                                  },
+                                ]}
+                              />
                             </div>
                           )}
                         </div>
