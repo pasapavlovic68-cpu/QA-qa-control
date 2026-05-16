@@ -452,7 +452,10 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
     if (error) {
       console.error('[Employees] gender update error:', error);
       setGenderOverrides((prev) => ({ ...prev, [employee.id]: employee.gender ?? null }));
-      showToast('Не удалось сохранить пол', 'error');
+      const msg = error.code === '42703'
+        ? 'Выполни SQL-миграцию в Supabase: ALTER TABLE employees ADD COLUMN gender text'
+        : 'Не удалось сохранить пол';
+      showToast(msg, 'error');
     }
   };
 
@@ -1303,16 +1306,19 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                               <StatusBadge name={displayStatus} statusTone={fallbackTone} color={customColor} />
                             </button>
                             <TodayScheduleBadge entry={todaySchedule[employee.id]} />
-                            {getDisplayGender && (
-                              <button
-                                type="button"
-                                className={`gender-inline-btn${getDisplayGender(employee) ? ` is-set` : ''}`}
-                                title={getDisplayGender(employee) === 'male' ? 'Мужской — нажмите чтобы сменить' : getDisplayGender(employee) === 'female' ? 'Женский — нажмите чтобы сменить' : 'Пол не задан — нажмите чтобы указать'}
-                                onClick={(e) => { e.stopPropagation(); const g = getDisplayGender(employee); onGenderChange(employee, g === 'male' ? 'female' : 'male'); }}
-                              >
-                                {getDisplayGender(employee) === 'male' ? '♂ М' : getDisplayGender(employee) === 'female' ? '♀ Ж' : '? пол'}
-                              </button>
-                            )}
+                            {getDisplayGender && (() => {
+                              const g = getDisplayGender(employee);
+                              return (
+                                <button
+                                  type="button"
+                                  className={`gender-inline-btn${g ? ' is-set' : ''}`}
+                                  title={g === 'male' ? 'Мужской — нажмите чтобы сменить на женский' : g === 'female' ? 'Женский — нажмите чтобы сменить на мужской' : 'Пол не задан — нажмите чтобы указать'}
+                                  onClick={(e) => { e.stopPropagation(); onGenderChange(employee, g === 'male' ? 'female' : 'male'); }}
+                                >
+                                  {g === 'male' ? '♂ М' : g === 'female' ? '♀ Ж' : '± пол'}
+                                </button>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
