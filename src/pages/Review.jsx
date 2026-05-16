@@ -168,7 +168,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
   const showToast = useToast();
   const fileInputRef = useRef(null);
 
-  const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
+  const [selectedEmployeeName, setSelectedEmployeeName] = useState(null);
   const [selectedPreset, setSelectedPreset] = useState('Стандарт поддержки');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [currentCheckId, setCurrentCheckId] = useState(null);
@@ -183,11 +183,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
   const [previewReport, setPreviewReport] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  useEffect(() => {
-    if (employees.length > 0 && !selectedEmployeeName) {
-      setSelectedEmployeeName(employees[0].name);
-    }
-  }, [employees]);
+  // No auto-select: user must explicitly choose an employee
 
   const parseXlsx = async (file) => {
     const { read, utils } = await import('@e965/xlsx');
@@ -208,9 +204,14 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       return;
     }
 
+    if (!selectedEmployeeName) {
+      setUploadError('⚠️ Выберите сотрудника перед загрузкой файлов.');
+      return;
+    }
+
     const selectedEmployee = employees.find((e) => e.name === selectedEmployeeName);
     if (!selectedEmployee) {
-      setUploadError('Сначала выберите сотрудника.');
+      setUploadError('⚠️ Выберите сотрудника перед загрузкой файлов.');
       return;
     }
 
@@ -278,7 +279,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
       return;
     }
     if (!selectedEmployeeName) {
-      setUploadError('Сначала выберите сотрудника.');
+      setUploadError('⚠️ Выберите сотрудника — без этого отчёт будет неточным.');
       return;
     }
     if (!currentCheckId) {
@@ -666,8 +667,9 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
             <span>Сотрудник</span>
             {employees.length > 0 ? (
               <PremiumDropdown
-                value={selectedEmployeeName}
+                value={selectedEmployeeName || ''}
                 options={employees.map((e) => e.name)}
+                placeholder="Выберите сотрудника"
                 onChange={(name) => {
                   setSelectedEmployeeName(name);
                   setUploadedFiles([]);
@@ -768,26 +770,17 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           </motion.p>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px' }}>
+        <div style={{ padding: '4px 10px 10px' }}>
           <AiButton
             onClick={handleStartAnalysis}
             disabled={analyzing || uploading}
-            label={analyzing ? 'Анализируем…' : 'Начать анализ'}
+            done={analysis === 'complete'}
+            label={
+              analysis === 'complete' ? 'Анализ окончен' :
+              analyzing ? 'Анализируем…' :
+              'Начать анализ'
+            }
           />
-
-          <AnimatePresence>
-            {analysis === 'complete' && previewReport && (
-              <motion.div
-                style={{ flex: 1 }}
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.94 }}
-                transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <AiButton done label="Анализ окончен" />
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </PremiumCard>
 

@@ -252,7 +252,7 @@ export function RuleToggle({ active, onClick }) {
   );
 }
 
-export function PremiumDropdown({ value, options, onChange, dropUp = false }) {
+export function PremiumDropdown({ value, options, onChange, dropUp = false, placeholder = '' }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -263,7 +263,7 @@ export function PremiumDropdown({ value, options, onChange, dropUp = false }) {
         whileTap={{ scale: 0.985 }}
         onClick={() => setOpen((current) => !current)}
       >
-        <span>{value}</span>
+        <span style={!value && placeholder ? { opacity: 0.45 } : {}}>{value || placeholder}</span>
         <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
           <ChevronDown size={17} />
         </motion.span>
