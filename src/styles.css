@@ -26,6 +26,7 @@ html {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: rgba(119, 101, 227, 0.28) transparent;
+  scroll-behavior: smooth;
 }
 
 html::-webkit-scrollbar {
@@ -5719,4 +5720,161 @@ select {
 .custom-select-option svg {
   flex-shrink: 0;
   color: var(--accent);
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   ПЛАВНЫЕ АНИМАЦИИ ЗАГРУЗКИ И HOVER-МИКРООТКЛИКИ
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 1. Keyframe: появление снизу вверх ─────────────────────── */
+@keyframes revealPage {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── 2. Утилиты для ручного применения ──────────────────────── */
+.animate-load {
+  opacity: 0;
+  animation: revealPage 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.delay-1 { animation-delay: 0.08s; }
+.delay-2 { animation-delay: 0.16s; }
+.delay-3 { animation-delay: 0.24s; }
+.delay-4 { animation-delay: 0.32s; }
+.delay-5 { animation-delay: 0.40s; }
+
+/* ── 3. Каскадное появление всех блоков страницы ────────────── */
+/*    Применяется к прямым потомкам .workspace (не framer-motion)  */
+.workspace > * {
+  animation: revealPage 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.workspace > *:nth-child(1)  { animation-delay: 0.04s; }
+.workspace > *:nth-child(2)  { animation-delay: 0.10s; }
+.workspace > *:nth-child(3)  { animation-delay: 0.16s; }
+.workspace > *:nth-child(4)  { animation-delay: 0.22s; }
+.workspace > *:nth-child(5)  { animation-delay: 0.28s; }
+.workspace > *:nth-child(6)  { animation-delay: 0.34s; }
+.workspace > *:nth-child(n+7) { animation-delay: 0.38s; }
+
+/* ── 4. Каскад внутри KPI-сетки ─────────────────────────────── */
+.kpi-grid > *:nth-child(1) { animation: revealPage 0.5s cubic-bezier(0.16,1,0.3,1) 0.18s both; }
+.kpi-grid > *:nth-child(2) { animation: revealPage 0.5s cubic-bezier(0.16,1,0.3,1) 0.25s both; }
+.kpi-grid > *:nth-child(3) { animation: revealPage 0.5s cubic-bezier(0.16,1,0.3,1) 0.32s both; }
+.kpi-grid > *:nth-child(4) { animation: revealPage 0.5s cubic-bezier(0.16,1,0.3,1) 0.38s both; }
+
+/* ── 5. Hover-микроотклик на карточках ──────────────────────── */
+/*    Добавляем transform к существующим transition-ам           */
+.kpi-card {
+  transition:
+    box-shadow 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 220ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 36px rgba(81, 71, 54, 0.13);
+  border-color: rgba(119, 101, 227, 0.18);
+}
+.kpi-card:active {
+  transform: translateY(-1px);
+}
+
+.premium-card {
+  transition:
+    box-shadow 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 220ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.premium-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 44px rgba(81, 71, 54, 0.13);
+}
+
+.employee-card {
+  transition:
+    box-shadow 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 220ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.employee-card:hover {
+  transform: translateY(-2px);
+}
+.employee-card:active {
+  transform: translateY(0);
+}
+
+.report-card {
+  transition:
+    box-shadow 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 220ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.report-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(81, 71, 54, 0.12);
+}
+.report-card:active {
+  transform: translateY(-1px);
+}
+
+.rule-card {
+  transition:
+    box-shadow 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 220ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.rule-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(81, 71, 54, 0.12);
+}
+
+/* ── 6. Hover-отклик на кнопках ─────────────────────────────── */
+.btn-primary,
+.btn-secondary,
+.icon-btn,
+[class*="pill-btn"],
+[class*="tab-btn"] {
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.2s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+.btn-primary:hover,
+.btn-secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(81, 71, 54, 0.12);
+}
+.btn-primary:active,
+.btn-secondary:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* ── 7. На мобилке — отключаем transform-hover (fat finger) ─── */
+@media (max-width: 860px) {
+  .kpi-card:hover,
+  .premium-card:hover,
+  .employee-card:hover,
+  .report-card:hover,
+  .rule-card:hover,
+  .btn-primary:hover,
+  .btn-secondary:hover {
+    transform: none;
+  }
+
+  /* Сброс каскадных анимаций workspace на мобилке */
+  .workspace > *,
+  .kpi-grid > * {
+    animation: none;
+    opacity: 1;
+  }
 }
