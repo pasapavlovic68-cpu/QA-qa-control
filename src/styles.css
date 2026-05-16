@@ -669,8 +669,8 @@ h1 {
 
 .employees-page-head {
   display: flex;
-  justify-content: space-between;
-  gap: 18px;
+  justify-content: flex-end;
+  gap: 10px;
   align-items: center;
   margin-bottom: 20px;
 
@@ -2108,8 +2108,8 @@ select {
 
 .reports-head {
   display: flex;
-  justify-content: space-between;
-  gap: 18px;
+  justify-content: flex-end;
+  gap: 10px;
   align-items: center;
   margin-bottom: 20px;
 
@@ -2626,8 +2626,8 @@ select {
 
 .rules-head {
   display: flex;
-  justify-content: space-between;
-  gap: 18px;
+  justify-content: flex-end;
+  gap: 10px;
   align-items: center;
   margin-bottom: 20px;
 
@@ -5252,8 +5252,8 @@ select {
 .stats-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: flex-end;
+  gap: 10px;
   margin-bottom: 20px;
 
   position: sticky;

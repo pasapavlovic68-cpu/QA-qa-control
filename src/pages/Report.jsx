@@ -606,10 +606,6 @@ export function Report({ organizationId }) {
   return (
     <>
       <div className="reports-head">
-        <div>
-          <span className="eyebrow">История проверок</span>
-          <h2>Сформированные отчёты</h2>
-        </div>
         <label className="report-search">
           <Search size={17} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти отчёт, сотрудника или статус" />

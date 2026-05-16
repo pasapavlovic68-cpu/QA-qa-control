@@ -284,12 +284,6 @@ export function Settings({ organizationId }) {
 
   return (
     <>
-      <div className="rules-head">
-        <div>
-          <span className="eyebrow">Команда / AI</span>
-          <h2>Настройки анализа</h2>
-        </div>
-      </div>
 
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>

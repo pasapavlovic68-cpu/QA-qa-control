@@ -873,10 +873,6 @@ export function Sales({ employees, employeesLoading, organizationId }) {
     <>
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="employees-page-head">
-        <div>
-          <span className="eyebrow">Депозиты и касса по сотрудникам</span>
-          <h2>Продажи</h2>
-        </div>
         <motion.button
           className="primary-button"
           whileTap={{ scale: 0.97 }}

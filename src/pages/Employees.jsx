@@ -566,10 +566,6 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   return (
     <>
       <div className="employees-page-head">
-        <div>
-          <span className="eyebrow">Команда / смены</span>
-          <h2>График сотрудников</h2>
-        </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <motion.button
             className="ghost-button"

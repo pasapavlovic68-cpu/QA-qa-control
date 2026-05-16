@@ -497,10 +497,6 @@ export function Stats({ employees, employeesLoading, organizationId }) {
   return (
     <>
       <div className="stats-head">
-        <div>
-          <span className="eyebrow">Показатели команды</span>
-          <h2>Статистика продаж</h2>
-        </div>
         <button className="primary-button" type="button" onClick={() => setAddOpen(true)}>
           <Plus size={16} />
           Добавить
