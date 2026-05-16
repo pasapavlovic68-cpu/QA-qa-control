@@ -8,7 +8,7 @@ import {
   X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
-import { PremiumCard, RevealCard, Stagger, Avatar } from '../components/shared.jsx';
+import { PremiumCard, RevealCard, ScrollReveal, Stagger, Avatar } from '../components/shared.jsx';
 import { KpiCard, PremiumDropdown } from '../components/display.jsx';
 import { ModalPortal, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
 
@@ -658,7 +658,7 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
         })}
       </Stagger>
       <div className="dashboard-grid">
-        <PremiumCard className="chart-card wide" title="Динамика качества" action={`Последние ${trendPeriod} дней`}>
+        <RevealCard className="chart-card wide" title="Динамика качества" action={`Последние ${trendPeriod} дней`}>
           <div className="qtc-filters">
             <div className="qtc-filter-group qtc-employee-select">
               <PremiumDropdown
@@ -687,8 +687,8 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
             compact={trendPeriod === 30}
             employeeFiltered={trendEmployeeId !== null}
           />
-        </PremiumCard>
-        <PremiumCard title="Топ сотрудников" action="Рейтинг" className="dashboard-fixed-card">
+        </RevealCard>
+        <RevealCard title="Топ сотрудников" action="Рейтинг" className="dashboard-fixed-card">
           <div className="dashboard-card-scroll">
             <div className="rank-list">
               {dashLoading || employeesLoading
@@ -718,7 +718,7 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
                 : emptyCardText('Нет сотрудников с показателем 80% и выше.')}
             </div>
           </div>
-        </PremiumCard>
+        </RevealCard>
         <RevealCard title="Частые ошибки" action="Приоритеты" className="dashboard-fixed-card">
           <div className="dashboard-card-scroll">
             {topErrors.length > 0

@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Download, Search, Trash2, X } from 'lucide-r
 import { downloadCheckPdf } from '../lib/generatePdf.js';
 import { supabase, fetchWithTimeout } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
-import { AnimatedProgress, Avatar } from '../components/shared.jsx';
+import { AnimatedProgress, Avatar, ScrollReveal } from '../components/shared.jsx';
 import { reportCardTransition, ReviewReportModal } from '../components/modals.jsx';
 import { ModalPortal, modalContentVariants, modalMotion, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
 
@@ -626,16 +626,15 @@ export function Report({ organizationId }) {
           <p style={{ opacity: 0.4, fontSize: '0.875rem', maxWidth: 340 }}>Отчёты появятся после первого AI-анализа диалогов.</p>
         </div>
       ) : (
-        <motion.div className="reports-grid" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}>
+        <div className="reports-grid">
           {filteredReports.map((report) => (
+            <ScrollReveal key={report.id}>
             <motion.div
               layout
               layoutId={`report-employee-${report.id}`}
               className="report-card"
-              key={report.id}
               role="button"
               tabIndex={0}
-              variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } }}
               transition={reportCardTransition}
               whileHover={{ y: -5, scale: 1.008 }}
               whileTap={{ scale: 0.985 }}
@@ -677,8 +676,9 @@ export function Report({ organizationId }) {
                 <AnimatedProgress value={report.avgScore} />
               </div>
             </motion.div>
+            </ScrollReveal>
           ))}
-        </motion.div>
+        </div>
       )}
 
       <AnimatePresence>

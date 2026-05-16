@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2, X, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
-import { Avatar, CustomSelect } from '../components/shared.jsx';
+import { Avatar, CustomSelect, ScrollReveal } from '../components/shared.jsx';
 import { ModalPortal, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -584,7 +584,8 @@ export function Stats({ employees, employeesLoading, organizationId }) {
           ) : (
             <div className="stats-groups">
               {Object.entries(channelGroups).map(([channel, channelEmps]) => (
-                <div key={channel} className="stats-group">
+                <ScrollReveal key={channel}>
+                <div className="stats-group">
                   <div className="stats-group-label">
                     <i className="stats-group-dot" />
                     {channel}
@@ -660,6 +661,7 @@ export function Stats({ employees, employeesLoading, organizationId }) {
                     );
                   })}
                 </div>
+                </ScrollReveal>
               ))}
             </div>
           )}
