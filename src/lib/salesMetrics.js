@@ -41,8 +41,8 @@ export function aggregateSales(rows = []) {
   return { weekDeposits, weekCash, monthDeposits, monthCash };
 }
 
-// Formats a numeric amount as "1 234 567 ₽" (Russian locale, no decimals)
+// Formats a numeric amount as "$1 234 567" (no decimals)
 export function formatCash(amount) {
-  if (!amount && amount !== 0) return '— ₽';
-  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(amount) + ' ₽';
+  if (!amount && amount !== 0) return '$—';
+  return '$' + new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(amount);
 }
