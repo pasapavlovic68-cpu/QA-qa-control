@@ -198,7 +198,8 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   const [deleteError, setDeleteError] = useState(null);
   const [statusError, setStatusError] = useState(null);
   const [channelError, setChannelError] = useState(null);
-  const [form, setForm] = useState({ name: '' });
+  const [form, setForm] = useState({ name: '', gender: null });
+  const [genderOverrides, setGenderOverrides] = useState({});
 
   // Status management
   const [statuses, setStatuses] = useState([]);
@@ -438,7 +439,22 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
     });
   };
 
-  const resetForm = () => setForm({ name: '' });
+  const resetForm = () => setForm({ name: '', gender: null });
+  const getDisplayGender = (employee) => genderOverrides[employee.id] ?? employee.gender ?? null;
+
+  const handleGenderChange = async (employee, newGender) => {
+    setGenderOverrides((prev) => ({ ...prev, [employee.id]: newGender }));
+    const { error } = await supabase
+      .from('employees')
+      .update({ gender: newGender })
+      .eq('id', employee.id)
+      .eq('organization_id', organizationId);
+    if (error) {
+      console.error('[Employees] gender update error:', error);
+      setGenderOverrides((prev) => ({ ...prev, [employee.id]: employee.gender ?? null }));
+      showToast('Не удалось сохранить пол', 'error');
+    }
+  };
 
   const handleAddEmployee = async (event) => {
     event.preventDefault();
@@ -454,6 +470,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
     const payload = {
       name: employeeName,
+      gender: form.gender,
       role: 'Сотрудник',
       status: 'На контроле',
       channel: null,
@@ -653,6 +670,8 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
         onNameChange={setEditingNameValue}
         onNameSave={handleNameSave}
         onNameCancel={() => setEditingNameId(null)}
+        getDisplayGender={getDisplayGender}
+        onGenderChange={handleGenderChange}
       />
 
       <AnimatePresence>
@@ -962,7 +981,7 @@ function EmployeeChannelAssignModal({ employee, channels, saving, error, onClose
   );
 }
 
-function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, todaySchedule, openStatusAssignment, openChannelAssignment, getDisplayName, editingNameId, editingNameValue, nameSaving, onStartEditName, onNameChange, onNameSave, onNameCancel }) {
+function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplayChannel, onScheduleChange, statuses, requestDelete, getDisplayStatus, getStatusColor, getStatusTone, todaySchedule, openStatusAssignment, openChannelAssignment, getDisplayName, editingNameId, editingNameValue, nameSaving, onStartEditName, onNameChange, onNameSave, onNameCancel, getDisplayGender, onGenderChange }) {
   const showToast = useToast();
   const [schedule, setSchedule] = useState({});
   const [employeeShiftDefaults, setEmployeeShiftDefaults] = useState({});
@@ -1284,6 +1303,16 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                               <StatusBadge name={displayStatus} statusTone={fallbackTone} color={customColor} />
                             </button>
                             <TodayScheduleBadge entry={todaySchedule[employee.id]} />
+                            {getDisplayGender && (
+                              <button
+                                type="button"
+                                className={`gender-inline-btn${getDisplayGender(employee) ? ` is-set` : ''}`}
+                                title={getDisplayGender(employee) === 'male' ? 'Мужской — нажмите чтобы сменить' : getDisplayGender(employee) === 'female' ? 'Женский — нажмите чтобы сменить' : 'Пол не задан — нажмите чтобы указать'}
+                                onClick={(e) => { e.stopPropagation(); const g = getDisplayGender(employee); onGenderChange(employee, g === 'male' ? 'female' : 'male'); }}
+                              >
+                                {getDisplayGender(employee) === 'male' ? '♂ М' : getDisplayGender(employee) === 'female' ? '♀ Ж' : '? пол'}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>

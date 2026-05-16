@@ -62,6 +62,25 @@ export function EmployeeFormModal({ form, setForm, saving, error, onClose, onSub
               <span>Имя сотрудника</span>
               <input value={form.name} onChange={updateField('name')} placeholder="Например, София Орлова" autoFocus />
             </label>
+            <label>
+              <span>Пол сотрудника</span>
+              <div className="gender-picker">
+                <button
+                  type="button"
+                  className={`gender-picker-btn${form.gender === 'male' ? ' selected' : ''}`}
+                  onClick={() => setForm((f) => ({ ...f, gender: 'male' }))}
+                >
+                  ♂ Мужской
+                </button>
+                <button
+                  type="button"
+                  className={`gender-picker-btn${form.gender === 'female' ? ' selected' : ''}`}
+                  onClick={() => setForm((f) => ({ ...f, gender: 'female' }))}
+                >
+                  ♀ Женский
+                </button>
+              </div>
+            </label>
           </motion.div>
           {error && (
             <motion.p

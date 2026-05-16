@@ -1576,6 +1576,67 @@ h1 {
   box-shadow: 0 0 0 4px rgba(119, 101, 227, 0.09);
 }
 
+/* Gender picker in add-employee form */
+.gender-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.gender-picker-btn {
+  height: 44px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.72);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.gender-picker-btn:hover {
+  border-color: rgba(119,101,227,0.4);
+  background: rgba(119,101,227,0.06);
+  color: var(--text);
+}
+
+.gender-picker-btn.selected {
+  border-color: rgba(119,101,227,0.55);
+  background: rgba(119,101,227,0.1);
+  color: var(--accent);
+}
+
+/* Gender inline badge in schedule row */
+.gender-inline-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid rgba(122,108,92,0.18);
+  border-radius: 999px;
+  background: rgba(122,108,92,0.06);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 130ms, background 130ms, color 130ms;
+  white-space: nowrap;
+}
+
+.gender-inline-btn:hover {
+  border-color: rgba(119,101,227,0.4);
+  background: rgba(119,101,227,0.08);
+  color: var(--accent);
+}
+
+.gender-inline-btn.is-set {
+  border-color: rgba(119,101,227,0.28);
+  background: rgba(119,101,227,0.07);
+  color: var(--accent);
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
