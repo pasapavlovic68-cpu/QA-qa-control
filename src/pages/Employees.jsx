@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Check, Pencil, Plus, Radio, Tag, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { Avatar } from '../components/shared.jsx';
+import { SpeedDial } from '../components/SpeedDial.jsx';
 import { EmployeeFormModal, DeleteEmployeeModal, StatusManagementModal, ChannelManagementModal } from '../components/modals.jsx';
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -1276,11 +1277,25 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                             </button>
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <strong>{getDisplayName ? getDisplayName(employee) : employee.name}</strong>
-                            <button type="button" className="ghost-icon-btn" onClick={(e) => { e.stopPropagation(); onStartEditName(employee); }} style={{ opacity: 0.4, padding: 2 }}>
-                              <Pencil size={12} />
-                            </button>
+                            <SpeedDial
+                              actions={[
+                                {
+                                  key: 'edit',
+                                  label: 'Переименовать',
+                                  icon: <Pencil size={13} />,
+                                  action: () => onStartEditName(employee),
+                                },
+                                {
+                                  key: 'delete',
+                                  label: 'Удалить',
+                                  icon: <Trash2 size={13} />,
+                                  danger: true,
+                                  action: () => requestDelete(employee, null),
+                                },
+                              ]}
+                            />
                           </div>
                         )}
                         <div className="employee-schedule-name-sub">
@@ -1294,11 +1309,6 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                           <TodayScheduleBadge entry={todaySchedule[employee.id]} />
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className="employee-delete"
-                        onClick={(e) => { e.stopPropagation(); requestDelete(employee, e); }}
-                      ><Trash2 size={14} /></button>
                     </div>
                           {dates.map((date) => {
                             const dateKey = formatDateKey(date);
