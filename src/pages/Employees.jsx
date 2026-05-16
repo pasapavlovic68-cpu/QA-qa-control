@@ -1189,6 +1189,9 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
       startTime: currentStart,
       endTime: currentEnd,
       placement,
+      fixedTop: placement === 'bottom' ? (triggerRect?.bottom ?? 0) + 6 : undefined,
+      fixedBottom: placement === 'top' ? window.innerHeight - (triggerRect?.top ?? 0) + 6 : undefined,
+      fixedLeft: (triggerRect?.left ?? 0) + (triggerRect?.width ?? 0) / 2,
     });
   };
 
@@ -1293,7 +1296,7 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                             const selectorOpen = selector?.cellKey === cellKey;
                             const isToday = dateKey === todayKey;
                             return (
-                              <div key={cellKey} className={`employee-schedule-cell-wrap${isToday ? ' is-today' : ''}`} style={selectorOpen ? { zIndex: 200 } : undefined}>
+                              <div key={cellKey} className={`employee-schedule-cell-wrap${isToday ? ' is-today' : ''}`}>
                                 <button
                                   type="button"
                                   className={`employee-schedule-cell ${statusKey ? 'filled' : 'unset'}`}
@@ -1307,72 +1310,6 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                                 >
                                   {savingCell === cellKey ? '...' : statusMeta?.short || '—'}
                                 </button>
-                                <AnimatePresence>
-                                  {selectorOpen && (
-                                    <motion.div
-                                      className={`employee-schedule-selector employee-schedule-selector--${selector.placement || 'bottom'}`}
-                                      initial={{
-                                        opacity: 0,
-                                        x: '-50%',
-                                        y: selector.placement === 'top' ? -8 : 8,
-                                        scale: 0.96,
-                                      }}
-                                      animate={{ opacity: 1, x: '-50%', y: 0, scale: 1 }}
-                                      exit={{
-                                        opacity: 0,
-                                        x: '-50%',
-                                        y: selector.placement === 'top' ? -6 : 6,
-                                        scale: 0.97,
-                                      }}
-                                      transition={{ duration: 0.18 }}
-                                    >
-                                      <div className="employee-schedule-shift-editor">
-                                        <div className="employee-schedule-shift-title">
-                                          <i style={{ background: SCHEDULE_STATUSES.work.color }}>{SCHEDULE_STATUSES.work.short}</i>
-                                          <span>{SCHEDULE_STATUSES.work.label}</span>
-                                        </div>
-                                        <div className="employee-schedule-time-grid">
-                                          <label>
-                                            <span>С</span>
-                                            <input
-                                              type="time"
-                                              value={selector.startTime}
-                                              onChange={(event) => updateSelectorTime('startTime', event.target.value)}
-                                            />
-                                          </label>
-                                          <label>
-                                            <span>До</span>
-                                            <input
-                                              type="time"
-                                              value={selector.endTime}
-                                              onChange={(event) => updateSelectorTime('endTime', event.target.value)}
-                                            />
-                                          </label>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          className="employee-schedule-save-shift"
-                                          onClick={() => handleCellChange(employee, dateKey, 'work', {
-                                            start_time: selector.startTime || DEFAULT_SHIFT_START,
-                                            end_time: selector.endTime || DEFAULT_SHIFT_END,
-                                          })}
-                                        >
-                                          Сохранить смену
-                                        </button>
-                                      </div>
-                                      {Object.entries(SCHEDULE_STATUSES).filter(([key]) => key !== 'work').map(([key, item]) => (
-                                        <button key={key} type="button" onClick={() => handleCellChange(employee, dateKey, key)}>
-                                          <i style={{ background: item.color }}>{item.short}</i>
-                                          {item.label}
-                                        </button>
-                                      ))}
-                                      <button type="button" onClick={() => handleCellChange(employee, dateKey, 'unset')}>
-                                        <i>—</i>
-                                        Очистить
-                                      </button>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
                               </div>
                             );
                           })}
@@ -1386,6 +1323,76 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {selector && (
+          <ModalPortal>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 9990 }}
+              onClick={() => setSelector(null)}
+            />
+            <motion.div
+              className={`employee-schedule-selector employee-schedule-selector--${selector.placement || 'bottom'}`}
+              style={{
+                position: 'fixed',
+                left: selector.fixedLeft,
+                top: selector.fixedTop,
+                bottom: selector.fixedBottom,
+                zIndex: 9999,
+              }}
+              initial={{ opacity: 0, x: '-50%', y: selector.placement === 'top' ? -8 : 8, scale: 0.96 }}
+              animate={{ opacity: 1, x: '-50%', y: 0, scale: 1 }}
+              exit={{ opacity: 0, x: '-50%', y: selector.placement === 'top' ? -6 : 6, scale: 0.97 }}
+              transition={{ duration: 0.18 }}
+            >
+              <div className="employee-schedule-shift-editor">
+                <div className="employee-schedule-shift-title">
+                  <i style={{ background: SCHEDULE_STATUSES.work.color }}>{SCHEDULE_STATUSES.work.short}</i>
+                  <span>{SCHEDULE_STATUSES.work.label}</span>
+                </div>
+                <div className="employee-schedule-time-grid">
+                  <label>
+                    <span>С</span>
+                    <input
+                      type="time"
+                      value={selector.startTime}
+                      onChange={(event) => updateSelectorTime('startTime', event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>До</span>
+                    <input
+                      type="time"
+                      value={selector.endTime}
+                      onChange={(event) => updateSelectorTime('endTime', event.target.value)}
+                    />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  className="employee-schedule-save-shift"
+                  onClick={() => handleCellChange(selector.employee, selector.dateKey, 'work', {
+                    start_time: selector.startTime || DEFAULT_SHIFT_START,
+                    end_time: selector.endTime || DEFAULT_SHIFT_END,
+                  })}
+                >
+                  Сохранить смену
+                </button>
+              </div>
+              {Object.entries(SCHEDULE_STATUSES).filter(([key]) => key !== 'work').map(([key, item]) => (
+                <button key={key} type="button" onClick={() => handleCellChange(selector.employee, selector.dateKey, key)}>
+                  <i style={{ background: item.color }}>{item.short}</i>
+                  {item.label}
+                </button>
+              ))}
+              <button type="button" onClick={() => handleCellChange(selector.employee, selector.dateKey, 'unset')}>
+                <i>—</i>
+                Очистить
+              </button>
+            </motion.div>
+          </ModalPortal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
