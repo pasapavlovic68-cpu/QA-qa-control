@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, animate } from 'framer-motion';
 import { Check, ChevronDown, Sparkles, Clock, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { qualityPoints } from '../data/demoData.js';
 import { AnimatedProgress } from './shared.jsx';
@@ -72,6 +72,26 @@ const STEP_CURRENT_LABEL = {
   completed:         'Счётчики обновлены',
 };
 
+function AnimatedCounter({ value }) {
+  const [display, setDisplay] = useState(value);
+  const prevRef = useRef(value);
+
+  useEffect(() => {
+    const from = prevRef.current;
+    const to = value;
+    prevRef.current = to;
+    if (from === to) return;
+    const controls = animate(from, to, {
+      duration: 0.7,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate: (latest) => setDisplay(Math.round(latest)),
+    });
+    return () => controls.stop();
+  }, [value]);
+
+  return <span className="asp-pct">{display}%</span>;
+}
+
 export function AnalysisState({ status, stage, filesCount = 0, dialogueCount = 0, employeeName = '', errorMessage = null, currentDialogue = 0, totalDialogues = 0 }) {
   const lastActiveStageRef = useRef(null);
 
@@ -127,7 +147,7 @@ export function AnalysisState({ status, stage, filesCount = 0, dialogueCount = 0
             />
           </div>
           <div className="asp-bar-meta">
-            <span className="asp-pct">{progress}%</span>
+            <AnimatedCounter value={progress} />
             {!isIdle && !isComplete && !isError && currentStepLabel && (
               <span className="asp-current-step">Текущий этап: {currentStepLabel}</span>
             )}
