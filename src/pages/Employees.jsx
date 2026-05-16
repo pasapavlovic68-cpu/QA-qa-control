@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Check, Pencil, Plus, Radio, Tag, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
@@ -970,18 +970,6 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
   const [selector, setSelector] = useState(null);
   const [error, setError] = useState(null);
   const dates = getMonthDates();
-  const tableWrapRef = useRef(null);
-  const headerWrapRef = useRef(null);
-
-  useEffect(() => {
-    const table = tableWrapRef.current;
-    const header = headerWrapRef.current;
-    if (!table || !header) return;
-    const onScroll = () => { header.scrollLeft = table.scrollLeft; };
-    table.addEventListener('scroll', onScroll, { passive: true });
-    return () => table.removeEventListener('scroll', onScroll);
-  }, []);
-
 
   useEffect(() => {
     if (!organizationId || employees.length === 0) {
@@ -1221,38 +1209,31 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
 
       {error && <p className="status-error">{error}</p>}
 
-      {/* Шапка всегда в DOM — ref стабилен, JS синхронизирует scrollLeft */}
-      <div
-        ref={headerWrapRef}
-        className="employee-schedule-header-wrap"
-        style={{ visibility: loading || employees.length === 0 ? 'hidden' : 'visible' }}
-      >
-        <div className="employee-schedule-header-row" style={{ '--schedule-days': dates.length }}>
-          <div className="employee-schedule-name-cell sticky">Сотрудник</div>
-          {dates.map((date, index) => {
-            const dateKey = formatDateKey(date);
-            const isToday = dateKey === todayKey;
-            const isFirstOfMonth = index === 0 || date.getMonth() !== dates[index - 1].getMonth();
-            const monthLabel = isFirstOfMonth ? date.toLocaleDateString('ru-RU', { month: 'long' }) : null;
-            return (
-              <div key={dateKey} className={`employee-schedule-date-cell${isToday ? ' is-today' : ''}`}>
-                {monthLabel && <em className="schedule-month-label">{monthLabel}</em>}
-                <strong>{formatScheduleDay(date)}</strong>
-                <span>{formatScheduleWeekday(date)}</span>
-              </div>
-            );
-          })}
-          <div />
-        </div>
-      </div>
-
-      <div ref={tableWrapRef} className="employee-schedule-table-wrap">
+      <div className="employee-schedule-table-wrap">
         {loading ? (
           <div className="employee-schedule-empty">Загружаем график...</div>
         ) : employees.length === 0 ? (
           <div className="employee-schedule-empty">Добавьте первого сотрудника, чтобы начать.</div>
         ) : (
           <div className="employee-schedule-table" style={{ '--schedule-days': dates.length }}>
+            <div className="employee-schedule-header-row">
+              <div className="employee-schedule-name-cell sticky">Сотрудник</div>
+              {dates.map((date, index) => {
+                const dateKey = formatDateKey(date);
+                const isToday = dateKey === todayKey;
+                const isFirstOfMonth = index === 0 || date.getMonth() !== dates[index - 1].getMonth();
+                const monthLabel = isFirstOfMonth ? date.toLocaleDateString('ru-RU', { month: 'long' }) : null;
+                return (
+                  <div key={dateKey} className={`employee-schedule-date-cell${isToday ? ' is-today' : ''}`}>
+                    {monthLabel && <em className="schedule-month-label">{monthLabel}</em>}
+                    <strong>{formatScheduleDay(date)}</strong>
+                    <span>{formatScheduleWeekday(date)}</span>
+                  </div>
+                );
+              })}
+              <div />
+            </div>
+
             {groups.map((group) => (
               <div className="employee-schedule-group" key={group.name}>
                 <div className="employee-schedule-group-row">
