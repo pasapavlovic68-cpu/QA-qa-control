@@ -550,19 +550,20 @@ export function Stats({ employees, employeesLoading, organizationId }) {
         })}
       </div>
 
+      {/* Header вне overflow-контейнера — иначе sticky не работает */}
+      <div className="stats-header-row">
+        <div className="stats-name-col">Сотрудник</div>
+        <div>Диалоги</div>
+        <div>Рег</div>
+        <div>ФД</div>
+        <div>РД</div>
+        <div>% Рег</div>
+        <div>% ФД</div>
+        <div>% РД</div>
+      </div>
+
       <div className="stats-table-wrap">
         <div className="stats-table">
-          <div className="stats-header-row">
-            <div className="stats-name-col">Сотрудник</div>
-            <div>Диалоги</div>
-            <div>Рег</div>
-            <div>ФД</div>
-            <div>РД</div>
-            <div>% Рег</div>
-            <div>% ФД</div>
-            <div>% РД</div>
-          </div>
-
           {employeesLoading || loading ? (
             <p className="stats-empty">Загружаем…</p>
           ) : employees.length === 0 ? (
