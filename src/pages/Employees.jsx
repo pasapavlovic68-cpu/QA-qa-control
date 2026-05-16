@@ -296,21 +296,21 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   const getDisplayChannel = (employee) => channelOverrides[employee.id] ?? employee.channel ?? '';
   const getDisplayName = (employee) => nameOverrides[employee.id] ?? employee.name;
 
-  const handleNameSave = async (employee) => {
-    const newName = editingNameValue.trim();
+  const handleNameSave = async (employee, newName) => {
+    const trimmed = (typeof newName === 'string' ? newName : editingNameValue).trim();
     setEditingNameId(null);
-    if (!newName || newName === getDisplayName(employee) || nameSaving) return;
+    if (!trimmed || trimmed === getDisplayName(employee)) return;
     setNameSaving(true);
     const { error } = await supabase
       .from('employees')
-      .update({ name: newName })
+      .update({ name: trimmed })
       .eq('id', employee.id)
       .eq('organization_id', organizationId);
     setNameSaving(false);
     if (error) {
       showToast('Не удалось обновить имя', 'error');
     } else {
-      setNameOverrides((prev) => ({ ...prev, [employee.id]: newName }));
+      setNameOverrides((prev) => ({ ...prev, [employee.id]: trimmed }));
       showToast('Имя обновлено');
     }
   };
@@ -1255,49 +1255,24 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                     <div className="employee-schedule-name-cell sticky">
                       <div className="employee-schedule-name-info">
                         {/* Row 1: name + speed dial */}
-                        {editingNameId === employee.id ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <input
-                              autoFocus
-                              className="inline-name-input"
-                              value={editingNameValue}
-                              onChange={(e) => onNameChange(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') onNameSave(employee);
-                                if (e.key === 'Escape') onNameCancel();
-                              }}
-                              disabled={nameSaving}
-                              style={{ fontSize: '0.85rem', fontWeight: 600, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--surface)', color: 'var(--text)', width: 120 }}
-                            />
-                            <button type="button" className="ghost-icon-btn" onClick={() => onNameSave(employee)} disabled={nameSaving} style={{ color: 'var(--accent)', padding: 2 }}>
-                              <Check size={14} />
-                            </button>
-                            <button type="button" className="ghost-icon-btn" onClick={onNameCancel} disabled={nameSaving} style={{ padding: 2 }}>
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <strong>{getDisplayName ? getDisplayName(employee) : employee.name}</strong>
-                            <SpeedDial
-                              actions={[
-                                {
-                                  key: 'edit',
-                                  label: 'Переименовать',
-                                  icon: <Pencil size={13} />,
-                                  action: () => onStartEditName(employee),
-                                },
-                                {
-                                  key: 'delete',
-                                  label: 'Удалить',
-                                  icon: <Trash2 size={13} />,
-                                  danger: true,
-                                  action: () => requestDelete(employee, null),
-                                },
-                              ]}
-                            />
-                          </div>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <strong>{getDisplayName ? getDisplayName(employee) : employee.name}</strong>
+                          <SpeedDial
+                            editAction={{
+                              icon: <Pencil size={13} />,
+                              initialValue: getDisplayName ? getDisplayName(employee) : employee.name,
+                              onSave: (newName) => onNameSave(employee, newName),
+                            }}
+                            actions={[
+                              {
+                                key: 'delete',
+                                icon: <Trash2 size={13} />,
+                                danger: true,
+                                action: () => requestDelete(employee, null),
+                              },
+                            ]}
+                          />
+                        </div>
                         {/* Row 2: avatar + status + schedule */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                           <Avatar name={getDisplayName ? getDisplayName(employee) : employee.name} />
