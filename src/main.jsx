@@ -876,23 +876,31 @@ function App({ session }) {
 
   useEffect(() => {
     if (!organizationId) return;
-    supabase
-      .from('employees')
-      .select('id, name, role, status, channel, score, checks_count, trend, created_at, auth_user_id, gender')
-      .eq('organization_id', organizationId)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('[App] fetch employees error:', error);
-          setSupabaseStatus('offline');
-          setEmployeesLoading(false);
-          return;
+    const fetchEmployees = async (withGender = true) => {
+      const cols = withGender
+        ? 'id, name, role, status, channel, score, checks_count, trend, created_at, auth_user_id, gender'
+        : 'id, name, role, status, channel, score, checks_count, trend, created_at, auth_user_id';
+      const { data, error } = await supabase
+        .from('employees')
+        .select(cols)
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false });
+      if (error) {
+        if (withGender && error.code === '42703') {
+          // gender column not yet in DB — retry without it
+          console.warn('[App] gender column missing, retrying without it');
+          return fetchEmployees(false);
         }
-        setSupabaseStatus('connected');
-        // Exclude cabinet/auth users — only show rows where auth_user_id is null
-        setEmployeesData((data ?? []).map(toEmployee).filter(isCheckedEmployee));
+        console.error('[App] fetch employees error:', error);
+        setSupabaseStatus('offline');
         setEmployeesLoading(false);
-      });
+        return;
+      }
+      setSupabaseStatus('connected');
+      setEmployeesData((data ?? []).map(toEmployee).filter(isCheckedEmployee));
+      setEmployeesLoading(false);
+    };
+    fetchEmployees();
   }, [organizationId]);
 
   const onEmployeeAdd = (employee) => {

@@ -444,19 +444,31 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
   const handleGenderChange = async (employee, newGender) => {
     setGenderOverrides((prev) => ({ ...prev, [employee.id]: newGender }));
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('employees')
       .update({ gender: newGender })
       .eq('id', employee.id)
-      .eq('organization_id', organizationId);
+      .eq('organization_id', organizationId)
+      .select('id, gender')
+      .maybeSingle();
     if (error) {
       console.error('[Employees] gender update error:', error);
       setGenderOverrides((prev) => ({ ...prev, [employee.id]: employee.gender ?? null }));
       const msg = error.code === '42703'
-        ? 'Выполни SQL-миграцию в Supabase: ALTER TABLE employees ADD COLUMN gender text'
-        : 'Не удалось сохранить пол';
+        ? 'Колонка gender отсутствует. Выполни в Supabase SQL Editor: ALTER TABLE employees ADD COLUMN IF NOT EXISTS gender text CHECK (gender IN (\'male\', \'female\'))'
+        : `Не удалось сохранить пол: ${error.message}`;
       showToast(msg, 'error');
+      return;
     }
+    if (!data) {
+      // UPDATE вернул 0 строк — скорее всего RLS блокирует UPDATE
+      console.error('[Employees] gender update: 0 rows affected (RLS?)', { employeeId: employee.id, organizationId });
+      setGenderOverrides((prev) => ({ ...prev, [employee.id]: employee.gender ?? null }));
+      showToast('Пол не сохранён: нет прав на UPDATE. Проверь RLS-политику для employees.', 'error');
+      return;
+    }
+    // Успешно — обновляем локальный override из ответа базы
+    setGenderOverrides((prev) => ({ ...prev, [employee.id]: data.gender }));
   };
 
   const handleAddEmployee = async (event) => {
