@@ -4295,7 +4295,6 @@ select {
 
 .employee-schedule-table-wrap {
   overflow-x: auto;
-  overflow-y: clip;
   padding-bottom: 4px;
 }
 
@@ -4320,16 +4319,26 @@ select {
   grid-template-columns: 320px repeat(var(--schedule-days), 58px) 20px;
 }
 
-.employee-schedule-header-row {
+/* Обёртка шапки: sticky на странице, горизонтальный скролл без скроллбара */
+.employee-schedule-header-wrap {
   position: sticky;
   top: 172px;
   z-index: 20;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  border-radius: 16px;
+  margin-bottom: 4px;
+}
+.employee-schedule-header-wrap::-webkit-scrollbar { display: none; }
+
+.employee-schedule-header-row {
   background: rgba(252,252,253,0.92);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border: 1px solid rgba(122, 108, 92, 0.12);
   border-radius: 16px;
-  margin-bottom: 4px;
   overflow: hidden;
 }
 
@@ -5271,7 +5280,6 @@ select {
 
 .stats-table-wrap {
   overflow-x: auto;
-  overflow-y: clip;
 }
 
 .stats-table {
