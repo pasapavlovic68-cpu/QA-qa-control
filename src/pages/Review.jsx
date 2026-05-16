@@ -766,7 +766,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           </motion.p>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
           <AiButton
             onClick={handleStartAnalysis}
             disabled={analyzing || uploading}

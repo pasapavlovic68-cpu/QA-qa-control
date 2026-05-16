@@ -58,7 +58,7 @@ export function AiButton({ onClick, disabled = false, label = 'Начать ан
       onClick={disabled ? undefined : onClick}
       onHoverStart={() => !disabled && setHovering(true)}
       onHoverEnd={() => setHovering(false)}
-      whileHover={disabled ? {} : { scale: 1.06 }}
+      whileHover={disabled ? {} : { scale: 1.02 }}
       whileTap={disabled ? {} : { scale: 0.97 }}
       style={{
         position: 'relative',
@@ -70,7 +70,8 @@ export function AiButton({ onClick, disabled = false, label = 'Начать ан
         border: 'none',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
-        overflow: 'visible',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
         flex: 1,
       }}
     >
