@@ -570,6 +570,7 @@ function toEmployee(row) {
     trend: row.trend ?? 0,
     channel: row.channel ?? '',
     auth_user_id: row.auth_user_id ?? null,
+    gender: row.gender ?? null,
   };
 }
 
