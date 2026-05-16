@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Check, Pencil, Plus, Radio, Tag, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
@@ -971,18 +971,6 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
   const [error, setError] = useState(null);
   const dates = getMonthDates();
 
-  // Refs для синхронизации горизонтального скролла шапки и таблицы
-  const tableWrapRef = useRef(null);
-  const headerWrapRef = useRef(null);
-
-  useEffect(() => {
-    const tableWrap = tableWrapRef.current;
-    const headerWrap = headerWrapRef.current;
-    if (!tableWrap || !headerWrap) return;
-    const syncHeader = () => { headerWrap.scrollLeft = tableWrap.scrollLeft; };
-    tableWrap.addEventListener('scroll', syncHeader, { passive: true });
-    return () => tableWrap.removeEventListener('scroll', syncHeader);
-  }, []); // refs всегда в DOM — пустой массив работает
 
   useEffect(() => {
     if (!organizationId || employees.length === 0) {
@@ -1222,38 +1210,31 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
 
       {error && <p className="status-error">{error}</p>}
 
-      {/* Шапка всегда в DOM (для стабильного ref), скрыта когда данных нет */}
-      <div
-        className="employee-schedule-header-wrap"
-        ref={headerWrapRef}
-        style={{ display: loading || employees.length === 0 ? 'none' : undefined }}
-      >
-        <div className="employee-schedule-header-row" style={{ '--schedule-days': dates.length }}>
-          <div className="employee-schedule-name-cell sticky">Сотрудник</div>
-          {dates.map((date, index) => {
-            const dateKey = formatDateKey(date);
-            const isToday = dateKey === todayKey;
-            const isFirstOfMonth = index === 0 || date.getMonth() !== dates[index - 1].getMonth();
-            const monthLabel = isFirstOfMonth ? date.toLocaleDateString('ru-RU', { month: 'long' }) : null;
-            return (
-              <div key={dateKey} className={`employee-schedule-date-cell${isToday ? ' is-today' : ''}`}>
-                {monthLabel && <em className="schedule-month-label">{monthLabel}</em>}
-                <strong>{formatScheduleDay(date)}</strong>
-                <span>{formatScheduleWeekday(date)}</span>
-              </div>
-            );
-          })}
-          <div />
-        </div>
-      </div>
-
-      <div className="employee-schedule-table-wrap" ref={tableWrapRef}>
+      <div className="employee-schedule-table-wrap">
         {loading ? (
           <div className="employee-schedule-empty">Загружаем график...</div>
         ) : employees.length === 0 ? (
           <div className="employee-schedule-empty">Добавьте первого сотрудника, чтобы начать.</div>
         ) : (
           <div className="employee-schedule-table" style={{ '--schedule-days': dates.length }}>
+            <div className="employee-schedule-header-row">
+              <div className="employee-schedule-name-cell sticky">Сотрудник</div>
+              {dates.map((date, index) => {
+                const dateKey = formatDateKey(date);
+                const isToday = dateKey === todayKey;
+                const isFirstOfMonth = index === 0 || date.getMonth() !== dates[index - 1].getMonth();
+                const monthLabel = isFirstOfMonth ? date.toLocaleDateString('ru-RU', { month: 'long' }) : null;
+                return (
+                  <div key={dateKey} className={`employee-schedule-date-cell${isToday ? ' is-today' : ''}`}>
+                    {monthLabel && <em className="schedule-month-label">{monthLabel}</em>}
+                    <strong>{formatScheduleDay(date)}</strong>
+                    <span>{formatScheduleWeekday(date)}</span>
+                  </div>
+                );
+              })}
+              <div />
+            </div>
+
             {groups.map((group) => (
               <div className="employee-schedule-group" key={group.name}>
                 <div className="employee-schedule-group-row">
