@@ -5750,24 +5750,9 @@ select {
 .delay-4 { animation-delay: 0.32s; }
 .delay-5 { animation-delay: 0.40s; }
 
-/* ── 3. Каскадное появление всех блоков страницы ────────────── */
-/*    Применяется к прямым потомкам .workspace (не framer-motion)  */
-.workspace > * {
-  animation: revealPage 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.workspace > *:nth-child(1)  { animation-delay: 0.04s; }
-.workspace > *:nth-child(2)  { animation-delay: 0.10s; }
-.workspace > *:nth-child(3)  { animation-delay: 0.16s; }
-.workspace > *:nth-child(4)  { animation-delay: 0.22s; }
-.workspace > *:nth-child(5)  { animation-delay: 0.28s; }
-.workspace > *:nth-child(6)  { animation-delay: 0.34s; }
-.workspace > *:nth-child(n+7) { animation-delay: 0.38s; }
-
-/* ── 4. Каскад внутри KPI-сетки ─────────────────────────────── */
-.kpi-grid > *:nth-child(1) { animation: revealPage 0.5s cubic-bezier(0.16,1,0.3,1) 0.18s both; }
-.kpi-grid > *:nth-child(2) { animation: revealPage 0.5s cubic-bezier(0.16,1,0.3,1) 0.25s both; }
-.kpi-grid > *:nth-child(3) { animation: revealPage 0.5s cubic-bezier(0.16,1,0.3,1) 0.32s both; }
-.kpi-grid > *:nth-child(4) { animation: revealPage 0.5s cubic-bezier(0.16,1,0.3,1) 0.38s both; }
+/* ── 3 & 4: автоматический каскад удалён —
+   конфликтовал с framer-motion page transitions.
+   Используй .animate-load .delay-* вручную на статичных элементах. ── */
 
 /* ── 5. Hover-микроотклик на карточках ──────────────────────── */
 /*    Добавляем transform к существующим transition-ам           */
@@ -5871,10 +5856,4 @@ select {
     transform: none;
   }
 
-  /* Сброс каскадных анимаций workspace на мобилке */
-  .workspace > *,
-  .kpi-grid > * {
-    animation: none;
-    opacity: 1;
-  }
 }
