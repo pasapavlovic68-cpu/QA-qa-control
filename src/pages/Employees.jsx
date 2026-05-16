@@ -1253,8 +1253,8 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                   <div className="employee-schedule-row-wrap" key={employee.id}>
                   <div className="employee-schedule-row">
                     <div className="employee-schedule-name-cell sticky">
-                      <Avatar name={getDisplayName ? getDisplayName(employee) : employee.name} />
                       <div className="employee-schedule-name-info">
+                        {/* Row 1: name + speed dial */}
                         {editingNameId === employee.id ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <input
@@ -1298,15 +1298,19 @@ function EmployeeSchedulePanel({ employees, channels, organizationId, getDisplay
                             />
                           </div>
                         )}
-                        <div className="employee-schedule-name-sub">
-                          <button
-                            type="button"
-                            className="status-badge-clickable"
-                            onClick={(e) => { e.stopPropagation(); openStatusAssignment({ ...employee, status: displayStatus, statusTone: fallbackTone }, e); }}
-                          >
-                            <StatusBadge name={displayStatus} statusTone={fallbackTone} color={customColor} />
-                          </button>
-                          <TodayScheduleBadge entry={todaySchedule[employee.id]} />
+                        {/* Row 2: avatar + status + schedule */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                          <Avatar name={getDisplayName ? getDisplayName(employee) : employee.name} />
+                          <div className="employee-schedule-name-sub">
+                            <button
+                              type="button"
+                              className="status-badge-clickable"
+                              onClick={(e) => { e.stopPropagation(); openStatusAssignment({ ...employee, status: displayStatus, statusTone: fallbackTone }, e); }}
+                            >
+                              <StatusBadge name={displayStatus} statusTone={fallbackTone} color={customColor} />
+                            </button>
+                            <TodayScheduleBadge entry={todaySchedule[employee.id]} />
+                          </div>
                         </div>
                       </div>
                     </div>
