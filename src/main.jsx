@@ -878,7 +878,7 @@ function App({ session }) {
     if (!organizationId) return;
     supabase
       .from('employees')
-      .select('id, name, role, status, channel, score, checks_count, trend, created_at, auth_user_id')
+      .select('id, name, role, status, channel, score, checks_count, trend, created_at, auth_user_id, gender')
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
