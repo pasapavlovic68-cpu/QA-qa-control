@@ -533,7 +533,12 @@ export function Stats({ employees, employeesLoading, organizationId }) {
         </div>
       </div>
 
+      {/* KPI + header — единая сетка 220px + 7 колонок, выровнены с данными */}
       <div className="stats-kpi-row">
+        <div className="stats-kpi-summary">
+          <span>Период</span>
+          <strong>{label}</strong>
+        </div>
         {kpis.map(({ label: kLabel, value, pctVal }) => {
           const isPct = pctVal !== undefined;
           const color = isPct

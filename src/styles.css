@@ -5215,16 +5215,36 @@ select {
 }
 
 .stats-kpi-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 220px repeat(7, 1fr);
   gap: 10px;
-  margin-bottom: 20px;
-  overflow-x: auto;
-  padding-bottom: 2px;
+  margin-bottom: 12px;
+}
+
+.stats-kpi-summary {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 12px 16px;
+}
+
+.stats-kpi-summary > span {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stats-kpi-summary > strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
 }
 
 .stats-kpi-card {
-  flex: 1;
-  min-width: 90px;
   padding: 14px 16px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.72);
