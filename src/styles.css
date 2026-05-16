@@ -4320,14 +4320,21 @@ select {
   grid-template-columns: 320px repeat(var(--schedule-days), 58px) 20px;
 }
 
-/* Обёртка шапки — sticky по странице, overflow hidden скрывает скроллбар */
+/* Обёртка шапки — sticky по странице, скроллбар скрыт но scrollLeft работает через JS */
 .employee-schedule-header-wrap {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   position: sticky;
   top: 172px;
   z-index: 20;
   margin-bottom: 4px;
   border-radius: 16px;
+}
+
+.employee-schedule-header-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 .employee-schedule-header-row {
