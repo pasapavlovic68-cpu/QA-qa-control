@@ -270,22 +270,33 @@ button {
   justify-content: space-between;
   gap: 20px;
   align-items: center;
-  margin-bottom: 0;
 
-  /* ── Sticky glass — верхняя часть объединённой плашки ── */
+  /* ── Sticky glass pill (полная, без sub-header) ── */
   position: sticky;
   top: 16px;
   z-index: 40;
-  padding: 16px 24px 14px;
-  border-radius: 22px 22px 0 0;
+  padding: 16px 24px;
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(119, 101, 227, 0.14);
-  border-bottom: 1px solid rgba(119, 101, 227, 0.08);
   box-shadow:
     0 2px 0 rgba(119, 101, 227, 0.07) inset,
-    0 -1px 0 rgba(255,255,255,0.6) inset;
+    0 8px 32px rgba(81, 71, 54, 0.10),
+    0 2px 8px rgba(119, 101, 227, 0.07);
+  margin-bottom: 20px;
+}
+
+/* ── Если за topbar сразу идёт sub-header — срезаем нижние углы ── */
+.topbar:has(+ .employees-page-head),
+.topbar:has(+ .stats-head),
+.topbar:has(+ .reports-head),
+.topbar:has(+ .rules-head) {
+  border-radius: 22px 22px 0 0;
+  border-bottom-color: rgba(119, 101, 227, 0.08);
+  box-shadow: 0 2px 0 rgba(119, 101, 227, 0.07) inset;
+  margin-bottom: 0;
 }
 
 .eyebrow {
@@ -662,20 +673,26 @@ h1 {
   align-items: center;
   margin-bottom: 20px;
 
-  /* ── Sticky glass — нижняя часть объединённой плашки ── */
+  /* ── Sticky glass (самостоятельная плашка) ── */
   position: sticky;
-  top: calc(16px + 77px); /* = top topbar + topbar height */
+  top: 110px;
   z-index: 30;
   padding: 12px 24px;
-  border-radius: 0 0 22px 22px;
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(119, 101, 227, 0.14);
-  border-top: none;
   box-shadow:
     0 8px 32px rgba(81, 71, 54, 0.10),
     0 2px 8px rgba(119, 101, 227, 0.07);
+}
+
+/* ── Когда идёт сразу после topbar — срезаем верхние углы ── */
+.topbar + .employees-page-head {
+  border-radius: 0 0 22px 22px;
+  border-top: none;
+  top: calc(16px + 79px);
 }
 
 .employees-page-head h2 {
@@ -2095,20 +2112,24 @@ select {
   align-items: center;
   margin-bottom: 20px;
 
-  /* ── Sticky glass — нижняя часть объединённой плашки ── */
   position: sticky;
-  top: calc(16px + 77px);
+  top: 110px;
   z-index: 30;
   padding: 12px 24px;
-  border-radius: 0 0 22px 22px;
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(119, 101, 227, 0.14);
-  border-top: none;
   box-shadow:
     0 8px 32px rgba(81, 71, 54, 0.10),
     0 2px 8px rgba(119, 101, 227, 0.07);
+}
+
+.topbar + .reports-head {
+  border-radius: 0 0 22px 22px;
+  border-top: none;
+  top: calc(16px + 79px);
 }
 
 .reports-head h2 {
@@ -2609,20 +2630,24 @@ select {
   align-items: center;
   margin-bottom: 20px;
 
-  /* ── Sticky glass — нижняя часть объединённой плашки ── */
   position: sticky;
-  top: calc(16px + 77px);
+  top: 110px;
   z-index: 30;
   padding: 12px 24px;
-  border-radius: 0 0 22px 22px;
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(119, 101, 227, 0.14);
-  border-top: none;
   box-shadow:
     0 8px 32px rgba(81, 71, 54, 0.10),
     0 2px 8px rgba(119, 101, 227, 0.07);
+}
+
+.topbar + .rules-head {
+  border-radius: 0 0 22px 22px;
+  border-top: none;
+  top: calc(16px + 79px);
 }
 
 .rules-head h2 {
@@ -3000,6 +3025,20 @@ select {
     padding: 0;
     border-radius: 0;
     background: transparent;
+    margin-bottom: 16px;
+  }
+
+  .topbar:has(+ .employees-page-head),
+  .topbar:has(+ .stats-head),
+  .topbar:has(+ .reports-head),
+  .topbar:has(+ .rules-head),
+  .topbar + .employees-page-head,
+  .topbar + .stats-head,
+  .topbar + .reports-head,
+  .topbar + .rules-head {
+    border-radius: 0;
+    border: none;
+    margin: 0;
   }
 
   .search {
@@ -5215,20 +5254,24 @@ select {
   gap: 16px;
   margin-bottom: 20px;
 
-  /* ── Sticky glass — нижняя часть объединённой плашки ── */
   position: sticky;
-  top: calc(16px + 77px);
+  top: 110px;
   z-index: 30;
   padding: 12px 24px;
-  border-radius: 0 0 22px 22px;
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(119, 101, 227, 0.14);
-  border-top: none;
   box-shadow:
     0 8px 32px rgba(81, 71, 54, 0.10),
     0 2px 8px rgba(119, 101, 227, 0.07);
+}
+
+.topbar + .stats-head {
+  border-radius: 0 0 22px 22px;
+  border-top: none;
+  top: calc(16px + 79px);
 }
 
 .stats-head h2 {
