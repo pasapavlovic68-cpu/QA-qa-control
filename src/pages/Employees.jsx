@@ -486,7 +486,7 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
   };
 
   const requestDelete = (employee, event) => {
-    event.stopPropagation();
+    event?.stopPropagation();
     if (employee.auth_user_id) {
       console.warn(`[Employees] blocked delete: employee id=${employee.id} has auth_user_id — system account`);
       setDeleteError('Нельзя удалить пользователя с доступом к кабинету.');
