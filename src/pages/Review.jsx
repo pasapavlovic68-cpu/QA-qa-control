@@ -4,6 +4,7 @@ import { FileText, FolderUp, Play, ScrollText } from 'lucide-react';
 import { supabase } from '../lib/supabase.js';
 import { parseDialogue } from '../lib/parseDialogue.js';
 import { PremiumCard } from '../components/shared.jsx';
+import { AiButton } from '../components/AiButton.jsx';
 import { AnalysisState, PremiumDropdown } from '../components/display.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { ReviewReportModal } from '../components/modals.jsx';
@@ -763,18 +764,11 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <motion.button
-            className={`primary-button large${analyzing ? ' analyzing-pulse' : ''}`}
-            style={{ flex: 1, position: 'relative', overflow: 'hidden' }}
-            whileTap={{ scale: 0.97 }}
-            whileHover={analyzing ? {} : { y: -2 }}
-            disabled={analyzing || uploading}
+          <AiButton
             onClick={handleStartAnalysis}
-          >
-            {analyzing && <span className="analyzing-shimmer" aria-hidden="true" />}
-            <Play size={18} />
-            {analyzing ? 'Анализируем…' : 'Начать анализ'}
-          </motion.button>
+            disabled={analyzing || uploading}
+            label={analyzing ? 'Анализируем…' : 'Начать анализ'}
+          />
 
           <AnimatePresence>
             {analysis === 'complete' && previewReport && (
