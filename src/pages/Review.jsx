@@ -427,6 +427,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               employeeName: selectedEmployeeName,
+              employeeGender: selectedEmployee?.gender ?? null,
               dialogues: [dialogue],
               rules: rulePayload,
               salesDepartmentRegulation: SALES_DEPARTMENT_REGULATION,
@@ -514,6 +515,7 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           body: JSON.stringify({
             mode: 'aggregate',
             employeeName: selectedEmployeeName,
+            employeeGender: selectedEmployee?.gender ?? null,
             summaries: summariesForAgg,
             topMistakes: topMistakesForAgg,
             evidenceItems: evidenceForAgg,

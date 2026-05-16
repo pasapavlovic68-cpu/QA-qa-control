@@ -48,10 +48,17 @@ export default {
         'лёня','леня','гена','толя','тима','боря','яша','сёма','сема','кеша','лёва','лева',
         'митя','вова','кузя','алёша','алеша','илюша','филя','никита','данила','кирюша','андрюша',
       ]);
-      const aggIsFemale = aggEndsInAya && !AGG_MALE_NAMES.has(aggFirstNameLower);
+      let aggIsFemale;
+      if (payload.employeeGender === 'female') {
+        aggIsFemale = true;
+      } else if (payload.employeeGender === 'male') {
+        aggIsFemale = false;
+      } else {
+        aggIsFemale = aggEndsInAya && !AGG_MALE_NAMES.has(aggFirstNameLower);
+      }
       const aggGenderNote = aggIsFemale
-        ? `Имя сотрудника «${aggEmployeeName}» — женское. Используй женский род: «ты сделала», «ты пропустила», «ты справилась».`
-        : `Имя сотрудника «${aggEmployeeName}» — мужское. Используй мужской род: «ты сделал», «ты пропустил», «ты справился».`;
+        ? `Сотрудник женского пола. Используй женский род: сотрудница, она, её, «ты сделала», «ты пропустила», «ты справилась».`
+        : `Сотрудник мужского пола. Используй мужской род: сотрудник, он, его, «ты сделал», «ты пропустил», «ты справился».`;
 
       const aggDialogueCount = Array.isArray(payload.summaries) ? payload.summaries.length : 1;
       const aggCountNote = aggDialogueCount === 1
@@ -312,22 +319,29 @@ ${evidenceItems.slice(0, 10).map((e) => `• "${e.quote}" — ${e.comment || e.r
       );
     }
 
-    // Detect gender from Russian name.
-    // Male short names ending in а/я (common in Russian) must not be treated as female.
-    const MALE_NAMES_ENDING_A = new Set([
-      'гриша','миша','саша','коля','серёжа','сережа','лёша','леша','витя','петя','федя',
-      'дима','стёпа','степа','сеня','тёма','тема','женя','слава','ваня','паша','вася',
-      'лёня','леня','гена','толя','тима','боря','яша','сёма','сема','кеша','лёва','лева',
-      'митя','вова','кузя','алёша','алеша','илюша','филя','фёдя','федя','никита',
-      'данила','данила','кирюша','андрюша','стасик',
-    ]);
-    const firstName = employeeName.trim().split(/\s+/)[0];
-    const firstNameLower = firstName.toLowerCase();
-    const endsInAya = /[аяАЯ]$/u.test(firstName);
-    const isFemale = endsInAya && !MALE_NAMES_ENDING_A.has(firstNameLower);
+    // Determine gender: use explicit field if provided, otherwise detect from Russian name.
+    let isFemale;
+    if (payload.employeeGender === 'female') {
+      isFemale = true;
+    } else if (payload.employeeGender === 'male') {
+      isFemale = false;
+    } else {
+      // Auto-detect: male short names ending in а/я must not be treated as female.
+      const MALE_NAMES_ENDING_A = new Set([
+        'гриша','миша','саша','коля','серёжа','сережа','лёша','леша','витя','петя','федя',
+        'дима','стёпа','степа','сеня','тёма','тема','женя','слава','ваня','паша','вася',
+        'лёня','леня','гена','толя','тима','боря','яша','сёма','сема','кеша','лёва','лева',
+        'митя','вова','кузя','алёша','алеша','илюша','филя','фёдя','федя','никита',
+        'данила','данила','кирюша','андрюша','стасик',
+      ]);
+      const firstName = employeeName.trim().split(/\s+/)[0];
+      const firstNameLower = firstName.toLowerCase();
+      const endsInAya = /[аяАЯ]$/u.test(firstName);
+      isFemale = endsInAya && !MALE_NAMES_ENDING_A.has(firstNameLower);
+    }
     const genderNote = isFemale
-      ? `Имя сотрудника «${employeeName}» — женское. Используй женский род последовательно везде: «ты сделала», «ты пропустила», «ты справилась», «ты включилась» и т.д.`
-      : `Имя сотрудника «${employeeName}» — мужское. Используй мужской род везде: «ты сделал», «ты пропустил», «ты справился».`;
+      ? `Сотрудник женского пола. Используй женский род последовательно везде: сотрудница, она, её, «ты сделала», «ты пропустила», «ты справилась», «ты включилась» и т.д.`
+      : `Сотрудник мужского пола. Используй мужской род везде: сотрудник, он, его, «ты сделал», «ты пропустил», «ты справился».`;
 
     // ── System prompt ────────────────────────────────────────────────────────
     const systemPrompt = `
