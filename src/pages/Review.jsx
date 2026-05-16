@@ -777,20 +777,15 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
 
           <AnimatePresence>
             {analysis === 'complete' && previewReport && (
-              <motion.button
-                className="primary-button large"
+              <motion.div
+                style={{ flex: 1 }}
                 initial={{ opacity: 0, scale: 0.94 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.94 }}
                 transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-                whileTap={{ scale: 0.97 }}
-                whileHover={{ y: -2 }}
-                onClick={() => setPreviewOpen(true)}
-                style={{ flexShrink: 0 }}
               >
-                <ScrollText size={18} />
-                Просмотреть отчёт
-              </motion.button>
+                <AiButton done label="Анализ окончен" />
+              </motion.div>
             )}
           </AnimatePresence>
         </div>

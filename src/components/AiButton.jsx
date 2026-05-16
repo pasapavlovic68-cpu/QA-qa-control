@@ -48,27 +48,28 @@ function Star({ x, y, delay, size, rotate }) {
   );
 }
 
-export function AiButton({ onClick, disabled = false, label = 'Начать анализ' }) {
+export function AiButton({ onClick, disabled = false, done = false, label = 'Начать анализ' }) {
   const [hovering, setHovering] = useState(false);
+  const inactive = disabled || done;
 
   return (
     <motion.button
       type="button"
-      disabled={disabled}
-      onClick={disabled ? undefined : onClick}
-      onHoverStart={() => !disabled && setHovering(true)}
+      disabled={inactive}
+      onClick={inactive ? undefined : onClick}
+      onHoverStart={() => !inactive && setHovering(true)}
       onHoverEnd={() => setHovering(false)}
-      whileTap={disabled ? {} : { scale: 0.97 }}
+      whileTap={inactive ? {} : { scale: 0.97 }}
       style={{
         position: 'relative',
         padding: 2,
         borderRadius: 999,
-        background: disabled
+        background: disabled && !done
           ? 'rgba(119,101,227,0.25)'
           : 'linear-gradient(135deg, rgba(119,101,227,0.45) 0%, rgba(99,147,255,0.35) 100%)',
         border: 'none',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
+        cursor: done ? 'default' : disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled && !done ? 0.5 : 1,
         flex: 1,
       }}
     >
