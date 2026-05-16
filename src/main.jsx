@@ -1041,6 +1041,7 @@ function App({ session }) {
                   employees={employeesData}
                   organizationId={organizationId}
                   onDialogueAnalyzed={onDialogueAnalyzed}
+                  onGoToReports={() => setActive('report')}
                 />
               )}
               {active === 'report' && <Report organizationId={organizationId} />}

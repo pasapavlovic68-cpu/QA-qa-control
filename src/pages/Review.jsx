@@ -164,7 +164,7 @@ function buildAggregatePreviewReport(reports, employeeName) {
   };
 }
 
-export function Review({ analysis, setAnalysis, employees, organizationId, onDialogueAnalyzed }) {
+export function Review({ analysis, setAnalysis, employees, organizationId, onDialogueAnalyzed, onGoToReports }) {
   const showToast = useToast();
   const fileInputRef = useRef(null);
 
@@ -770,17 +770,38 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
           </motion.p>
         )}
 
-        <div style={{ padding: '4px 10px 10px' }}>
-          <AiButton
-            onClick={handleStartAnalysis}
-            disabled={analyzing || uploading}
-            done={analysis === 'complete'}
-            label={
-              analysis === 'complete' ? 'Анализ окончен' :
-              analyzing ? 'Анализируем…' :
-              'Начать анализ'
-            }
-          />
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 10px 10px' }}>
+          {analysis === 'complete' ? (
+            <motion.button
+              type="button"
+              onClick={onGoToReports}
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+              whileTap={{ scale: 0.97 }}
+              whileHover={{ y: -2 }}
+              style={{
+                padding: '13px 36px',
+                borderRadius: 999,
+                background: 'linear-gradient(135deg, #7765E3 0%, #6393FF 100%)',
+                border: 'none',
+                color: 'white',
+                fontWeight: 600,
+                fontSize: '1rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 24px rgba(119,101,227,0.4)',
+                letterSpacing: '0.01em',
+              }}
+            >
+              Перейти в отчёты →
+            </motion.button>
+          ) : (
+            <AiButton
+              onClick={handleStartAnalysis}
+              disabled={analyzing || uploading}
+              label={analyzing ? 'Анализируем…' : 'Начать анализ'}
+            />
+          )}
         </div>
       </PremiumCard>
 
