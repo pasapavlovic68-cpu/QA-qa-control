@@ -761,19 +761,16 @@ export function Sidebar({ active, setActive, user, orgName, organizationId, onOr
   );
 }
 
-export function Topbar({ title, onNewReview, showNewReview = false }) {
+export function Topbar({ title, children }) {
   return (
     <header className="topbar">
       <div>
         <span className="eyebrow">Внутренний контур качества</span>
         <h1>{title}</h1>
       </div>
-      {showNewReview && (
+      {children && (
         <div className="topbar-actions">
-          <motion.button className="primary-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={onNewReview}>
-            <Sparkles size={17} />
-            Новая проверка
-          </motion.button>
+          {children}
         </div>
       )}
     </header>

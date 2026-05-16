@@ -288,17 +288,6 @@ button {
   margin-bottom: 20px;
 }
 
-/* ── Sub-header есть → срезаем нижние углы topbar ── */
-/* .page — это motion.section между topbar и page-head */
-.topbar:has(~ .page > .employees-page-head:first-child),
-.topbar:has(~ .page > .stats-head:first-child),
-.topbar:has(~ .page > .reports-head:first-child),
-.topbar:has(~ .page > .rules-head:first-child) {
-  border-radius: 22px 22px 0 0;
-  border-bottom-color: rgba(119, 101, 227, 0.08);
-  box-shadow: 0 2px 0 rgba(119, 101, 227, 0.07) inset;
-  margin-bottom: 0;
-}
 
 .eyebrow {
   display: block;
@@ -668,32 +657,7 @@ h1 {
 }
 
 .employees-page-head {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 20px;
-
-  /* ── Sticky glass (самостоятельная плашка) ── */
-  position: sticky;
-  top: 110px;
-  z-index: 30;
-  padding: 12px 24px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(119, 101, 227, 0.14);
-  box-shadow:
-    0 8px 32px rgba(81, 71, 54, 0.10),
-    0 2px 8px rgba(119, 101, 227, 0.07);
-}
-
-/* ── Первый в .page → срезаем верхние углы (соединяется с topbar) ── */
-.page > .employees-page-head:first-child {
-  border-radius: 0 0 22px 22px;
-  border-top: none;
-  top: calc(16px + 79px);
+  display: none;
 }
 
 .employees-page-head h2 {
@@ -2107,30 +2071,7 @@ select {
 }
 
 .reports-head {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 20px;
-
-  position: sticky;
-  top: 110px;
-  z-index: 30;
-  padding: 12px 24px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(119, 101, 227, 0.14);
-  box-shadow:
-    0 8px 32px rgba(81, 71, 54, 0.10),
-    0 2px 8px rgba(119, 101, 227, 0.07);
-}
-
-.page > .reports-head:first-child {
-  border-radius: 0 0 22px 22px;
-  border-top: none;
-  top: calc(16px + 79px);
+  display: none;
 }
 
 .reports-head h2 {
@@ -2625,30 +2566,7 @@ select {
 }
 
 .rules-head {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 20px;
-
-  position: sticky;
-  top: 110px;
-  z-index: 30;
-  padding: 12px 24px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(119, 101, 227, 0.14);
-  box-shadow:
-    0 8px 32px rgba(81, 71, 54, 0.10),
-    0 2px 8px rgba(119, 101, 227, 0.07);
-}
-
-.page > .rules-head:first-child {
-  border-radius: 0 0 22px 22px;
-  border-top: none;
-  top: calc(16px + 79px);
+  display: none;
 }
 
 .rules-head h2 {
@@ -3007,17 +2925,11 @@ select {
 
   .topbar,
   .topbar-actions,
-  .reports-head,
-  .rules-head,
   .form-row {
     display: grid;
   }
 
-  .topbar,
-  .employees-page-head,
-  .reports-head,
-  .stats-head,
-  .rules-head {
+  .topbar {
     position: static;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -3027,20 +2939,6 @@ select {
     border-radius: 0;
     background: transparent;
     margin-bottom: 16px;
-  }
-
-  .topbar:has(~ .page > .employees-page-head:first-child),
-  .topbar:has(~ .page > .stats-head:first-child),
-  .topbar:has(~ .page > .reports-head:first-child),
-  .topbar:has(~ .page > .rules-head:first-child),
-  .page > .employees-page-head:first-child,
-  .page > .stats-head:first-child,
-  .page > .reports-head:first-child,
-  .page > .rules-head:first-child {
-    border-radius: 0;
-    border: none;
-    margin: 0;
-    top: 0;
   }
 
   .search {
@@ -5250,30 +5148,7 @@ select {
 /* ── Stats page ─────────────────────────────────────────── */
 
 .stats-head {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-bottom: 20px;
-
-  position: sticky;
-  top: 110px;
-  z-index: 30;
-  padding: 12px 24px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(119, 101, 227, 0.14);
-  box-shadow:
-    0 8px 32px rgba(81, 71, 54, 0.10),
-    0 2px 8px rgba(119, 101, 227, 0.07);
-}
-
-.page > .stats-head:first-child {
-  border-radius: 0 0 22px 22px;
-  border-top: none;
-  top: calc(16px + 79px);
+  display: none;
 }
 
 .stats-head h2 {

@@ -9,6 +9,7 @@ import { AnalysisState, PremiumDropdown } from '../components/display.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { ReviewReportModal } from '../components/modals.jsx';
 import { SALES_DEPARTMENT_REGULATION, DEFAULT_FORBIDDEN_PHRASES } from '../lib/regulation.js';
+import { Topbar } from '../components/layout.jsx';
 
 const WORKER_URL = 'https://qa-control-ai-proxy.pasapavlovic68.workers.dev';
 
@@ -654,6 +655,8 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
     'Ожидает запуска';
 
   return (
+    <>
+    <Topbar title="Проверка" />
     <div className="review-layout">
       <PremiumCard className="review-main" title="Новая проверка диалогов" action="Загрузка файлов">
         <div className="form-row">
@@ -813,5 +816,6 @@ export function Review({ analysis, setAnalysis, employees, organizationId, onDia
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }

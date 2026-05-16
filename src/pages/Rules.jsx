@@ -6,6 +6,7 @@ import { RuleToggle } from '../components/display.jsx';
 import { RuleModal, DeleteRuleModal } from '../components/modals.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { runModalSuccessFlow } from '../lib/modalSuccess.js';
+import { Topbar } from '../components/layout.jsx';
 
 function toRule(row) {
   const [category, weight] = (row.category || 'Процесс').split(' · ');
@@ -185,12 +186,12 @@ export function Rules({ organizationId }) {
 
   return (
     <>
-      <div className="rules-head">
+      <Topbar title="Правила">
         <motion.button className="primary-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={openAddModal}>
           <Plus size={17} />
           Добавить правило
         </motion.button>
-      </div>
+      </Topbar>
 
       {loading ? (
         <div className="rules-grid" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>

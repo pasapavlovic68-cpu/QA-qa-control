@@ -8,6 +8,7 @@ import { EmployeeFormModal, DeleteEmployeeModal, StatusManagementModal, ChannelM
 import { modalMotion, modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { runModalSuccessFlow } from '../lib/modalSuccess.js';
+import { Topbar } from '../components/layout.jsx';
 
 function getStatusTone(status) {
   if (status === 'Улучшается') return 'success';
@@ -565,37 +566,35 @@ export function Employees({ setDetailOpen, setSelectedEmployee, employees, emplo
 
   return (
     <>
-      <div className="employees-page-head">
-        <div style={{ display: 'flex', gap: 10 }}>
-          <motion.button
-            className="ghost-button"
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ y: -2 }}
-            onClick={() => setStatusMgmtOpen(true)}
-          >
-            <Tag size={15} />
-            Статусы
-          </motion.button>
-          <motion.button
-            className="ghost-button"
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ y: -2 }}
-            onClick={() => setChannelMgmtOpen(true)}
-          >
-            <Radio size={15} />
-            Каналы
-          </motion.button>
-          <motion.button
-            className="primary-button"
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ y: -2 }}
-            onClick={() => { setAddOpen(true); setAddError(null); }}
-          >
-            <Plus size={17} />
-            Добавить сотрудника
-          </motion.button>
-        </div>
-      </div>
+      <Topbar title="Сотрудники">
+        <motion.button
+          className="ghost-button"
+          whileTap={{ scale: 0.97 }}
+          whileHover={{ y: -2 }}
+          onClick={() => setStatusMgmtOpen(true)}
+        >
+          <Tag size={15} />
+          Статусы
+        </motion.button>
+        <motion.button
+          className="ghost-button"
+          whileTap={{ scale: 0.97 }}
+          whileHover={{ y: -2 }}
+          onClick={() => setChannelMgmtOpen(true)}
+        >
+          <Radio size={15} />
+          Каналы
+        </motion.button>
+        <motion.button
+          className="primary-button"
+          whileTap={{ scale: 0.97 }}
+          whileHover={{ y: -2 }}
+          onClick={() => { setAddOpen(true); setAddError(null); }}
+        >
+          <Plus size={17} />
+          Добавить сотрудника
+        </motion.button>
+      </Topbar>
 
       {/* Inline delete/block error banner */}
       <AnimatePresence>

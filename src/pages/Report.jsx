@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast.jsx';
 import { AnimatedProgress, Avatar, ScrollReveal } from '../components/shared.jsx';
 import { reportCardTransition, ReviewReportModal } from '../components/modals.jsx';
 import { ModalPortal, modalContentVariants, modalMotion, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
+import { Topbar } from '../components/layout.jsx';
 
 function toReport(row, employeeMap, checkMap) {
   const mistakes = Array.isArray(row.mistakes) ? row.mistakes : [];
@@ -605,12 +606,12 @@ export function Report({ organizationId }) {
 
   return (
     <>
-      <div className="reports-head">
+      <Topbar title="Отчёт">
         <label className="report-search">
           <Search size={17} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти отчёт, сотрудника или статус" />
         </label>
-      </div>
+      </Topbar>
 
       {loading ? (
         <div className="reports-grid" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>

@@ -4,6 +4,7 @@ import {
   Activity,
   AlertTriangle,
   MessageSquareText,
+  Sparkles,
   UsersRound,
   X
 } from 'lucide-react';
@@ -11,6 +12,7 @@ import { supabase } from '../lib/supabase.js';
 import { PremiumCard, RevealCard, ScrollReveal, Stagger, Avatar } from '../components/shared.jsx';
 import { KpiCard, PremiumDropdown } from '../components/display.jsx';
 import { ModalPortal, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
+import { Topbar } from '../components/layout.jsx';
 
 const emptyCardText = (text) => (
   <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.875rem', padding: '24px 0' }}>{text}</p>
@@ -607,6 +609,12 @@ export function Dashboard({ setActive, setDetailOpen, setSelectedEmployee, emplo
 
   return (
     <>
+      <Topbar title="Главная">
+        <motion.button className="primary-button" whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={() => setActive('review')}>
+          <Sparkles size={17} />
+          Новая проверка
+        </motion.button>
+      </Topbar>
       <AnimatePresence>
         {employeesModalOpen && (
           <EmployeesControlModal

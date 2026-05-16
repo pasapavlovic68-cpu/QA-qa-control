@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
 import { modalContentVariants, modalSectionVariants, useModalScrollLock, ModalPortal } from '../components/modal.jsx';
 import { runModalSuccessFlow } from '../lib/modalSuccess.js';
+import { Topbar } from '../components/layout.jsx';
 
 const FIELD_META = {
   company_instruction: {
@@ -284,6 +285,7 @@ export function Settings({ organizationId }) {
 
   return (
     <>
+      <Topbar title="Настройки" />
 
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>

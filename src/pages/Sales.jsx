@@ -7,6 +7,7 @@ import { modalMotion, modalContentVariants, modalSectionVariants, useModalScroll
 import { aggregateSales, formatCash, getWeekStart, getMonthStart } from '../lib/salesMetrics.js';
 import { useToast } from '../components/Toast.jsx';
 import { runModalSuccessFlow } from '../lib/modalSuccess.js';
+import { Topbar } from '../components/layout.jsx';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -871,8 +872,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
 
   return (
     <>
-      {/* ── Header ──────────────────────────────────────────────────── */}
-      <div className="employees-page-head">
+      <Topbar title="Продажи">
         <motion.button
           className="primary-button"
           whileTap={{ scale: 0.97 }}
@@ -883,7 +883,7 @@ export function Sales({ employees, employeesLoading, organizationId }) {
           <Plus size={17} />
           Добавить
         </motion.button>
-      </div>
+      </Topbar>
 
       <div className="sales-kpi-grid">
         <SalesKpiCard label="Депозиты за неделю" value={loading ? '…' : String(weekDeposits)} range={weekRange} icon={CalendarDays} />

@@ -10,7 +10,7 @@ import { supabase } from './lib/supabase.js';
 import { acceptOrganizationInvite, createWorkspaceForUser, resolveUserOrganization } from './lib/organization.js';
 import { bootstrapEmployee } from './lib/bootstrap.js';
 import { isCheckedEmployee } from './lib/employees.js';
-import { tabs, Sidebar, Topbar } from './components/layout.jsx';
+import { tabs, Sidebar } from './components/layout.jsx';
 import { ToastProvider, useToast } from './components/Toast.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import { Employees } from './pages/Employees.jsx';
@@ -987,7 +987,6 @@ function App({ session }) {
           }}
         />
         <main className="workspace">
-          <Topbar title={currentTitle} onNewReview={() => setActive('review')} showNewReview={active === 'dashboard'} />
           <AnimatePresence mode="wait">
             <motion.section
               key={active}

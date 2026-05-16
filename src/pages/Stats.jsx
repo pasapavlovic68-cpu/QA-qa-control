@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase.js';
 import { useToast } from '../components/Toast.jsx';
 import { Avatar, CustomSelect, ScrollReveal } from '../components/shared.jsx';
 import { ModalPortal, modalContentVariants, modalSectionVariants, useModalScrollLock } from '../components/modal.jsx';
+import { Topbar } from '../components/layout.jsx';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
@@ -496,12 +497,12 @@ export function Stats({ employees, employeesLoading, organizationId }) {
 
   return (
     <>
-      <div className="stats-head">
+      <Topbar title="Статистика">
         <button className="primary-button" type="button" onClick={() => setAddOpen(true)}>
           <Plus size={16} />
           Добавить
         </button>
-      </div>
+      </Topbar>
 
       <div className="stats-toolbar">
         <div className="stats-mode-pills">
