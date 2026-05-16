@@ -4450,11 +4450,13 @@ select {
   left: 0;
   z-index: 4;
   background: #faf8f6;
+  border-radius: 13px 0 0 13px;
 }
 
 .employee-schedule-header-row .employee-schedule-name-cell.sticky {
   z-index: 7;
   background: #faf8f6;
+  border-radius: 15px 0 0 15px;
 }
 
 .employee-schedule-date-cell {
