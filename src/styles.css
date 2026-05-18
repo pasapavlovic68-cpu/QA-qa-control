@@ -181,7 +181,7 @@ button {
   display: flex;
   min-height: 100vh;
   position: relative;
-  background: var(--bg);
+  background: transparent;
 }
 
 .sidebar {
@@ -381,21 +381,6 @@ button {
   justify-content: space-between;
   gap: 20px;
   align-items: center;
-
-  /* ── Sticky glass pill (полная, без sub-header) ── */
-  position: sticky;
-  top: 16px;
-  z-index: 40;
-  padding: 16px 24px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(119, 101, 227, 0.14);
-  box-shadow:
-    0 2px 0 rgba(119, 101, 227, 0.07) inset,
-    0 8px 32px rgba(81, 71, 54, 0.10),
-    0 2px 8px rgba(119, 101, 227, 0.07);
   margin-bottom: 20px;
 }
 

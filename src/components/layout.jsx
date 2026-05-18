@@ -730,6 +730,13 @@ export function Sidebar({ active, setActive, user, orgName, organizationId, onOr
   const systemTabs = tabs.filter((t) => t.id === 'rules');
 
   return (
+    <>
+      {/* Декоративные размытые круги (position:fixed — рендерятся поверх всего) */}
+      <div className="bg-blobs" aria-hidden="true">
+        <div className="bg-blob bg-blob-1" />
+        <div className="bg-blob bg-blob-2" />
+        <div className="bg-blob bg-blob-3" />
+      </div>
     <aside className="sidebar-v2">
       {/* Brand */}
       <div className="sb2-brand">
@@ -791,6 +798,7 @@ export function Sidebar({ active, setActive, user, orgName, organizationId, onOr
         </div>
       </div>
     </aside>
+    </>
   );
 }
 
