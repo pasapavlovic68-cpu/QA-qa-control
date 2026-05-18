@@ -194,7 +194,7 @@ export function Rules({ organizationId }) {
       </Topbar>
 
       {loading ? (
-        <div className="rules-grid" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
           <p style={{ opacity: 0.4, fontSize: '0.875rem' }}>Загружаем правила…</p>
         </div>
       ) : rules.length === 0 ? (
@@ -203,41 +203,39 @@ export function Rules({ organizationId }) {
           <p style={{ opacity: 0.4, fontSize: '0.875rem' }}>Добавьте первое правило проверки.</p>
         </div>
       ) : (
-      <motion.div className="rules-grid" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.065 } } }}>
+      <motion.div className="rules-grid-v2" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.065 } } }}>
         <AnimatePresence mode="popLayout">
           {rules.map((rule) => (
             <motion.article
               layout
-              className="rule-card"
+              className="rule-card-v2"
               key={rule.id}
               variants={{ hidden: { opacity: 0, y: 18, scale: 0.98 }, show: { opacity: 1, y: 0, scale: 1 } }}
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, y: 12, scale: 0.96 }}
               transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-              whileHover={{ y: -5, scale: 1.008 }}
+              whileHover={{ y: -3, boxShadow: '0 4px 6px rgba(0,0,0,.05), 0 10px 30px rgba(0,0,0,.08)' }}
             >
-              <div className="rule-card-top">
-                <div className="rule-icon"><Settings2 size={18} /></div>
-                <div className="rule-actions">
+              <div className="r-head">
+                <span className={`r-tag ${rule.weight === 'Критическая' ? 't-c' : rule.weight === 'Высокая' ? 't-h' : 't-m'}`}>
+                  {rule.weight}
+                </span>
+                <div style={{ display: 'flex', gap: 4 }}>
                   <motion.button className="rule-action" aria-label={`Редактировать ${rule.title}`} whileTap={{ scale: 0.9 }} onClick={() => openEditModal(rule)}>
-                    <Pencil size={15} />
+                    <Pencil size={14} />
                   </motion.button>
                   <motion.button className="rule-action danger" aria-label={`Удалить ${rule.title}`} whileTap={{ scale: 0.9 }} onClick={() => setDeleteTarget(rule)}>
-                    <Trash2 size={15} />
+                    <Trash2 size={14} />
                   </motion.button>
                 </div>
               </div>
-              <div className="rule-title-row">
-                <h3>{rule.title}</h3>
-                <span className={`rule-status ${rule.active ? 'active' : 'disabled'}`}>{rule.active ? 'Активно' : 'Выключено'}</span>
+              <div className="r-title">{rule.title}</div>
+              <div className="r-desc">{rule.description || '—'}</div>
+              <div className="r-foot">
+                <div className="r-type">{rule.category}</div>
+                <RuleToggle active={rule.active} onClick={() => toggleRule(rule.id)} />
               </div>
-              <p>{rule.description}</p>
-              <div className="rule-meta">
-                <span>{rule.category}</span>
-                <b>{rule.weight}</b>
-              </div>
-              <RuleToggle active={rule.active} onClick={() => toggleRule(rule.id)} />
             </motion.article>
           ))}
         </AnimatePresence>

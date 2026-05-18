@@ -8,14 +8,18 @@ export function KpiCard({ label, value, delta, icon: Icon, onClick }) {
   return (
     <motion.div
       className="kpi-card"
-      whileHover={{ y: -5, boxShadow: '0 22px 60px rgba(92, 82, 143, 0.13)' }}
+      whileHover={{ y: -3, boxShadow: '0 4px 6px rgba(0,0,0,.05), 0 10px 30px rgba(0,0,0,.08)' }}
       onClick={onClick}
       style={onClick ? { cursor: 'pointer' } : undefined}
     >
-      <div className="kpi-icon"><Icon size={20} /></div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{delta}</small>
+      <div className="kc-head">
+        <div className="kc-label">{label}</div>
+        {Icon && <div className="kc-icon"><Icon size={16} /></div>}
+      </div>
+      <div className="kc-value">{value}</div>
+      <div className="kc-trend">
+        <span className="trend-chip trend-neu">{delta}</span>
+      </div>
     </motion.div>
   );
 }

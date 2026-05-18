@@ -713,66 +713,99 @@ function ProfileBlock({ user, orgName, organizationId, onOrgNameChange }) {
 }
 
 export function Sidebar({ active, setActive, user, orgName, organizationId, onOrgNameChange, systemStatus = {} }) {
+  const displayName =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email?.split('@')[0] ||
+    'Пользователь';
+
+  const initials = displayName
+    .split(' ')
+    .map((p) => p[0] ?? '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  const mainTabs = tabs.filter((t) => !['rules', 'settings'].includes(t.id));
+  const systemTabs = tabs.filter((t) => t.id === 'rules');
+
   return (
-    <aside className="sidebar">
-      <ProfileBlock user={user} orgName={orgName} organizationId={organizationId} onOrgNameChange={onOrgNameChange} />
-
-      <motion.div className="brand" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="brand-mark"><ShieldCheck size={22} /></div>
-        <div>
-          <strong>LeadProof</strong>
-          <span>AI-контроль качества продаж</span>
+    <aside className="sidebar-v2">
+      {/* Brand */}
+      <div className="sb2-brand">
+        <div className="sb2-brand-row">
+          <div className="sb2-brand-icon">L</div>
+          <span className="sb2-brand-name">LeadProof</span>
         </div>
-      </motion.div>
+        <div className="sb2-search">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--muted)', flexShrink: 0 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input placeholder="Поиск…" readOnly />
+        </div>
+      </div>
 
-      <nav className="nav">
-        {tabs.map((tab) => {
+      {/* Main nav */}
+      <nav>
+        {mainTabs.map((tab) => {
           const Icon = tab.icon;
           return (
-            <button key={tab.id} className={`nav-item ${active === tab.id ? 'active' : ''}`} onClick={() => setActive(tab.id)}>
-              {active === tab.id && <motion.span layoutId="active-tab" className="nav-indicator" />}
-              <Icon size={18} />
-              <span>{tab.label}</span>
+            <button
+              key={tab.id}
+              className={`sb2-nav-item${active === tab.id ? ' active' : ''}`}
+              onClick={() => setActive(tab.id)}
+            >
+              <span className="sb2-nav-icon"><Icon size={15} /></span>
+              {tab.label}
             </button>
           );
         })}
       </nav>
 
-      <motion.div className="ai-card" whileHover={{ y: -4, scale: 1.01 }}>
-        <div className="mvp-card-title">
-          <Sparkles size={18} />
-          <strong>Статус MVP</strong>
+      {/* System section */}
+      <div className="sb2-divider" />
+      <div className="sb2-section">Система</div>
+      <nav>
+        {systemTabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              className={`sb2-nav-item${active === tab.id ? ' active' : ''}`}
+              onClick={() => setActive(tab.id)}
+            >
+              <span className="sb2-nav-icon"><Icon size={15} /></span>
+              {tab.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div className="sb2-foot">
+        <ProfileBlock user={user} orgName={orgName} organizationId={organizationId} onOrgNameChange={onOrgNameChange} />
+        <div className="sb2-user-row">
+          <div className="sb2-user-av">{initials}</div>
+          <div style={{ minWidth: 0 }}>
+            <div className="sb2-user-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
+            <div className="sb2-user-role">{orgName?.trim() || 'Моя организация'}</div>
+          </div>
         </div>
-        <div className="mvp-status-list">
-          {[
-            { label: 'AI-анализ', value: analysisToStatus(systemStatus.analysis) },
-            { label: 'Загрузка файлов', value: featureStatus(systemStatus.upload) },
-            { label: 'База данных', value: systemStatus.supabase ?? 'checking' },
-            { label: 'API', value: systemStatus.supabase === 'connected' ? 'connected' : systemStatus.supabase === 'offline' ? 'offline' : 'checking' },
-          ].map(({ label, value }) => (
-            <div className="mvp-status-row" key={label}>
-              <span><i className={`dot ${STATUS_DOT[value] ?? 'demo'}`} />{label}</span>
-              <b>{STATUS_LABEL[value] ?? value}</b>
-            </div>
-          ))}
-        </div>
-      </motion.div>
+      </div>
     </aside>
   );
 }
 
 export function Topbar({ title, children }) {
   return (
-    <header className="topbar">
+    <div className="topbar-v2">
       <div>
-        <span className="eyebrow">Внутренний контур качества</span>
-        <h1>{title}</h1>
+        <div className="topbar-v2-title">{title}</div>
+        <div className="topbar-v2-sub">Внутренний контур качества</div>
       </div>
       {children && (
-        <div className="topbar-actions">
+        <div className="topbar-v2-actions">
           {children}
         </div>
       )}
-    </header>
+    </div>
   );
 }
